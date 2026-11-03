@@ -66,10 +66,8 @@ Audio, al final como siempre (cuando se pida: `kira` o `rodio`).
 | **R6** | Red LAN (fase 5, pasos 4-7): descubrimiento, host autoritativo, personaje portátil, UI de partidas, hash de contenido, MulticastLock en Android | `net/`, `roadmap/fase5-red.md` | **0.9**: 2 jugadores en LAN, PC y Android |
 | — | Estabilidad del multijugador | | **1.0** |
 
-**Estado R0** ✏️ escrito, pendiente de prueba del dueño: workspace (`game`, `app`), winit 0.30 + wgpu 30, lote de
-sprites por instancias en un atlas, resolución virtual con zoom entero, fuente bitmap, FPS en pantalla y en el log,
-`android/build.sh` (APK firmado sin Gradle, 3,1 MB), CI para Linux, Windows y APK. Compila en Linux y para Android.
-Falta: verlo correr en el teléfono y en Windows (CI).
+**Estado R0** ✅ (dueño, 2026-11-03): corre en el teléfono a 120 FPS (el tope del panel). Workspace (`game`, `app`),
+winit 0.30 + wgpu 30, lote de sprites por instancias, fuente bitmap, APK firmado sin Gradle, CI.
 
 R0 va primero a propósito: Android fue lo que rompió Python. Si `wgpu` + `winit` no levanta en el teléfono, se sabe
 antes de portar una sola línea de lógica.
