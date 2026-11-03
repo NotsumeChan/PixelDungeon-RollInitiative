@@ -4,3 +4,4 @@ __pycache__/
 *.jks
 *.keystore
 keystore.properties
+target/

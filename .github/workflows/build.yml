@@ -1,0 +1,53 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  desktop:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal
+      - run: cargo build --release --bin pdri
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pdri-${{ matrix.os }}
+          path: |
+            target/release/pdri
+            target/release/pdri.exe
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal --target aarch64-linux-android
+      - run: cargo install cargo-ndk --locked
+      # Clave de firma: la del dueño desde secretos (PDRI_KEYSTORE_B64 = release.jks en base64, PDRI_KEYSTORE_PASS);
+      # sin secretos (forks, PRs) se firma con una clave descartable: el APK sirve para probar, no para publicar.
+      - name: clave de firma
+        env:
+          KS_B64: ${{ secrets.PDRI_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.PDRI_KEYSTORE_PASS }}
+        run: |
+          K="$RUNNER_TEMP/keys"; mkdir -p "$K"
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$K/release.jks"; PASS="$KS_PASS"
+          else
+            PASS=$(openssl rand -hex 16)
+            keytool -genkeypair -keystore "$K/release.jks" -storetype PKCS12 -alias pddnd -keyalg RSA -keysize 2048 \
+              -validity 30 -storepass "$PASS" -keypass "$PASS" -dname "CN=ci"
+          fi
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=pddnd\nkeyPassword=%s\n' "$K/release.jks" "$PASS" "$PASS" > "$K/keystore.properties"
+          echo "PDRI_KEYS=$K/keystore.properties" >> "$GITHUB_ENV"
+      - run: ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME" android/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pdri-android
+          path: target/android/pdri.apk
+          if-no-files-found: error
