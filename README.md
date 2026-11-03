@@ -33,7 +33,7 @@ salvación, iniciativa, conjuros y rasgos de clase de 5e, sobre la mazmorra, los
   licencia anotados en [`docs/assets.md`](docs/assets.md). Nada de arte generado: si un sprite falta, el juego dibuja
   el nombre del objeto hasta que alguien lo haga.
 - **No hablar en nombre de nadie**: no es un juego oficial de Pixel Dungeon ni de D&D. El contenido propio usa IDs
-  `pddnd:` (nunca `pd:`), y los textos y marcas de terceros se atribuyen.
+  `pdri:` (nunca `pd:`), y los textos y marcas de terceros se atribuyen.
 - **Crédito a cada autor** (ver abajo).
 - **Reglas 5e por defecto**: las variantes son *reglas de la partida* opcionales que elige el host, nunca sorpresas.
 

@@ -1,5 +1,5 @@
 {
- "pddnd:rat": {
+ "pdri:rat": {
   "name": {
    "es": "rata marsupial",
    "en": "marsupial rat"
@@ -68,7 +68,7 @@
   "exp": 1,
   "max_lvl": 5
  },
- "pddnd:gnoll": {
+ "pdri:gnoll": {
   "name": {
    "es": "gnoll explorador",
    "en": "gnoll scout"
@@ -137,11 +137,11 @@
   "exp": 2,
   "max_lvl": 8,
   "loot": [
-   "pddnd:gold",
+   "pdri:gold",
    0.5
   ]
  },
- "pddnd:crab": {
+ "pdri:crab": {
   "name": {
    "es": "cangrejo de cloaca",
    "en": "sewer crab"
@@ -208,11 +208,11 @@
   "max_lvl": 9,
   "speed": 2.0,
   "loot": [
-   "pddnd:mystery_meat",
+   "pdri:mystery_meat",
    0.167
   ]
  },
- "pddnd:swarm": {
+ "pdri:swarm": {
   "name": {
    "es": "enjambre de moscas",
    "en": "swarm of flies"
@@ -285,7 +285,7 @@
   "max_lvl": 10,
   "flying": true
  },
- "pddnd:skeleton": {
+ "pdri:skeleton": {
   "name": {
    "es": "esqueleto",
    "en": "skeleton"
@@ -365,7 +365,7 @@
   "exp": 5,
   "max_lvl": 10
  },
- "pddnd:thief": {
+ "pdri:thief": {
   "name": {
    "es": "ladrón loco",
    "en": "crazy thief"

@@ -33,7 +33,7 @@
 - Pasar `HERO_CLASSES`, `MOBS`, `BESTIARY` (y luego ítems, habilidades, subclases) a archivos JSON en `data/`,
   cargados al iniciar en registros (`dict`s).
 - Un mod es otra carpeta con la misma estructura. Se cargan en orden y lo último pisa a lo anterior.
-- **Custom basado en una clase original:** `{"base": "pddnd:warrior", "HT": 25, ...}`. Se copia la base y se aplican
+- **Custom basado en una clase original:** `{"base": "pdri:warrior", "HT": 25, ...}`. Se copia la base y se aplican
   los cambios.
 - **Escalados y requisitos:** `"per_level": {"HT": 5, "attack": 1}`, `"requires": {"lvl": 5}`. Hoy están fijos
   en `Hero.earn_exp`; pasarían a leerse de la clase.

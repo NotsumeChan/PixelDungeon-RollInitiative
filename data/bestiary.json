@@ -1,61 +1,61 @@
 {
  "1": [
   [
-   "pddnd:rat",
+   "pdri:rat",
    1
   ]
  ],
  "2": [
   [
-   "pddnd:rat",
+   "pdri:rat",
    1
   ],
   [
-   "pddnd:gnoll",
+   "pdri:gnoll",
    1
   ]
  ],
  "3": [
   [
-   "pddnd:rat",
+   "pdri:rat",
    1
   ],
   [
-   "pddnd:gnoll",
+   "pdri:gnoll",
    2
   ],
   [
-   "pddnd:crab",
+   "pdri:crab",
    1
   ],
   [
-   "pddnd:swarm",
+   "pdri:swarm",
    0.02
   ]
  ],
  "4": [
   [
-   "pddnd:rat",
+   "pdri:rat",
    1
   ],
   [
-   "pddnd:gnoll",
+   "pdri:gnoll",
    2
   ],
   [
-   "pddnd:crab",
+   "pdri:crab",
    3
   ],
   [
-   "pddnd:swarm",
+   "pdri:swarm",
    0.02
   ],
   [
-   "pddnd:skeleton",
+   "pdri:skeleton",
    0.01
   ],
   [
-   "pddnd:thief",
+   "pdri:thief",
    0.01
   ]
  ]

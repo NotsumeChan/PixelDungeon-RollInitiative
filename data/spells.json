@@ -1,5 +1,5 @@
 {
- "pddnd:fire_bolt": {
+ "pdri:fire_bolt": {
   "name": {
    "es": "Descarga de fuego",
    "en": "Fire Bolt"
@@ -14,7 +14,7 @@
    "en": "Ranged spell attack: 1d10 fire damage."
   }
  },
- "pddnd:ray_of_frost": {
+ "pdri:ray_of_frost": {
   "name": {
    "es": "Rayo de escarcha",
    "en": "Ray of Frost"
@@ -24,7 +24,7 @@
   "target": "enemy",
   "damage": "1d8",
   "buff": [
-   "pddnd:cripple",
+   "pdri:cripple",
    2
   ],
   "fx": "frost",
@@ -33,7 +33,7 @@
    "en": "Ranged spell attack: 1d8 cold damage and slows the target."
   }
  },
- "pddnd:magic_missile": {
+ "pdri:magic_missile": {
   "name": {
    "es": "Proyectil mágico",
    "en": "Magic Missile"
@@ -52,7 +52,7 @@
    "en": "3 darts that always hit: 1d4+1 each. +1 dart per higher slot level."
   }
  },
- "pddnd:sleep": {
+ "pdri:sleep": {
   "name": {
    "es": "Dormir",
    "en": "Sleep"
@@ -71,7 +71,7 @@
    "en": "Puts the weakest creatures near the cell to sleep (5d8 HP in total)."
   }
  },
- "pddnd:cure_wounds": {
+ "pdri:cure_wounds": {
   "name": {
    "es": "Curar heridas",
    "en": "Cure Wounds"
@@ -88,7 +88,7 @@
    "en": "You or an adjacent ally (even if downed) heal 2d8 + your modifier."
   }
  },
- "pddnd:hunters_mark": {
+ "pdri:hunters_mark": {
   "name": {
    "es": "Marca del cazador",
    "en": "Hunter's Mark"
@@ -97,7 +97,7 @@
   "kind": "mark",
   "target": "enemy",
   "buff": [
-   "pddnd:hunters_mark",
+   "pdri:hunters_mark",
    null
   ],
   "bonus": true,

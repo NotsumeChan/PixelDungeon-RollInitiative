@@ -1,5 +1,5 @@
 {
- "pddnd:gold": {
+ "pdri:gold": {
   "name": {
    "es": "oro",
    "en": "gold"
@@ -9,7 +9,7 @@
   "stackable": true,
   "gen_weight": 1
  },
- "pddnd:ration": {
+ "pdri:ration": {
   "name": {
    "es": "ración de comida",
    "en": "ration of food"
@@ -24,7 +24,7 @@
    "en": "Simple food. Satisfies hunger."
   }
  },
- "pddnd:pasty": {
+ "pdri:pasty": {
   "name": {
    "es": "empanada",
    "en": "pasty"
@@ -39,7 +39,7 @@
    "en": "A huge pasty. Satisfies hunger for a long time."
   }
  },
- "pddnd:mystery_meat": {
+ "pdri:mystery_meat": {
   "name": {
    "es": "carne misteriosa",
    "en": "mystery meat"
@@ -54,7 +54,7 @@
    "en": "Meat of dubious origin. Eat at your own risk."
   }
  },
- "pddnd:potion_healing": {
+ "pdri:potion_healing": {
   "name": {
    "es": "poción de curación",
    "en": "potion of healing"
@@ -68,7 +68,7 @@
    "en": "Heals all your wounds."
   }
  },
- "pddnd:potion_experience": {
+ "pdri:potion_experience": {
   "name": {
    "es": "poción de experiencia",
    "en": "potion of experience"
@@ -82,7 +82,7 @@
    "en": "Raises you one level."
   }
  },
- "pddnd:potion_strength": {
+ "pdri:potion_strength": {
   "name": {
    "es": "poción de fuerza",
    "en": "potion of strength"
@@ -96,7 +96,7 @@
    "en": "Raises your Strength (STR) by 1."
   }
  },
- "pddnd:scroll_identify": {
+ "pdri:scroll_identify": {
   "name": {
    "es": "pergamino de identificación",
    "en": "scroll of identify"
@@ -111,7 +111,7 @@
    "en": "Reveals everything about an item."
   }
  },
- "pddnd:scroll_teleportation": {
+ "pdri:scroll_teleportation": {
   "name": {
    "es": "pergamino de teletransporte",
    "en": "scroll of teleportation"
@@ -125,7 +125,7 @@
    "en": "Takes you somewhere else on this floor."
   }
  },
- "pddnd:scroll_remove_curse": {
+ "pdri:scroll_remove_curse": {
   "name": {
    "es": "pergamino de quitar maldición",
    "en": "scroll of remove curse"
@@ -139,7 +139,7 @@
    "en": "Removes the curses from your equipment."
   }
  },
- "pddnd:scroll_magic_mapping": {
+ "pdri:scroll_magic_mapping": {
   "name": {
    "es": "pergamino de mapeo mágico",
    "en": "scroll of magic mapping"
@@ -153,7 +153,7 @@
    "en": "Reveals the map of the floor and its secrets."
   }
  },
- "pddnd:scroll_upgrade": {
+ "pdri:scroll_upgrade": {
   "name": {
    "es": "pergamino de mejora",
    "en": "scroll of upgrade"
@@ -168,7 +168,7 @@
    "en": "Upgrades a weapon or armor by +1."
   }
  },
- "pddnd:dagger": {
+ "pdri:dagger": {
   "name": {
    "es": "daga",
    "en": "dagger"
@@ -183,7 +183,7 @@
   "STR": 12,
   "gen_weight": 1
  },
- "pddnd:knuckles": {
+ "pdri:knuckles": {
   "name": {
    "es": "manoplas",
    "en": "knuckleduster"
@@ -198,7 +198,7 @@
   "STR": 12,
   "gen_weight": 1
  },
- "pddnd:short_sword": {
+ "pdri:short_sword": {
   "name": {
    "es": "espada corta",
    "en": "short sword"
@@ -213,7 +213,7 @@
   "STR": 12,
   "gen_weight": 0
  },
- "pddnd:quarterstaff": {
+ "pdri:quarterstaff": {
   "name": {
    "es": "bastón",
    "en": "quarterstaff"
@@ -228,7 +228,7 @@
   "STR": 14,
   "gen_weight": 1
  },
- "pddnd:spear": {
+ "pdri:spear": {
   "name": {
    "es": "lanza",
    "en": "spear"
@@ -243,7 +243,7 @@
   "STR": 14,
   "gen_weight": 1
  },
- "pddnd:mace": {
+ "pdri:mace": {
   "name": {
    "es": "maza",
    "en": "mace"
@@ -258,7 +258,7 @@
   "STR": 16,
   "gen_weight": 1
  },
- "pddnd:sword": {
+ "pdri:sword": {
   "name": {
    "es": "espada",
    "en": "sword"
@@ -273,7 +273,7 @@
   "STR": 16,
   "gen_weight": 1
  },
- "pddnd:longsword": {
+ "pdri:longsword": {
   "name": {
    "es": "espada larga",
    "en": "longsword"
@@ -288,7 +288,7 @@
   "STR": 18,
   "gen_weight": 1
  },
- "pddnd:battle_axe": {
+ "pdri:battle_axe": {
   "name": {
    "es": "hacha de batalla",
    "en": "battle axe"
@@ -303,7 +303,7 @@
   "STR": 18,
   "gen_weight": 1
  },
- "pddnd:war_hammer": {
+ "pdri:war_hammer": {
   "name": {
    "es": "martillo de guerra",
    "en": "war hammer"
@@ -318,7 +318,7 @@
   "STR": 20,
   "gen_weight": 1
  },
- "pddnd:glaive": {
+ "pdri:glaive": {
   "name": {
    "es": "guja",
    "en": "glaive"
@@ -333,7 +333,7 @@
   "STR": 20,
   "gen_weight": 1
  },
- "pddnd:shortbow": {
+ "pdri:shortbow": {
   "name": {
    "es": "arco corto",
    "en": "shortbow"
@@ -347,7 +347,7 @@
   "STR": 12,
   "gen_weight": 1,
   "ranged": true,
-  "ammo": "pddnd:arrow",
+  "ammo": "pdri:arrow",
   "range": [
    16,
    64
@@ -357,7 +357,7 @@
    "en": "Shoots arrows."
   }
  },
- "pddnd:dart": {
+ "pdri:dart": {
   "name": {
    "es": "dardo",
    "en": "dart"
@@ -382,7 +382,7 @@
   "gen_weight": 0,
   "spin": 0
  },
- "pddnd:incendiary_dart": {
+ "pdri:incendiary_dart": {
   "name": {
    "es": "dardo incendiario",
    "en": "incendiary dart"
@@ -407,7 +407,7 @@
   "gen_weight": 1,
   "spin": 0,
   "on_hit": [
-   "pddnd:burning",
+   "pdri:burning",
    null,
    0,
    0
@@ -417,7 +417,7 @@
    "en": "Sets its target on fire."
   }
  },
- "pddnd:curare_dart": {
+ "pdri:curare_dart": {
   "name": {
    "es": "dardo de curare",
    "en": "curare dart"
@@ -442,7 +442,7 @@
   "gen_weight": 1,
   "spin": 0,
   "on_hit": [
-   "pddnd:paralysis",
+   "pdri:paralysis",
    3,
    0,
    11
@@ -452,7 +452,7 @@
    "en": "Briefly paralyses its target (CON DC 11 each turn)."
   }
  },
- "pddnd:javelin": {
+ "pdri:javelin": {
   "name": {
    "es": "jabalina",
    "en": "javelin"
@@ -477,7 +477,7 @@
   "gen_weight": 1,
   "spin": 0,
   "on_hit": [
-   "pddnd:cripple",
+   "pdri:cripple",
    10,
    0,
    0
@@ -487,7 +487,7 @@
    "en": "Cripples its target."
   }
  },
- "pddnd:shuriken": {
+ "pdri:shuriken": {
   "name": {
    "es": "shuriken",
    "en": "shuriken"
@@ -512,7 +512,7 @@
   "gen_weight": 1,
   "spin": 1440
  },
- "pddnd:tomahawk": {
+ "pdri:tomahawk": {
   "name": {
    "es": "tomahawk",
    "en": "tomahawk"
@@ -537,7 +537,7 @@
   "gen_weight": 1,
   "spin": 720,
   "on_hit": [
-   "pddnd:bleeding",
+   "pdri:bleeding",
    null,
    4,
    0
@@ -547,7 +547,7 @@
    "en": "Makes its target bleed."
   }
  },
- "pddnd:boomerang": {
+ "pdri:boomerang": {
   "name": {
    "es": "bumerán",
    "en": "boomerang"
@@ -571,7 +571,7 @@
   "returns": true,
   "upgradable": true
  },
- "pddnd:arrow": {
+ "pdri:arrow": {
   "name": {
    "es": "flecha",
    "en": "arrow"
@@ -589,7 +589,7 @@
    "en": "Ammunition for a bow. Lost on a hit; drops to the floor on a miss."
   }
  },
- "pddnd:cloth_armor": {
+ "pdri:cloth_armor": {
   "name": {
    "es": "armadura de tela",
    "en": "cloth armor"
@@ -603,7 +603,7 @@
   "STR": 0,
   "gen_weight": 1
  },
- "pddnd:leather_armor": {
+ "pdri:leather_armor": {
   "name": {
    "es": "armadura de cuero",
    "en": "leather armor"
@@ -617,7 +617,7 @@
   "STR": 12,
   "gen_weight": 1
  },
- "pddnd:mail_armor": {
+ "pdri:mail_armor": {
   "name": {
    "es": "cota de malla",
    "en": "mail armor"
@@ -631,7 +631,7 @@
   "STR": 14,
   "gen_weight": 1
  },
- "pddnd:scale_armor": {
+ "pdri:scale_armor": {
   "name": {
    "es": "armadura de escamas",
    "en": "scale armor"
@@ -645,7 +645,7 @@
   "STR": 16,
   "gen_weight": 1
  },
- "pddnd:plate_armor": {
+ "pdri:plate_armor": {
   "name": {
    "es": "armadura de placas",
    "en": "plate armor"

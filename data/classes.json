@@ -1,5 +1,5 @@
 {
- "pddnd:warrior": {
+ "pdri:warrior": {
   "name": {
    "es": "Guerrero",
    "en": "Warrior"
@@ -19,29 +19,29 @@
    "medium",
    "heavy"
   ],
-  "start_weapon": "pddnd:short_sword",
-  "start_armor": "pddnd:cloth_armor",
+  "start_weapon": "pdri:short_sword",
+  "start_armor": "pdri:cloth_armor",
   "items": [
-   "pddnd:ration",
+   "pdri:ration",
    [
-    "pddnd:dart",
+    "pdri:dart",
     8
    ]
   ],
-  "quick": "pddnd:dart",
+  "quick": "pdri:dart",
   "known": [
-   "pddnd:potion_strength"
+   "pdri:potion_strength"
   ],
   "awareness_base": 0.9,
   "traits": [
-   "pddnd:second_wind"
+   "pdri:second_wind"
   ],
   "save_prof": [
    "STR",
    "CON"
   ]
  },
- "pddnd:mage": {
+ "pdri:mage": {
   "name": {
    "es": "Mago",
    "en": "Mage"
@@ -53,19 +53,19 @@
   "sprite": "mage.png",
   "hit_die": 6,
   "weapon_prof": [
-   "pddnd:dagger",
-   "pddnd:quarterstaff",
-   "pddnd:knuckles",
-   "pddnd:dart"
+   "pdri:dagger",
+   "pdri:quarterstaff",
+   "pdri:knuckles",
+   "pdri:dart"
   ],
   "armor_prof": [],
-  "start_weapon": "pddnd:knuckles",
-  "start_armor": "pddnd:cloth_armor",
+  "start_weapon": "pdri:knuckles",
+  "start_armor": "pdri:cloth_armor",
   "items": [
-   "pddnd:ration"
+   "pdri:ration"
   ],
   "known": [
-   "pddnd:scroll_identify"
+   "pdri:scroll_identify"
   ],
   "awareness_base": 0.9,
   "save_prof": [
@@ -76,14 +76,14 @@
    "ability": "INT",
    "slots": "full",
    "spells": [
-    "pddnd:fire_bolt",
-    "pddnd:ray_of_frost",
-    "pddnd:magic_missile",
-    "pddnd:sleep"
+    "pdri:fire_bolt",
+    "pdri:ray_of_frost",
+    "pdri:magic_missile",
+    "pdri:sleep"
    ]
   }
  },
- "pddnd:rogue": {
+ "pdri:rogue": {
   "name": {
    "es": "Pícaro",
    "en": "Rogue"
@@ -96,37 +96,37 @@
   "hit_die": 8,
   "weapon_prof": [
    "simple",
-   "pddnd:short_sword",
-   "pddnd:sword",
-   "pddnd:longsword"
+   "pdri:short_sword",
+   "pdri:sword",
+   "pdri:longsword"
   ],
   "armor_prof": [
    "light"
   ],
-  "start_weapon": "pddnd:dagger",
-  "start_armor": "pddnd:cloth_armor",
+  "start_weapon": "pdri:dagger",
+  "start_armor": "pdri:cloth_armor",
   "items": [
-   "pddnd:ration",
+   "pdri:ration",
    [
-    "pddnd:dart",
+    "pdri:dart",
     8
    ]
   ],
-  "quick": "pddnd:dart",
+  "quick": "pdri:dart",
   "known": [
-   "pddnd:scroll_magic_mapping"
+   "pdri:scroll_magic_mapping"
   ],
   "awareness_base": 0.85,
   "hunger_step": 12.0,
   "traits": [
-   "pddnd:sneak_attack"
+   "pdri:sneak_attack"
   ],
   "save_prof": [
    "DEX",
    "INT"
   ]
  },
- "pddnd:huntress": {
+ "pdri:huntress": {
   "name": {
    "es": "Cazadora",
    "en": "Huntress"
@@ -145,13 +145,13 @@
    "light",
    "medium"
   ],
-  "start_weapon": "pddnd:dagger",
-  "start_armor": "pddnd:cloth_armor",
+  "start_weapon": "pdri:dagger",
+  "start_armor": "pdri:cloth_armor",
   "items": [
-   "pddnd:ration",
-   "pddnd:boomerang"
+   "pdri:ration",
+   "pdri:boomerang"
   ],
-  "quick": "pddnd:boomerang",
+  "quick": "pdri:boomerang",
   "known": [],
   "awareness_base": 0.9,
   "save_prof": [
@@ -159,14 +159,14 @@
    "DEX"
   ],
   "traits": [
-   "pddnd:favored_enemy"
+   "pdri:favored_enemy"
   ],
   "spellcasting": {
    "ability": "WIS",
    "slots": "half",
    "spells": [
-    "pddnd:hunters_mark",
-    "pddnd:cure_wounds"
+    "pdri:hunters_mark",
+    "pdri:cure_wounds"
    ]
   }
  }

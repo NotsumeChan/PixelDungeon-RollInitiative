@@ -13,7 +13,7 @@ Pixel Dungeon lo fue para Python). Sólo recibe arreglos si hacen falta para com
 - `roadmap/` (decisiones del dueño: 5e manda sobre PD, multijugador, reglas de la partida) y `docs/` como formato
   (un `.md` por archivo de código, misma ruta).
 - Las reglas de `CLAUDE.md` que no son de Python: lógica sin dependencias de render, contenido como datos, IDs
-  `namespace:nombre` (`pddnd:`), textos `{"es", "en"}`, todo por delta de tiempo, azar sólo por rng con seed.
+  `namespace:nombre` (`pdri:`), textos `{"es", "en"}`, todo por delta de tiempo, azar sólo por rng con seed.
 - Licencia GPL v3 (agregar `LICENSE` antes de publicar).
 
 ## Stack

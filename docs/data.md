@@ -1,6 +1,6 @@
 # data/*.json — contenido del juego
 
-Registros que lee `game/registry.py`. IDs `namespace:nombre` (`pddnd:` = juego base). Textos: str o dict por idioma.
+Registros que lee `game/registry.py`. IDs `namespace:nombre` (`pdri:` = juego base). Textos: str o dict por idioma.
 
 - **classes.json** (`HERO_CLASSES`): ver el comentario en `game/hero.py` (`dnd_class`, `hit_die`, `weapon_prof`,
   `armor_prof`, `save_prof`, `traits`, `spellcasting`, `start_weapon`, `start_armor`, `items` (id o [id, cantidad]),

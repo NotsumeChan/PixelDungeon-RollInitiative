@@ -15,7 +15,7 @@
   recoger o abrir, comer, beber, leer (con objetivo), equipar, quitar, soltar.
 - **UI** (`screens/gameUi.py`): barra de estado, barra de herramientas, mochila y ventana de ítem, con los
   assets originales. Tecla I = mochila.
-- IDs de texto con prefijo `pddnd:` en todo el contenido (ítems, mobs, clases).
+- IDs de texto con prefijo `pdri:` en todo el contenido (ítems, mobs, clases).
 
 ## Qué falta (segunda pasada)
 - Pociones con buffs o gases (toxic gas, paralytic, liquid flame, levitation, mind vision, purity, invisibility,
