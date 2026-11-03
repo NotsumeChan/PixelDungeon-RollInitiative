@@ -1,0 +1,443 @@
+{
+ "pddnd:rat": {
+  "name": {
+   "es": "rata marsupial",
+   "en": "marsupial rat"
+  },
+  "desc": {
+   "es": "Las ratas marsupiales son agresivas, pero bastante débiles. Sólo son peligrosas en grupo.",
+   "en": "Marsupial rats are aggressive, but rather weak denizens of the sewers. They can be dangerous only in big numbers."
+  },
+  "sprite": "rat.png",
+  "frame": [
+   16,
+   15
+  ],
+  "anims": {
+   "idle": [
+    2,
+    [
+     0,
+     0,
+     0,
+     1
+    ],
+    true
+   ],
+   "run": [
+    10,
+    [
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    true
+   ],
+   "attack": [
+    15,
+    [
+     2,
+     3,
+     4,
+     5,
+     0
+    ],
+    false
+   ],
+   "die": [
+    10,
+    [
+     11,
+     12,
+     13,
+     14
+    ],
+    false
+   ]
+  },
+  "HT": 8,
+  "defense": 3,
+  "damage": [
+   1,
+   5
+  ],
+  "attack": 8,
+  "dr": 1,
+  "exp": 1,
+  "max_lvl": 5
+ },
+ "pddnd:gnoll": {
+  "name": {
+   "es": "gnoll explorador",
+   "en": "gnoll scout"
+  },
+  "desc": {
+   "es": "Los gnolls son humanoides parecidos a hienas. Viven en cloacas y mazmorras y de vez en cuando suben a saquear la superficie. Los exploradores son miembros comunes de la manada: ni tan fuertes como los brutos ni tan listos como los chamanes.",
+   "en": "Gnolls are hyena-like humanoids. They dwell in sewers and dungeons, venturing up to raid the surface from time to time. Gnoll scouts are regular members of their pack, they are not as strong as brutes and not as intelligent as shamans."
+  },
+  "sprite": "gnoll.png",
+  "frame": [
+   12,
+   15
+  ],
+  "anims": {
+   "idle": [
+    2,
+    [
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     1,
+     1
+    ],
+    true
+   ],
+   "run": [
+    12,
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    true
+   ],
+   "attack": [
+    12,
+    [
+     2,
+     3,
+     0
+    ],
+    false
+   ],
+   "die": [
+    12,
+    [
+     8,
+     9,
+     10
+    ],
+    false
+   ]
+  },
+  "HT": 12,
+  "defense": 4,
+  "damage": [
+   2,
+   5
+  ],
+  "attack": 11,
+  "dr": 2,
+  "exp": 2,
+  "max_lvl": 8,
+  "loot": [
+   "pddnd:gold",
+   0.5
+  ]
+ },
+ "pddnd:crab": {
+  "name": {
+   "es": "cangrejo de cloaca",
+   "en": "sewer crab"
+  },
+  "desc": {
+   "es": "Estos cangrejos enormes están en la cima de la cadena alimenticia de las cloacas. Son muy rápidos y su caparazón aguanta golpes fuertes.",
+   "en": "These huge crabs are at the top of the food chain in the sewers. They are extremely fast and their thick exoskeleton can withstand heavy blows."
+  },
+  "sprite": "crab.png",
+  "frame": [
+   16,
+   16
+  ],
+  "anims": {
+   "idle": [
+    5,
+    [
+     0,
+     1,
+     0,
+     2
+    ],
+    true
+   ],
+   "run": [
+    15,
+    [
+     3,
+     4,
+     5,
+     6
+    ],
+    true
+   ],
+   "attack": [
+    12,
+    [
+     7,
+     8,
+     9
+    ],
+    false
+   ],
+   "die": [
+    12,
+    [
+     10,
+     11,
+     12,
+     13
+    ],
+    false
+   ]
+  },
+  "HT": 15,
+  "defense": 5,
+  "damage": [
+   3,
+   6
+  ],
+  "attack": 12,
+  "dr": 4,
+  "exp": 3,
+  "max_lvl": 9,
+  "speed": 2.0,
+  "loot": [
+   "pddnd:mystery_meat",
+   0.167
+  ]
+ },
+ "pddnd:swarm": {
+  "name": {
+   "es": "enjambre de moscas",
+   "en": "swarm of flies"
+  },
+  "desc": {
+   "es": "El enjambre mortal zumba furioso. Cada ataque no mágico lo divide en dos enjambres más chicos pero igual de peligrosos.",
+   "en": "The deadly swarm of flies buzzes angrily. Every non-magical attack will split it into two smaller but equally dangerous swarms."
+  },
+  "sprite": "swarm.png",
+  "frame": [
+   16,
+   16
+  ],
+  "anims": {
+   "idle": [
+    15,
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    true
+   ],
+   "run": [
+    15,
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    true
+   ],
+   "attack": [
+    20,
+    [
+     6,
+     7,
+     8,
+     9
+    ],
+    false
+   ],
+   "die": [
+    15,
+    [
+     10,
+     11,
+     12,
+     13,
+     14
+    ],
+    false
+   ]
+  },
+  "HT": 80,
+  "defense": 5,
+  "damage": [
+   1,
+   4
+  ],
+  "attack": 12,
+  "dr": 0,
+  "exp": 1,
+  "max_lvl": 10,
+  "flying": true
+ },
+ "pddnd:skeleton": {
+  "name": {
+   "es": "esqueleto",
+   "en": "skeleton"
+  },
+  "desc": {
+   "es": "Huesos de aventureros desafortunados y de habitantes de la mazmorra, animados por la magia maligna que emana de las profundidades. Cuando reciben suficiente daño, se deshacen en una explosión de huesos.",
+   "en": "Skeletons are composed of corpses bones from unlucky adventurers and inhabitants of the dungeon, animated by emanations of evil magic from the depths below. After they have been damaged enough, they disintegrate in an explosion of bones."
+  },
+  "sprite": "skeleton.png",
+  "frame": [
+   12,
+   15
+  ],
+  "anims": {
+   "idle": [
+    12,
+    [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    true
+   ],
+   "run": [
+    15,
+    [
+     4,
+     5,
+     6,
+     7,
+     8,
+     9
+    ],
+    true
+   ],
+   "attack": [
+    15,
+    [
+     14,
+     15,
+     16
+    ],
+    false
+   ],
+   "die": [
+    12,
+    [
+     10,
+     11,
+     12,
+     13
+    ],
+    false
+   ]
+  },
+  "HT": 25,
+  "defense": 9,
+  "damage": [
+   3,
+   8
+  ],
+  "attack": 12,
+  "dr": 5,
+  "exp": 5,
+  "max_lvl": 10
+ },
+ "pddnd:thief": {
+  "name": {
+   "es": "ladrón loco",
+   "en": "crazy thief"
+  },
+  "desc": {
+   "es": "Los niveles profundos siempre fueron escondite de criminales. No todos conservaron la cordura tanto tiempo lejos de la luz del día: estos ladrones olvidaron hace mucho quiénes son y por qué roban.",
+   "en": "Deeper levels of the dungeon have always been a hiding place for all kinds of criminals. Not all of them could keep a clear mind during their extended periods so far from daylight. Long ago, these crazy thieves and bandits have forgotten who they are and why they steal."
+  },
+  "sprite": "thief.png",
+  "frame": [
+   12,
+   13
+  ],
+  "anims": {
+   "idle": [
+    1,
+    [
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1
+    ],
+    true
+   ],
+   "run": [
+    15,
+    [
+     0,
+     0,
+     2,
+     3,
+     3,
+     4
+    ],
+    true
+   ],
+   "attack": [
+    12,
+    [
+     10,
+     11,
+     12,
+     0
+    ],
+    false
+   ],
+   "die": [
+    10,
+    [
+     5,
+     6,
+     7,
+     8,
+     9
+    ],
+    false
+   ]
+  },
+  "HT": 20,
+  "defense": 12,
+  "damage": [
+   1,
+   7
+  ],
+  "attack": 12,
+  "dr": 3,
+  "exp": 5,
+  "max_lvl": 10
+ }
+}

@@ -1,0 +1,56 @@
+{
+ "pddnd:poison": {
+  "name": {
+   "es": "Envenenado",
+   "en": "Poisoned"
+  },
+  "icon": 3,
+  "tick": "poison"
+ },
+ "pddnd:bleeding": {
+  "name": {
+   "es": "Sangrando",
+   "en": "Bleeding"
+  },
+  "icon": 26,
+  "tick": "bleeding"
+ },
+ "pddnd:burning": {
+  "name": {
+   "es": "En llamas",
+   "en": "Burning"
+  },
+  "icon": 2,
+  "tick": "burning",
+  "duration": 8,
+  "fx": "flame"
+ },
+ "pddnd:paralysis": {
+  "name": {
+   "es": "Paralizado",
+   "en": "Paralysed"
+  },
+  "icon": 4,
+  "duration": 10,
+  "flags": [
+   "paralysed"
+  ],
+  "save_ends": "CON"
+ },
+ "pddnd:cripple": {
+  "name": {
+   "es": "Lisiado",
+   "en": "Crippled"
+  },
+  "icon": 23,
+  "duration": 10,
+  "speed": 0.5
+ },
+ "pddnd:hunters_mark": {
+  "name": {
+   "es": "Marcado",
+   "en": "Marked"
+  },
+  "icon": 27
+ }
+}

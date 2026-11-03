@@ -1,0 +1,110 @@
+{
+ "pddnd:fire_bolt": {
+  "name": {
+   "es": "Descarga de fuego",
+   "en": "Fire Bolt"
+  },
+  "level": 0,
+  "kind": "attack",
+  "target": "enemy",
+  "damage": "1d10",
+  "fx": "fire",
+  "desc": {
+   "es": "Ataque de conjuro a distancia: 1d10 de fuego.",
+   "en": "Ranged spell attack: 1d10 fire damage."
+  }
+ },
+ "pddnd:ray_of_frost": {
+  "name": {
+   "es": "Rayo de escarcha",
+   "en": "Ray of Frost"
+  },
+  "level": 0,
+  "kind": "attack",
+  "target": "enemy",
+  "damage": "1d8",
+  "buff": [
+   "pddnd:cripple",
+   2
+  ],
+  "fx": "frost",
+  "desc": {
+   "es": "Ataque de conjuro a distancia: 1d8 de frío y lo vuelve lento.",
+   "en": "Ranged spell attack: 1d8 cold damage and slows the target."
+  }
+ },
+ "pddnd:magic_missile": {
+  "name": {
+   "es": "Proyectil mágico",
+   "en": "Magic Missile"
+  },
+  "level": 1,
+  "kind": "auto",
+  "target": "enemy",
+  "darts": 3,
+  "damage": "1d4+1",
+  "upcast": {
+   "darts": 1
+  },
+  "fx": "missile",
+  "desc": {
+   "es": "3 dardos que siempre aciertan: 1d4+1 cada uno. +1 dardo por nivel de espacio extra.",
+   "en": "3 darts that always hit: 1d4+1 each. +1 dart per higher slot level."
+  }
+ },
+ "pddnd:sleep": {
+  "name": {
+   "es": "Dormir",
+   "en": "Sleep"
+  },
+  "level": 1,
+  "kind": "sleep",
+  "target": "cell",
+  "pool": "5d8",
+  "radius": 2,
+  "upcast": {
+   "pool": "2d8"
+  },
+  "fx": "sleep",
+  "desc": {
+   "es": "Duerme a las criaturas de menos vida cerca de la casilla (5d8 PV en total).",
+   "en": "Puts the weakest creatures near the cell to sleep (5d8 HP in total)."
+  }
+ },
+ "pddnd:cure_wounds": {
+  "name": {
+   "es": "Curar heridas",
+   "en": "Cure Wounds"
+  },
+  "level": 1,
+  "kind": "heal",
+  "target": "touch",
+  "damage": "2d8",
+  "upcast": {
+   "damage": "2d8"
+  },
+  "desc": {
+   "es": "Curas 2d8 + tu modificador a ti o a un aliado al lado (también si está caído).",
+   "en": "You or an adjacent ally (even if downed) heal 2d8 + your modifier."
+  }
+ },
+ "pddnd:hunters_mark": {
+  "name": {
+   "es": "Marca del cazador",
+   "en": "Hunter's Mark"
+  },
+  "level": 1,
+  "kind": "mark",
+  "target": "enemy",
+  "buff": [
+   "pddnd:hunters_mark",
+   null
+  ],
+  "bonus": true,
+  "fx": "mark",
+  "desc": {
+   "es": "Acción adicional: tus ataques con armas le hacen +1d6.",
+   "en": "Bonus action: your weapon attacks deal +1d6 to it."
+  }
+ }
+}

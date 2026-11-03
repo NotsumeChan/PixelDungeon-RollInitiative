@@ -1,0 +1,173 @@
+{
+ "pddnd:warrior": {
+  "name": {
+   "es": "Guerrero",
+   "en": "Warrior"
+  },
+  "dnd_class": {
+   "es": "Guerrero",
+   "en": "Fighter"
+  },
+  "sprite": "warrior.png",
+  "hit_die": 10,
+  "weapon_prof": [
+   "simple",
+   "martial"
+  ],
+  "armor_prof": [
+   "light",
+   "medium",
+   "heavy"
+  ],
+  "start_weapon": "pddnd:short_sword",
+  "start_armor": "pddnd:cloth_armor",
+  "items": [
+   "pddnd:ration",
+   [
+    "pddnd:dart",
+    8
+   ]
+  ],
+  "quick": "pddnd:dart",
+  "known": [
+   "pddnd:potion_strength"
+  ],
+  "awareness_base": 0.9,
+  "traits": [
+   "pddnd:second_wind"
+  ],
+  "save_prof": [
+   "STR",
+   "CON"
+  ]
+ },
+ "pddnd:mage": {
+  "name": {
+   "es": "Mago",
+   "en": "Mage"
+  },
+  "dnd_class": {
+   "es": "Mago",
+   "en": "Wizard"
+  },
+  "sprite": "mage.png",
+  "hit_die": 6,
+  "weapon_prof": [
+   "pddnd:dagger",
+   "pddnd:quarterstaff",
+   "pddnd:knuckles",
+   "pddnd:dart"
+  ],
+  "armor_prof": [],
+  "start_weapon": "pddnd:knuckles",
+  "start_armor": "pddnd:cloth_armor",
+  "items": [
+   "pddnd:ration"
+  ],
+  "known": [
+   "pddnd:scroll_identify"
+  ],
+  "awareness_base": 0.9,
+  "save_prof": [
+   "INT",
+   "WIS"
+  ],
+  "spellcasting": {
+   "ability": "INT",
+   "slots": "full",
+   "spells": [
+    "pddnd:fire_bolt",
+    "pddnd:ray_of_frost",
+    "pddnd:magic_missile",
+    "pddnd:sleep"
+   ]
+  }
+ },
+ "pddnd:rogue": {
+  "name": {
+   "es": "Pícaro",
+   "en": "Rogue"
+  },
+  "dnd_class": {
+   "es": "Pícaro",
+   "en": "Rogue"
+  },
+  "sprite": "rogue.png",
+  "hit_die": 8,
+  "weapon_prof": [
+   "simple",
+   "pddnd:short_sword",
+   "pddnd:sword",
+   "pddnd:longsword"
+  ],
+  "armor_prof": [
+   "light"
+  ],
+  "start_weapon": "pddnd:dagger",
+  "start_armor": "pddnd:cloth_armor",
+  "items": [
+   "pddnd:ration",
+   [
+    "pddnd:dart",
+    8
+   ]
+  ],
+  "quick": "pddnd:dart",
+  "known": [
+   "pddnd:scroll_magic_mapping"
+  ],
+  "awareness_base": 0.85,
+  "hunger_step": 12.0,
+  "traits": [
+   "pddnd:sneak_attack"
+  ],
+  "save_prof": [
+   "DEX",
+   "INT"
+  ]
+ },
+ "pddnd:huntress": {
+  "name": {
+   "es": "Cazadora",
+   "en": "Huntress"
+  },
+  "dnd_class": {
+   "es": "Explorador",
+   "en": "Ranger"
+  },
+  "sprite": "ranger.png",
+  "hit_die": 10,
+  "weapon_prof": [
+   "simple",
+   "martial"
+  ],
+  "armor_prof": [
+   "light",
+   "medium"
+  ],
+  "start_weapon": "pddnd:dagger",
+  "start_armor": "pddnd:cloth_armor",
+  "items": [
+   "pddnd:ration",
+   "pddnd:boomerang"
+  ],
+  "quick": "pddnd:boomerang",
+  "known": [],
+  "awareness_base": 0.9,
+  "save_prof": [
+   "STR",
+   "DEX"
+  ],
+  "traits": [
+   "pddnd:favored_enemy"
+  ],
+  "spellcasting": {
+   "ability": "WIS",
+   "slots": "half",
+   "spells": [
+    "pddnd:hunters_mark",
+    "pddnd:cure_wounds"
+   ]
+  }
+ }
+}

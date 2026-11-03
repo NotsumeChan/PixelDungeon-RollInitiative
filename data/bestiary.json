@@ -1,0 +1,62 @@
+{
+ "1": [
+  [
+   "pddnd:rat",
+   1
+  ]
+ ],
+ "2": [
+  [
+   "pddnd:rat",
+   1
+  ],
+  [
+   "pddnd:gnoll",
+   1
+  ]
+ ],
+ "3": [
+  [
+   "pddnd:rat",
+   1
+  ],
+  [
+   "pddnd:gnoll",
+   2
+  ],
+  [
+   "pddnd:crab",
+   1
+  ],
+  [
+   "pddnd:swarm",
+   0.02
+  ]
+ ],
+ "4": [
+  [
+   "pddnd:rat",
+   1
+  ],
+  [
+   "pddnd:gnoll",
+   2
+  ],
+  [
+   "pddnd:crab",
+   3
+  ],
+  [
+   "pddnd:swarm",
+   0.02
+  ],
+  [
+   "pddnd:skeleton",
+   0.01
+  ],
+  [
+   "pddnd:thief",
+   0.01
+  ]
+ ]
+}

@@ -1,0 +1,662 @@
+{
+ "pddnd:gold": {
+  "name": {
+   "es": "oro",
+   "en": "gold"
+  },
+  "category": "gold",
+  "image": 14,
+  "stackable": true,
+  "gen_weight": 1
+ },
+ "pddnd:ration": {
+  "name": {
+   "es": "ración de comida",
+   "en": "ration of food"
+  },
+  "category": "food",
+  "image": 4,
+  "stackable": true,
+  "energy": 260,
+  "gen_weight": 4,
+  "desc": {
+   "es": "Comida simple. Quita el hambre.",
+   "en": "Simple food. Satisfies hunger."
+  }
+ },
+ "pddnd:pasty": {
+  "name": {
+   "es": "empanada",
+   "en": "pasty"
+  },
+  "category": "food",
+  "image": 112,
+  "stackable": true,
+  "energy": 360,
+  "gen_weight": 1,
+  "desc": {
+   "es": "Un pastel enorme. Quita el hambre por mucho tiempo.",
+   "en": "A huge pasty. Satisfies hunger for a long time."
+  }
+ },
+ "pddnd:mystery_meat": {
+  "name": {
+   "es": "carne misteriosa",
+   "en": "mystery meat"
+  },
+  "category": "food",
+  "image": 113,
+  "stackable": true,
+  "energy": 100,
+  "gen_weight": 0,
+  "desc": {
+   "es": "Carne de origen dudoso. Comela bajo tu propio riesgo.",
+   "en": "Meat of dubious origin. Eat at your own risk."
+  }
+ },
+ "pddnd:potion_healing": {
+  "name": {
+   "es": "poción de curación",
+   "en": "potion of healing"
+  },
+  "category": "potion",
+  "effect": "heal",
+  "stackable": true,
+  "gen_weight": 45,
+  "desc": {
+   "es": "Cura todas tus heridas.",
+   "en": "Heals all your wounds."
+  }
+ },
+ "pddnd:potion_experience": {
+  "name": {
+   "es": "poción de experiencia",
+   "en": "potion of experience"
+  },
+  "category": "potion",
+  "effect": "experience",
+  "stackable": true,
+  "gen_weight": 4,
+  "desc": {
+   "es": "Te hace subir un nivel.",
+   "en": "Raises you one level."
+  }
+ },
+ "pddnd:potion_strength": {
+  "name": {
+   "es": "poción de fuerza",
+   "en": "potion of strength"
+  },
+  "category": "potion",
+  "effect": "strength",
+  "stackable": true,
+  "gen_weight": 0,
+  "desc": {
+   "es": "Aumenta tu Fuerza (FUE) en 1.",
+   "en": "Raises your Strength (STR) by 1."
+  }
+ },
+ "pddnd:scroll_identify": {
+  "name": {
+   "es": "pergamino de identificación",
+   "en": "scroll of identify"
+  },
+  "category": "scroll",
+  "effect": "identify",
+  "target": "unknown",
+  "stackable": true,
+  "gen_weight": 30,
+  "desc": {
+   "es": "Revela todo sobre un objeto.",
+   "en": "Reveals everything about an item."
+  }
+ },
+ "pddnd:scroll_teleportation": {
+  "name": {
+   "es": "pergamino de teletransporte",
+   "en": "scroll of teleportation"
+  },
+  "category": "scroll",
+  "effect": "teleport",
+  "stackable": true,
+  "gen_weight": 10,
+  "desc": {
+   "es": "Te lleva a otro lugar del piso.",
+   "en": "Takes you somewhere else on this floor."
+  }
+ },
+ "pddnd:scroll_remove_curse": {
+  "name": {
+   "es": "pergamino de quitar maldición",
+   "en": "scroll of remove curse"
+  },
+  "category": "scroll",
+  "effect": "remove_curse",
+  "stackable": true,
+  "gen_weight": 15,
+  "desc": {
+   "es": "Quita las maldiciones de tu equipo.",
+   "en": "Removes the curses from your equipment."
+  }
+ },
+ "pddnd:scroll_magic_mapping": {
+  "name": {
+   "es": "pergamino de mapeo mágico",
+   "en": "scroll of magic mapping"
+  },
+  "category": "scroll",
+  "effect": "magic_mapping",
+  "stackable": true,
+  "gen_weight": 15,
+  "desc": {
+   "es": "Revela el mapa del piso y sus secretos.",
+   "en": "Reveals the map of the floor and its secrets."
+  }
+ },
+ "pddnd:scroll_upgrade": {
+  "name": {
+   "es": "pergamino de mejora",
+   "en": "scroll of upgrade"
+  },
+  "category": "scroll",
+  "effect": "upgrade",
+  "target": "upgradable",
+  "stackable": true,
+  "gen_weight": 0,
+  "desc": {
+   "es": "Mejora un arma o armadura en +1.",
+   "en": "Upgrades a weapon or armor by +1."
+  }
+ },
+ "pddnd:dagger": {
+  "name": {
+   "es": "daga",
+   "en": "dagger"
+  },
+  "category": "weapon",
+  "image": 19,
+  "tier": 1,
+  "dice": "1d4",
+  "dly": 1.0,
+  "kind": "simple",
+  "finesse": true,
+  "STR": 12,
+  "gen_weight": 1
+ },
+ "pddnd:knuckles": {
+  "name": {
+   "es": "manoplas",
+   "en": "knuckleduster"
+  },
+  "category": "weapon",
+  "image": 16,
+  "tier": 1,
+  "dice": "1d4",
+  "dly": 0.5,
+  "kind": "simple",
+  "finesse": false,
+  "STR": 12,
+  "gen_weight": 1
+ },
+ "pddnd:short_sword": {
+  "name": {
+   "es": "espada corta",
+   "en": "short sword"
+  },
+  "category": "weapon",
+  "image": 2,
+  "tier": 1,
+  "dice": "1d6",
+  "dly": 1.0,
+  "kind": "martial",
+  "finesse": true,
+  "STR": 12,
+  "gen_weight": 0
+ },
+ "pddnd:quarterstaff": {
+  "name": {
+   "es": "bastón",
+   "en": "quarterstaff"
+  },
+  "category": "weapon",
+  "image": 17,
+  "tier": 2,
+  "dice": "1d6",
+  "dly": 1.0,
+  "kind": "simple",
+  "finesse": false,
+  "STR": 14,
+  "gen_weight": 1
+ },
+ "pddnd:spear": {
+  "name": {
+   "es": "lanza",
+   "en": "spear"
+  },
+  "category": "weapon",
+  "image": 29,
+  "tier": 2,
+  "dice": "1d8",
+  "dly": 1.5,
+  "kind": "simple",
+  "finesse": false,
+  "STR": 14,
+  "gen_weight": 1
+ },
+ "pddnd:mace": {
+  "name": {
+   "es": "maza",
+   "en": "mace"
+  },
+  "category": "weapon",
+  "image": 18,
+  "tier": 3,
+  "dice": "1d6",
+  "dly": 0.8,
+  "kind": "simple",
+  "finesse": false,
+  "STR": 16,
+  "gen_weight": 1
+ },
+ "pddnd:sword": {
+  "name": {
+   "es": "espada",
+   "en": "sword"
+  },
+  "category": "weapon",
+  "image": 20,
+  "tier": 3,
+  "dice": "1d8",
+  "dly": 1.0,
+  "kind": "martial",
+  "finesse": false,
+  "STR": 16,
+  "gen_weight": 1
+ },
+ "pddnd:longsword": {
+  "name": {
+   "es": "espada larga",
+   "en": "longsword"
+  },
+  "category": "weapon",
+  "image": 21,
+  "tier": 4,
+  "dice": "1d10",
+  "dly": 1.0,
+  "kind": "martial",
+  "finesse": false,
+  "STR": 18,
+  "gen_weight": 1
+ },
+ "pddnd:battle_axe": {
+  "name": {
+   "es": "hacha de batalla",
+   "en": "battle axe"
+  },
+  "category": "weapon",
+  "image": 22,
+  "tier": 4,
+  "dice": "1d10",
+  "dly": 1.0,
+  "kind": "martial",
+  "finesse": false,
+  "STR": 18,
+  "gen_weight": 1
+ },
+ "pddnd:war_hammer": {
+  "name": {
+   "es": "martillo de guerra",
+   "en": "war hammer"
+  },
+  "category": "weapon",
+  "image": 23,
+  "tier": 5,
+  "dice": "2d6",
+  "dly": 1.0,
+  "kind": "martial",
+  "finesse": false,
+  "STR": 20,
+  "gen_weight": 1
+ },
+ "pddnd:glaive": {
+  "name": {
+   "es": "guja",
+   "en": "glaive"
+  },
+  "category": "weapon",
+  "image": 30,
+  "tier": 5,
+  "dice": "1d12",
+  "dly": 1.0,
+  "kind": "martial",
+  "finesse": false,
+  "STR": 20,
+  "gen_weight": 1
+ },
+ "pddnd:shortbow": {
+  "name": {
+   "es": "arco corto",
+   "en": "shortbow"
+  },
+  "category": "weapon",
+  "tier": 1,
+  "dice": "1d6",
+  "dly": 1.0,
+  "kind": "simple",
+  "finesse": false,
+  "STR": 12,
+  "gen_weight": 1,
+  "ranged": true,
+  "ammo": "pddnd:arrow",
+  "range": [
+   16,
+   64
+  ],
+  "desc": {
+   "es": "Dispara flechas.",
+   "en": "Shoots arrows."
+  }
+ },
+ "pddnd:dart": {
+  "name": {
+   "es": "dardo",
+   "en": "dart"
+  },
+  "category": "missile",
+  "image": 31,
+  "dice": "1d4",
+  "kind": "simple",
+  "finesse": true,
+  "thrown": true,
+  "range": [
+   4,
+   12
+  ],
+  "STR": 10,
+  "dly": 1.0,
+  "stackable": true,
+  "qty": [
+   5,
+   15
+  ],
+  "gen_weight": 0,
+  "spin": 0
+ },
+ "pddnd:incendiary_dart": {
+  "name": {
+   "es": "dardo incendiario",
+   "en": "incendiary dart"
+  },
+  "category": "missile",
+  "image": 108,
+  "dice": "1d4",
+  "kind": "simple",
+  "finesse": true,
+  "thrown": true,
+  "range": [
+   4,
+   12
+  ],
+  "STR": 10,
+  "dly": 1.0,
+  "stackable": true,
+  "qty": [
+   3,
+   6
+  ],
+  "gen_weight": 1,
+  "spin": 0,
+  "on_hit": [
+   "pddnd:burning",
+   null,
+   0,
+   0
+  ],
+  "desc": {
+   "es": "Prende fuego a quien alcanza.",
+   "en": "Sets its target on fire."
+  }
+ },
+ "pddnd:curare_dart": {
+  "name": {
+   "es": "dardo de curare",
+   "en": "curare dart"
+  },
+  "category": "missile",
+  "image": 109,
+  "dice": "1d4",
+  "kind": "simple",
+  "finesse": true,
+  "thrown": true,
+  "range": [
+   4,
+   12
+  ],
+  "STR": 10,
+  "dly": 1.0,
+  "stackable": true,
+  "qty": [
+   3,
+   6
+  ],
+  "gen_weight": 1,
+  "spin": 0,
+  "on_hit": [
+   "pddnd:paralysis",
+   3,
+   0,
+   11
+  ],
+  "desc": {
+   "es": "Paraliza un momento a quien alcanza (CON CD 11 cada turno).",
+   "en": "Briefly paralyses its target (CON DC 11 each turn)."
+  }
+ },
+ "pddnd:javelin": {
+  "name": {
+   "es": "jabalina",
+   "en": "javelin"
+  },
+  "category": "missile",
+  "image": 110,
+  "dice": "1d6",
+  "kind": "simple",
+  "finesse": false,
+  "thrown": true,
+  "range": [
+   6,
+   24
+  ],
+  "STR": 15,
+  "dly": 1.0,
+  "stackable": true,
+  "qty": [
+   5,
+   15
+  ],
+  "gen_weight": 1,
+  "spin": 0,
+  "on_hit": [
+   "pddnd:cripple",
+   10,
+   0,
+   0
+  ],
+  "desc": {
+   "es": "Deja lisiado a quien alcanza.",
+   "en": "Cripples its target."
+  }
+ },
+ "pddnd:shuriken": {
+  "name": {
+   "es": "shuriken",
+   "en": "shuriken"
+  },
+  "category": "missile",
+  "image": 15,
+  "dice": "1d4",
+  "kind": "simple",
+  "finesse": true,
+  "thrown": true,
+  "range": [
+   4,
+   12
+  ],
+  "STR": 13,
+  "dly": 0.5,
+  "stackable": true,
+  "qty": [
+   5,
+   15
+  ],
+  "gen_weight": 1,
+  "spin": 1440
+ },
+ "pddnd:tomahawk": {
+  "name": {
+   "es": "tomahawk",
+   "en": "tomahawk"
+  },
+  "category": "missile",
+  "image": 107,
+  "dice": "1d6",
+  "kind": "simple",
+  "finesse": false,
+  "thrown": true,
+  "range": [
+   4,
+   12
+  ],
+  "STR": 17,
+  "dly": 1.0,
+  "stackable": true,
+  "qty": [
+   5,
+   12
+  ],
+  "gen_weight": 1,
+  "spin": 720,
+  "on_hit": [
+   "pddnd:bleeding",
+   null,
+   4,
+   0
+  ],
+  "desc": {
+   "es": "Hace sangrar a quien alcanza.",
+   "en": "Makes its target bleed."
+  }
+ },
+ "pddnd:boomerang": {
+  "name": {
+   "es": "bumerán",
+   "en": "boomerang"
+  },
+  "category": "missile",
+  "image": 106,
+  "dice": "1d4",
+  "kind": "simple",
+  "finesse": true,
+  "thrown": true,
+  "range": [
+   4,
+   12
+  ],
+  "STR": 10,
+  "dly": 1.0,
+  "stackable": false,
+  "qty": null,
+  "gen_weight": 0,
+  "spin": 1440,
+  "returns": true,
+  "upgradable": true
+ },
+ "pddnd:arrow": {
+  "name": {
+   "es": "flecha",
+   "en": "arrow"
+  },
+  "category": "missile",
+  "stackable": true,
+  "qty": [
+   10,
+   20
+  ],
+  "gen_weight": 2,
+  "spin": 0,
+  "desc": {
+   "es": "Munición para el arco. Acertada se pierde; fallada cae al suelo.",
+   "en": "Ammunition for a bow. Lost on a hit; drops to the floor on a miss."
+  }
+ },
+ "pddnd:cloth_armor": {
+  "name": {
+   "es": "armadura de tela",
+   "en": "cloth armor"
+  },
+  "category": "armor",
+  "image": 24,
+  "tier": 1,
+  "ac": 11,
+  "dex_max": null,
+  "kind": "clothing",
+  "STR": 0,
+  "gen_weight": 1
+ },
+ "pddnd:leather_armor": {
+  "name": {
+   "es": "armadura de cuero",
+   "en": "leather armor"
+  },
+  "category": "armor",
+  "image": 25,
+  "tier": 2,
+  "ac": 12,
+  "dex_max": null,
+  "kind": "light",
+  "STR": 12,
+  "gen_weight": 1
+ },
+ "pddnd:mail_armor": {
+  "name": {
+   "es": "cota de malla",
+   "en": "mail armor"
+  },
+  "category": "armor",
+  "image": 26,
+  "tier": 3,
+  "ac": 13,
+  "dex_max": 2,
+  "kind": "medium",
+  "STR": 14,
+  "gen_weight": 1
+ },
+ "pddnd:scale_armor": {
+  "name": {
+   "es": "armadura de escamas",
+   "en": "scale armor"
+  },
+  "category": "armor",
+  "image": 27,
+  "tier": 4,
+  "ac": 14,
+  "dex_max": 2,
+  "kind": "medium",
+  "STR": 16,
+  "gen_weight": 1
+ },
+ "pddnd:plate_armor": {
+  "name": {
+   "es": "armadura de placas",
+   "en": "plate armor"
+  },
+  "category": "armor",
+  "image": 28,
+  "tier": 5,
+  "ac": 18,
+  "dex_max": 0,
+  "kind": "heavy",
+  "STR": 18,
+  "gen_weight": 1
+ }
+}
