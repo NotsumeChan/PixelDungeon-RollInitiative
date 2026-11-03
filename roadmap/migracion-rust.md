@@ -75,7 +75,8 @@ antes de portar una sola línea de lógica.
 
 ## Ramas y versiones
 - `python-prototipe`: el prototipo congelado (0.8 + pasos 3-4 de la fase 5 escritos).
-- `main`: el juego en Rust, desde R0 (rama nueva, sin el historial de Python).
+- `main`: el juego en Rust. El primer commit de R0 reemplaza ahí el código de Python (el historial se conserva;
+  el prototipo sigue completo en `python-prototipe`).
 - `dev` para el trabajo diario y `merge: dev -> main` al cerrar cada fase. Commits cortos: `feat:`, `fix:`, `merge:`.
 - Versión: el Rust sigue la numeración (llega a 0.8 al cerrar R5). Historial en `roadmap/versiones.md`.
 
