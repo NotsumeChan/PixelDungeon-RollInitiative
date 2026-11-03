@@ -11,6 +11,7 @@ Plan y fases: `roadmap/migracion-rust.md` (leer primero).
 cargo run --release      # escritorio; los assets van dentro del binario (include_bytes!)
 android/build.sh         # APK firmado -> target/android/pdri.apk (necesita cargo-ndk, SDK, NDK, la clave)
 adb install -r target/android/pdri.apk
+cargo run -q -p game --example level -- <seed> <piso>   # volcado ASCII de un piso (comparar con el prototipo)
 ```
 
 ## Estructura
