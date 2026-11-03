@@ -1,4 +1,4 @@
-# PixelDungeonD&D
+# PixelDungeonMazes&Monsters
 
 Roguelike de mazmorras en pixel art basado en [Pixel Dungeon](https://github.com/watabou/pixel-dungeon) de Watabou,
 llevado a las reglas de **Dungeons & Dragons 5e** y con **multijugador cooperativo**.
