@@ -1,3 +1,6 @@
+> **Migración a Rust (2026-11-03):** esta versión en Python es el prototipo de referencia (rama `python-prototipe`).
+> Plan: `roadmap/migracion-rust.md`.
+
 # PixelDungeonD&D — Plan
 
 Objetivo: juego base de Pixel Dungeon (pisos 1–4, Alcantarillas, sin el jefe Goo del piso 5),
