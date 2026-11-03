@@ -1,4 +1,4 @@
-# PixelDungeonMazes&Monsters
+# PixelDungeon-RollInitiative
 
 Remake en Python de Pixel Dungeon (pisos 1–4, Alcantarillas, sin jefe) con multijugador P2P.
 Referencia Java original: `~/Documents/programacion/personal/java/pixel-dungeon/src/com/watabou/`
