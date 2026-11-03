@@ -105,6 +105,7 @@ Errores e ideas: en los issues de GitHub. Cambios: pull request hacia `dev`.
   Base del juego: diseño, generación de niveles y monstruos (portados de su código), y los gráficos, sonidos y
   fuentes de `Assets/`.
 - **Música**: Cube_Code (la de Pixel Dungeon).
+- **Nombre**: gracias a [chomusuke-png](https://github.com/chomusuke-png) por la idea de *Roll Initiative*.
 - **Reglas de D&D 5e**: este trabajo incluye material del System Reference Document 5.1 ("SRD 5.1") y del System
   Reference Document 5.2 ("SRD 5.2") de Wizards of the Coast LLC, disponibles en
   <https://dnd.wizards.com/resources/systems-reference-document> y <https://www.dndbeyond.com/srd>. El SRD 5.1 y el
