@@ -58,7 +58,7 @@ Audio, al final como siempre (cuando se pida: `kira` o `rodio`).
 | Fase | Contenido | Referencia en Python | Cierra cuando |
 |---|---|---|---|
 | **R0** | Workspace, ventana winit + wgpu limpiando pantalla, contador de FPS, CI (GitHub Actions: Linux, Windows, APK), **APK en el teléfono** | `core/Screen.py` | El dueño abre el APK y el binario de escritorio y ve los FPS |
-| **R1** | `Rng`, geometría, terreno, salas, pintores, `SewerLevel` (pisos 1-4), registros JSON | `game/rng, geom, terrain, room, painters, level, registry` | Mismas seeds -> mismos mapas que Python (volcado comparado) |
+| **R1** | `Rng`, geometría, terreno, salas, pintores, `SewerLevel` (pisos 1-4), registros JSON | `game/rng, geom, terrain, room, painters, level, registry` | Mismas seeds -> mismos mapas que Python (lo compara el dueño) |
 | **R2** | Render del mapa: atlas, tiles, agua, niebla, cámara, zoom nítido, arrastrar el mapa | `screens/gameScreen` (fase 2) | El dueño recorre un piso con la cámara |
 | **R3** | Actores: planificador por tiempo + rondas 5e (iniciativa, movimiento + acción), héroe, mobs con IA, FOV, pathfinder, dados, combate 5e, salvaciones contra la muerte | `game/actor, char, hero, mobs, fov, pathfinder, dice, dungeon` | Se juega un piso con combate |
 | **R4** | Sprites animados, partículas, dados animados, UI (estado, carrusel de iniciativa, barra, mochila, ventanas, tooltips), sin sprite = nombre | `screens/gameUi, charSprite, particles, diceFx` | Igual que el prototipo 0.8, pantalla por pantalla |
@@ -83,11 +83,10 @@ antes de portar una sola línea de lógica.
 ## Riesgos
 - **wgpu en Android viejo**: si no hay Vulkan usa GLES 3; probar en el teléfono del dueño en R0.
 - **Tooling de Android** (NDK, firma, Gradle): por eso va en CI desde R0.
-- **Tamaño del port** (~7.300 líneas de Python): las fases lo parten; R1 se compara automático contra Python.
-- **Pruebas**: el prototipo no tenía tests automáticos por decisión del dueño. Para R1 propongo una sola prueba de
-  paridad (volcado de mapas por seed); el resto, a mano como siempre. Decide el dueño.
+- **Tamaño del port** (~7.300 líneas de Python): las fases lo parten; cada una se compara a mano contra Python.
 
-## Pendiente de decisión del dueño
-1. ¿Prueba de paridad automática en R1 (y en R3 para el combate)? Propuesta: sí, sólo esas.
-2. ¿Los guardados del prototipo deben poder cargarse en Rust? Propuesta: no (formato nuevo v3).
-3. ¿El APK se firma con una clave propia ya en R0 o sólo debug hasta la 0.9?
+## Decisiones del dueño (2026-11-03)
+1. **Pruebas**: el juego lo prueba el dueño a mano; sin tests de juego. Tests automáticos sólo para la red (R6).
+2. **Guardados**: los del prototipo eran de prueba; Rust usa un formato nuevo, sin migración.
+3. **Firma del APK**: desde R0, con clave propia fuera del repo (`~/.pddnd-signing/`, ver README).
+4. README con meta, decisiones, cómo compilar y contribuir, y créditos; licencia GPL v3 (`LICENSE`).
