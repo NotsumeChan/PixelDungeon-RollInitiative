@@ -92,8 +92,24 @@ seguido si no descansa).
 Pendientes de R3 que dependen de R4/R5: el dado animado (`pending` se resuelve en el acto), botones táctiles para
 esperar / buscar, apariencias de pociones al empezar (gasta rng en el prototipo), loot, trampas, hambre.
 
-**Siguiente: R4** (sprites animados, partículas, dados animados, UI) y después la parte de R5 que llega a la 0.7
-del prototipo (rasgos de clase, conjuros, salvaciones, estados, trampas, armas a distancia).
+**Estado R4** ✏️ escrito (2026-11-04), pendiente de prueba del dueño:
+- Personajes animados (`app/sprites.rs`): quieto, correr, atacar, operar y morir, girando hacia donde van; el héroe
+  usa la fila de su armadura; cadáveres que se desvanecen; textos flotantes (daño, esquiva, caer, subir de nivel...);
+  casillas revisadas al buscar; hojas del pasto; Zzz y ! sobre los mobs.
+- Dados animados (`app/dice_fx.rs`): d20 de ataque, daño y salvaciones (grande en el centro); el daño se aplica
+  cuando el dado muestra el número (`pending` ya no se resuelve en el acto).
+- UI (`app/ui.rs`) con los assets originales: panel de estado (avatar -> ficha, PV, XP, nivel, piso, menú, ocupado),
+  carrusel de iniciativa, barra con esperar / buscar / examinar, log, tooltips, ventanas de examinar (terreno o mob),
+  ficha 5e y menú (Esc).
+Para probar: que el daño caiga cuando se ve el dado, el carrusel al pasar los turnos, examinar terreno y mobs, la
+ficha, los tooltips con el mouse, y en el teléfono que los botones se puedan tocar.
+Quedan para R5 (dependen de ítems y estados): mochila, accesos rápidos, íconos de estados, partículas de trampas y
+conjuros, configuración. El indicador de ocupado titila en vez de girar (el lote no rota sprites).
+
+**Siguiente: R5**, primero la parte que llega a la 0.7 del prototipo: rasgos de clase (Segundo Aliento, Ataque
+Furtivo, conjuros del Mago y del Explorador), salvaciones, estados como datos (`data/buffs.json`), trampas, ítems y
+mochila, armas a distancia (arrojadizas, bumerán, arco), configuración (idioma, FPS, pantalla completa). Después el
+resto de R5 para la 0.8 (guardado, creación de personaje, lista de personajes, reglas de la partida, hotseat).
 
 **Pendiente del dueño** (al cerrar la sesión del 2026-11-03):
 - `git push origin main` (R1, R2 y la orientación vertical están sólo en local).
