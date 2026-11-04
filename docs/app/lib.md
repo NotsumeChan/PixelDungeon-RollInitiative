@@ -42,3 +42,6 @@ pantalla completa).
 Personajes y guardado: Jugar abre la lista (`open_roster`, lee el disco); JUGAR carga la partida guardada del personaje
 si sigue vivo o empieza una nueva (`start`). Autoguardado (`autosave`) al cambiar de piso, al volver al menú principal,
 al salir y al pasar al fondo en Android. Carpeta de datos: `data_dir()`. R = partida nueva del mismo personaje.
+
+R5d: con `ui.throwing` el próximo click en el mapa es `Action::Throw` (Esc cancela). El arco no necesita UI: tocar
+un mob a tiro dispara.

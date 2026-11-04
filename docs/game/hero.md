@@ -37,3 +37,21 @@ R5a (Belongings.java, Hunger.java):
 R5b: paralizado no actúa (sus turnos pasan solos); con hambre o un estado como origen, el log y "Has muerto (...)" lo nombran. Al morir sale del planificador con regeneración, hambre y estados.
 
 R5c: `second_wind`, `slots`, `free_casts`, `marked`; acciones `Cast(k, celda)` y `SecondWind`; los números del lanzador y los rasgos están en spells.rs.
+
+R5d, armas a distancia (`hero.py`: `_throw`, `_shoot`, `_ranged_attack`, `_after_shot`, `_can_shoot`):
+- `Verb::Throw` (LANZAR) es el primero de las arrojadizas en la mochila (el acceso rápido lanza). `Action::Throw(slot,
+  celda)`: valida (casilla a la vista, alcance largo, línea de tiro con `Dungeon::shot`), saca una unidad y, si se
+  frena en un mob, es un ataque a distancia; contra un aliado o el suelo cae ahí. Tarda `TIME_TO_THROW` x `dly`.
+- Arco: `Action::Attack` con arco equipado, flechas (`ammo`, la pila con el id de `ammo` del arco), el enemigo a la
+  vista, dentro del alcance largo y con línea de tiro = dispara desde donde está (`shoot`); si no, se acerca y golpea
+  cuerpo a cuerpo como un garrote (1d4).
+- Fuera de combate, lanzarle o dispararle a un mob inicia el combate (como atacar cuerpo a cuerpo); el tiro va en el
+  turno del héroe.
+- Durante el ataque, `ranged` = el arma (la arrojadiza o el arco) y `cover` = la cobertura (resta a la tirada):
+  `wep()` la usa para el modificador (arco = DES, sutil = la mejor de FUE / DES), competencia, FUE que falta y daño.
+  Desventaja (`Dungeon::advantage`) más allá del alcance normal o con un mob vivo al lado. Ataque Furtivo también a
+  distancia.
+- Al verse la tirada (`Pending::Land`, `apply_land`): el estado del arma si acertó (`on_hit` = [estado, duración, nivel,
+  CD]: dardos incendiarios, de curare...), el bumerán vuelve a la mochila (o a los pies si está llena), lo que falla
+  cae en la casilla donde se frenó y lo que acierta se pierde.
+- Sin proyectil en vuelo todavía (pendiente de pulido, con las partículas).

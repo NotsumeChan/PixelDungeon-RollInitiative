@@ -324,6 +324,10 @@ impl App {
             self.ui_action(UiAction::Act(Action::Cast(k, cell)));
             return;
         }
+        if let Some(s) = self.ui.throwing.take() {
+            self.ui_action(UiAction::Act(Action::Throw(s, cell)));
+            return;
+        }
         let d = &mut self.world.d;
         if !d.local().is_alive() {
             return;
@@ -450,7 +454,7 @@ impl App {
                     self.ui.window = Some(UiWindow::Bag(BagMode::Quick(q)));
                     return;
                 };
-                // la acción principal; si sólo se puede soltar (arrojadizas hasta R5d), se abre la ventana del ítem
+                // la acción principal (arrojadizas: LANZAR); si sólo se puede soltar, se abre la ventana del ítem
                 match h.verbs(slot).first() {
                     Some(&verb) if verb != Verb::Drop => self.ui_action(UiAction::Verb(slot, verb)),
                     _ => self.ui.window = Some(UiWindow::Item(slot)),
@@ -459,7 +463,10 @@ impl App {
             UiAction::Verb(slot, verb) => {
                 let h = self.world.d.local();
                 let need = h.item(slot).map_or(String::new(), |i| i.str("target").to_string());
-                if verb == Verb::Read && !need.is_empty() {
+                if verb == Verb::Throw {
+                    self.ui.window = None;
+                    self.ui.throwing = Some(slot); // primero la casilla
+                } else if verb == Verb::Read && !need.is_empty() {
                     self.ui.window = Some(UiWindow::Bag(BagMode::Target { scroll: slot, need })); // primero el objetivo
                 } else {
                     self.ui.window = None;
@@ -567,6 +574,7 @@ impl App {
             KeyCode::Escape if !free => self.ui.window = None,
             KeyCode::Escape if self.ui.examining => self.ui.examining = false,
             KeyCode::Escape if self.ui.casting.is_some() => self.ui.casting = None,
+            KeyCode::Escape if self.ui.throwing.is_some() => self.ui.throwing = None,
             KeyCode::Escape => self.ui.window = Some(UiWindow::Menu),
             KeyCode::F11 => self.ui_action(UiAction::SetFullscreen(!self.config.fullscreen)),
             // rasgo de clase: Segundo Aliento, o el libro de conjuros

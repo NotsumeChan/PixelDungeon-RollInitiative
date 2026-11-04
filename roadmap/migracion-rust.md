@@ -157,6 +157,16 @@ teclado en pantalla al tocar el nombre o una característica. Sin arrastrar (el 
 lo mismo. **Versión 0.5.0.** Para probar: tirar, asignar, mover una tirada de una característica a otra, escribir un
 número, LIMPIAR, empezar sin nombre (usa el de la clase), en el teléfono el teclado y la creación en vertical.
 
+**Estado R5d** ✏️ escrito (2026-11-04), pendiente de prueba del dueño: armas a distancia. LANZAR (primera acción de las
+arrojadizas y del acceso rápido; se elige la casilla como un conjuro), el arco con flechas (tocar un mob a tiro
+dispara; sin flechas o fuera de alcance, cuerpo a cuerpo con 1d4), el bumerán vuelve a la mochila, los dardos ponen su
+estado al acertar (`on_hit`), cobertura de un aliado en medio (-2), desventaja más allá del alcance normal o con un
+enemigo al lado, Ataque Furtivo a distancia. Lanzar o disparar fuera de combate lo inicia. Para probar: lanzar dardos
+(los fallados quedan en el suelo, los acertados se pierden), un dardo de curare (parálisis), el bumerán, el arco con y
+sin flechas, el aviso de cobertura con un aliado en medio, y el acceso rápido de una arrojadiza. Falta el proyectil en
+vuelo (pulido, con las partículas).
+Arreglo: en el título, "Acerca de" y "Opciones" ya no se tocan (separación por el texto más largo).
+
 **Configuración (pedido del dueño, 2026-11-04)** ✏️: la resolución de la ventana (`resolution` de `Local.config`, que
 Rust ignoraba) es una opción de la configuración en escritorio: 640x480 / 1280x720 / 1920x1080, se aplica al momento.
 El botón de configuración de arriba a la izquierda del título pasó al dashboard ("Opciones", con el mismo ícono al
@@ -171,12 +181,8 @@ sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide 
 **Siguiente, en este orden:**
 1. ~~Creación de personaje con dados~~ ✏️ hecha (0.5.0), falta la prueba del dueño. La 0.6 del prototipo pide además
    arrastrar (ítems en la mochila; tiradas en la creación).
-2. **R5d, armas a distancia** (referencia `game/hero.py`: `_throw`, `_shoot`, `_ranged_attack`, `_after_shot`,
-   `_can_shoot`, `ranged_range`, `_ammo`, y el ataque con `self.ranged` / `self.cover` en `attack_bonus`,
-   `advantage`, `roll_damage`). Ya están `game/ballistica.rs` y `Dungeon::shot` (línea de tiro y cobertura).
-   Agregar el verbo LANZAR (primero en `Hero::verbs` para las arrojadizas: el acceso rápido pasa a lanzar), la
-   selección de la casilla en la UI (como `casting`), el arco con flechas (`ammo`) y el bumerán que vuelve. Con esto
-   y lo anterior se llega al contenido de la **0.7**.
+2. ~~R5d, armas a distancia~~ ✏️ hecha, falta la prueba del dueño. La versión sigue en 0.5.0: la 0.6 del prototipo
+   pide además arrastrar (ítems en la mochila, tiradas en la creación); con eso se pasa directo a la **0.7**.
 3. **Idioma**: estructura de traducción para los textos del código (hoy en español; los JSON ya traen `es` / `en`,
    ver `registry::text`). La configuración ya muestra el selector (English deshabilitado).
 4. Resto de R5 para la **0.8**: hotseat (2 héroes en la misma PC, modo de prueba de la red), y lo que falte de

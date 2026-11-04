@@ -70,6 +70,10 @@ la lista. El estado es `Ui::create` (`Create`, `Cr`); en vertical las clases van
 prototipo arrastraba tiradas y cambiaba características de lugar): click-click hace lo mismo y anda en táctil.
 
 Título: Jugar, Mods, Acerca de y Opciones (la configuración, antes arriba a la izquierda; usa el ícono PREFS de
-`icons.png` al doble hasta que haya uno de 32x32). En vertical los botones se angostan para que entren los 4.
+`icons.png` al doble hasta que haya uno de 32x32). Los botones se separan por el texto más largo + 8 px (para que no
+se toquen los nombres); en vertical se angostan para que entren los 4.
 Configuración: en escritorio suma "Resolucion (ventana)" (640x480 / 1280x720 / 1920x1080), el `resolution` de
 Local.config.
+
+R5d: LANZAR en la ventana del ítem (o el acceso rápido de una arrojadiza) deja `throwing` = el ítem: el aviso de
+arriba pide la casilla ("Elige adonde lanzar", Esc cancela) y el próximo click en el mapa lanza.

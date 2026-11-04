@@ -3,10 +3,12 @@
 //! estabilizar a un aliado caído, salvaciones contra la muerte, regeneración, XP y niveles.
 //! R5: mochila (Belongings.java), oro, accesos rápidos, recoger y abrir, comer, beber, leer, equipar, soltar y el
 //! hambre (buffs/Hunger.java).
+//! R5d: armas a distancia (MissileWeapon.java): lanzar arrojadizas (el bumerán vuelve), el arco con flechas, cobertura,
+//! desventaja más allá del alcance normal o con un enemigo al lado, y el estado que pone un dardo al acertar.
 use serde_json::{Map, Value};
 
 use crate::actor::ActorId;
-use crate::char::{adjacent, Char};
+use crate::char::{adjacent, distance, Char};
 use crate::dice;
 use crate::dungeon::{Dungeon, Fx, Pending, Tone};
 use crate::geom::{LENGTH, NEIGHBOURS9};
@@ -26,6 +28,8 @@ pub const TIME_TO_EAT: f64 = 3.0;
 pub const TIME_TO_USE: f64 = 1.0;
 /// Arma; la armadura tarda el doble.
 pub const TIME_TO_EQUIP: f64 = 1.0;
+/// Item.TIME_TO_THROW (por la velocidad del arma).
+pub const TIME_TO_THROW: f64 = 1.0;
 pub const HUNGER_STEP: f64 = 10.0;
 pub const HUNGRY: f64 = 260.0;
 pub const STARVING: f64 = 360.0;
@@ -46,6 +50,8 @@ pub enum Verb {
     Read,
     Equip,
     Unequip,
+    /// Arrojadizas: elegir la casilla.
+    Throw,
     Drop,
 }
 
@@ -57,6 +63,7 @@ impl Verb {
             Verb::Read => "LEER",
             Verb::Equip => "EQUIPAR",
             Verb::Unequip => "QUITAR",
+            Verb::Throw => "LANZAR",
             Verb::Drop => "SOLTAR",
         }
     }
@@ -83,6 +90,8 @@ pub enum Action {
     Cast(usize, i32),
     /// Segundo Aliento (acción adicional: no gasta tiempo).
     SecondWind,
+    /// Lanzar una unidad de la arrojadiza hacia la celda.
+    Throw(Slot, i32),
 }
 
 pub struct Hero {
@@ -110,6 +119,10 @@ pub struct Hero {
     /// Quién tiene su Marca del cazador.
     pub marked: Option<ActorId>,
     pub action: Option<Action>,
+    /// Hero.rangedWeapon: el arma del ataque a distancia en curso (la arrojadiza o el arco) y la cobertura del
+    /// objetivo (resta a la tirada). Sólo mientras dura el ataque.
+    pub ranged: Option<Item>,
+    pub cover: i32,
     /// true tras moverse: el render lo baja al terminar la animación del paso (la lógica espera).
     pub animating: bool,
     pub visible_enemies: Vec<ActorId>,
@@ -162,6 +175,8 @@ impl Hero {
             free_casts: Vec::new(),
             marked: None,
             action: None,
+            ranged: None,
+            cover: 0,
             animating: false,
             visible_enemies: Vec::new(),
             depth: 0,
@@ -207,7 +222,24 @@ impl Hero {
     }
 
     pub fn proficient_weapon(&self) -> bool {
-        self.proficient_weapon_item(self.weapon.as_ref())
+        self.proficient_weapon_item(self.wep())
+    }
+
+    /// El arma del ataque en curso: la arrojadiza / el arco mientras se dispara; si no, la equipada.
+    pub fn wep(&self) -> Option<&Item> {
+        self.ranged.as_ref().or(self.weapon.as_ref())
+    }
+
+    /// Alcance (normal, largo) en casillas de un arma a distancia.
+    pub fn range_of(item: &Item) -> (i32, i32) {
+        let r = &item.data["range"];
+        (r[0].as_i64().unwrap_or(1) as i32, r[1].as_i64().unwrap_or(1) as i32)
+    }
+
+    /// La pila de munición del arco equipado en la mochila.
+    pub fn ammo(&self) -> Option<usize> {
+        let w = self.weapon.as_ref().filter(|w| w.flag("ranged"))?;
+        self.backpack.iter().position(|i| i.id == w.str("ammo"))
     }
 
     /// Sin arma (puños): siempre competente.
@@ -262,6 +294,7 @@ impl Hero {
             v.push(if matches!(slot, Slot::Pack(_)) { Verb::Equip } else { Verb::Unequip });
         } else {
             match item.category() {
+                _ if item.flag("thrown") && matches!(slot, Slot::Pack(_)) => v.push(Verb::Throw),
                 "food" => v.push(Verb::Eat),
                 "potion" => v.push(Verb::Drink),
                 "scroll" => v.push(Verb::Read),
@@ -279,7 +312,11 @@ impl Hero {
 
     // --- combate 5e ---
     pub fn attack_mod(&self) -> i32 {
-        if self.weapon.as_ref().is_some_and(|w| w.flag("finesse")) {
+        let w = self.wep();
+        if self.ranged.is_some() && w.is_some_and(|w| w.flag("ranged")) {
+            return self.ability_mod("DEX"); // arco
+        }
+        if w.is_some_and(|w| w.flag("finesse")) {
             return self.ability_mod("STR").max(self.ability_mod("DEX"));
         }
         self.ability_mod("STR")
@@ -291,13 +328,13 @@ impl Hero {
 
     pub fn attack_bonus(&self) -> i32 {
         let prof = if self.proficient_weapon() { self.proficiency() } else { 0 };
-        let level = self.weapon.as_ref().map_or(0, |w| w.level);
-        self.attack_mod() + prof + level - self.str_missing(self.weapon.as_ref())
+        let level = self.wep().map_or(0, |w| w.level);
+        self.attack_mod() + prof + level - self.str_missing(self.wep()) - self.cover
     }
 
     /// Desventaja propia: arma o armadura demasiado pesada, o armadura sin competencia.
     pub fn disadvantaged(&self) -> bool {
-        self.str_missing(self.weapon.as_ref()) > 0 || self.str_missing(self.armor.as_ref()) > 0 || !self.proficient_armor()
+        self.str_missing(self.wep()) > 0 || self.str_missing(self.armor.as_ref()) > 0 || !self.proficient_armor()
     }
 
     pub fn attack_delay(&self) -> f64 {
@@ -408,6 +445,28 @@ impl Dungeon {
                 self.heroes[i].action = None;
                 self.search(i, true);
                 self.spend(me, TIME_TO_SEARCH);
+            }
+            Action::Throw(slot, cell) => {
+                // lanzarle a un mob fuera de combate lo inicia (como atacar); el tiro va en su turno
+                let stop = self.shot(pos, cell).0;
+                let h = &self.heroes[i];
+                let valid = h.fov[cell as usize] && h.item(slot).is_some_and(|it| distance(pos, stop) <= Hero::range_of(it).1);
+                let at_mob = valid && matches!(self.find_char(stop), Some(ActorId::Mob(_)));
+                if at_mob && !self.floor().scheduler.in_combat(me) {
+                    self.start_combat(true);
+                } else {
+                    self.heroes[i].action = None;
+                    self.throw(i, slot, cell);
+                }
+            }
+            Action::Attack(e) if self.can_shoot(i, e) => {
+                // con arco: dispara desde donde está
+                if self.floor().scheduler.in_combat(me) {
+                    self.heroes[i].action = None;
+                    self.shoot(i, e);
+                } else {
+                    self.start_combat(true);
+                }
             }
             Action::Attack(e) => {
                 let target = if self.alive(e) { self.ch(e).map(|c| c.pos) } else { None };
@@ -764,6 +823,100 @@ impl Dungeon {
         }
         h.backpack.push(item);
         Ok(())
+    }
+
+    // --- armas a distancia ---
+    /// Arco equipado con flechas, enemigo vivo a la vista, dentro del alcance largo y con línea de tiro.
+    pub(crate) fn can_shoot(&self, i: usize, e: ActorId) -> bool {
+        let h = &self.heroes[i];
+        let (Some(_), Some(w)) = (h.ammo(), h.weapon.as_ref()) else { return false };
+        let Some(tp) = self.ch(e).filter(|_| self.alive(e)).map(|c| c.pos) else { return false };
+        h.fov[tp as usize] && distance(h.ch.pos, tp) <= Hero::range_of(w).1 && self.shot(h.ch.pos, tp).0 == tp
+    }
+
+    /// Hero.shoot: ataque 5e con el arma a distancia (`ranged` y `cover` mientras dura).
+    fn ranged_attack(&mut self, i: usize, enemy: ActorId, weapon: Item, cover: i32) -> bool {
+        let epos = self.ch(enemy).map_or(-1, |c| c.pos);
+        if cover > 0 && self.sees(epos) {
+            let name = self.ch(enemy).map_or(String::new(), |c| c.name.clone());
+            self.log(&format!("{name} tiene media cobertura (-{cover})"));
+        }
+        (self.heroes[i].ranged, self.heroes[i].cover) = (Some(weapon), cover);
+        let hit = self.attack(ActorId::Hero(i), enemy);
+        (self.heroes[i].ranged, self.heroes[i].cover) = (None, 0);
+        hit
+    }
+
+    /// Lo que pasa cuando la tirada ya se vio (si se ve): el estado del arma, y el proyectil cae, se pierde o vuelve.
+    fn after_shot(&mut self, i: usize, missile: Item, on_hit: Value, enemy: Option<ActorId>, hit: bool, stop: i32) {
+        let p = Pending::Land { hero: i, missile, on_hit, enemy, hit, stop };
+        if self.sees(stop) { self.pending.push(p) } else { self.apply_land(p) }
+    }
+
+    pub(crate) fn apply_land(&mut self, p: Pending) {
+        let Pending::Land { hero, missile, on_hit, enemy, hit, stop } = p else { return };
+        if let (true, Some(e), Some(o)) = (hit, enemy, on_hit.as_array()) {
+            // [estado, duración (null = la suya), nivel, CD de la salvación]
+            if self.alive(e) {
+                let id = o[0].as_str().unwrap_or("");
+                self.add_buff(e, id, o[1].as_f64(), o[2].as_i64().unwrap_or(0) as i32, o[3].as_i64().unwrap_or(0) as i32);
+            }
+        }
+        if missile.flag("returns") {
+            // el bumerán vuelve a la mano (si la mochila está llena, cae a los pies)
+            // ponytail: sin proyectil en vuelo (falta el efecto de misiles, screens/particles.py)
+            let pos = self.heroes[hero].ch.pos;
+            if let Err(m) = self.collect(hero, missile) {
+                self.floor_mut().level.drop(m, pos, HeapKind::Heap);
+            }
+        } else if !hit {
+            self.floor_mut().level.drop(missile, stop, HeapKind::Heap);
+        }
+    }
+
+    /// Item.cast + MissileWeapon.onThrow: lanza una unidad. Si se frena en un mob, es un ataque a distancia; contra un
+    /// aliado o el suelo, cae ahí. Si no se puede, avisa y no gasta tiempo.
+    fn throw(&mut self, i: usize, slot: Slot, cell: i32) {
+        let h = &self.heroes[i];
+        let pos = h.ch.pos;
+        let Some(item) = h.item(slot).filter(|it| it.flag("thrown") && matches!(slot, Slot::Pack(_))) else { return };
+        if cell == pos {
+            return;
+        }
+        let range = Hero::range_of(item).1;
+        if !h.fov[cell as usize] {
+            self.log("No ves esa casilla");
+            return;
+        }
+        let (stop, cover) = self.shot(pos, cell);
+        if stop == pos {
+            return;
+        }
+        if distance(pos, stop) > range {
+            self.log("Está demasiado lejos");
+            return;
+        }
+        let Some(one) = self.take_one(i, slot) else { return };
+        let me = ActorId::Hero(i);
+        self.effect(Fx::Anim { who: me, kind: "attack", cell: stop });
+        let enemy = self.find_char(stop);
+        let hit = matches!(enemy, Some(ActorId::Mob(_))) && self.ranged_attack(i, enemy.unwrap(), one.clone(), cover);
+        let dly = one.data.get("dly").and_then(Value::as_f64).unwrap_or(1.0);
+        let on_hit = one.data.get("on_hit").cloned().unwrap_or(Value::Null);
+        self.after_shot(i, one, on_hit, enemy, hit, stop);
+        self.spend(me, TIME_TO_THROW * dly);
+    }
+
+    /// Dispara el arco: gasta una flecha (si acierta se pierde; si falla, cae junto al enemigo).
+    fn shoot(&mut self, i: usize, e: ActorId) {
+        let (Some(k), Some(bow)) = (self.heroes[i].ammo(), self.heroes[i].weapon.clone()) else { return };
+        let Some(arrow) = self.take_one(i, Slot::Pack(k)) else { return };
+        let epos = self.ch(e).map_or(-1, |c| c.pos);
+        let cover = self.shot(self.heroes[i].ch.pos, epos).1;
+        let hit = self.ranged_attack(i, e, bow.clone(), cover);
+        let on_hit = bow.data.get("on_hit").cloned().unwrap_or(Value::Null);
+        self.after_shot(i, arrow, on_hit, Some(e), hit, epos);
+        self.spend(ActorId::Hero(i), bow.data.get("dly").and_then(Value::as_f64).unwrap_or(1.0));
     }
 
     /// Saca una unidad del ítem (de una pila, o el ítem entero).

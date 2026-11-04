@@ -38,3 +38,6 @@ su primer turno). Así un enemigo que muere de un golpe igual tuvo su tirada de 
 porque un mob caza (`start_combat(false)`) no sorprende a nadie, como el prototipo.
 
 R5c: `roll_damage` recibe la ventaja y el objetivo (Ataque Furtivo, Marca del cazador); `target_advantage` = la ventaja que da el objetivo (la usan los conjuros); más `Pending` para los conjuros.
+
+R5d: `Pending::Land` (el proyectil del héroe después de verse el dado). `advantage` suma la desventaja a distancia y
+`roll_damage` usa el arma en curso del héroe (`Hero::wep`): el arco cuerpo a cuerpo tira 1d4.

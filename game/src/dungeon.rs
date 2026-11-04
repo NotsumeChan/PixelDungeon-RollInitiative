@@ -81,6 +81,8 @@ pub enum Pending {
     Heal { caster: usize, who: ActorId, amount: i32, name: String },
     /// Salvación contra una trampa: el efecto según si la superó.
     TrapSave { who: ActorId, ability: &'static str, ok: bool, detail: String, seen: bool, effect: crate::traps::TrapEffect },
+    /// Un proyectil del héroe: el estado del arma si acertó (`on_hit`), y cae, se pierde o vuelve (bumerán).
+    Land { hero: usize, missile: crate::items::Item, on_hit: Value, enemy: Option<ActorId>, hit: bool, stop: i32 },
 }
 
 /// Reglas de la partida (ventana "Reglas de la partida", estilo configuración de mundo). Por defecto = 5e.
@@ -878,8 +880,18 @@ impl Dungeon {
 
     fn advantage(&self, att: ActorId, target: ActorId) -> i32 {
         let mut adv = self.target_advantage(target);
-        if matches!(att, ActorId::Hero(i) if self.heroes[i].disadvantaged()) {
-            adv -= 1; // ventaja y desventaja juntas se anulan
+        if let ActorId::Hero(i) = att {
+            let h = &self.heroes[i];
+            // 5e, a distancia: desventaja más allá del alcance normal o con un enemigo al lado
+            let ranged = h.ranged.as_ref().map(|w| {
+                let tp = self.ch(target).map_or(h.ch.pos, |c| c.pos);
+                let mobs = self.floors.get(&self.depth).map_or(&[][..], |f| &f.mobs[..]);
+                distance(h.ch.pos, tp) > crate::hero::Hero::range_of(w).0
+                    || mobs.iter().any(|m| m.ch.hp > 0 && adjacent(h.ch.pos, m.ch.pos))
+            });
+            if h.disadvantaged() || ranged == Some(true) {
+                adv -= 1; // ventaja y desventaja juntas se anulan
+            }
         }
         adv.clamp(-1, 1)
     }
@@ -891,9 +903,13 @@ impl Dungeon {
             ActorId::Hero(i) => {
                 let h = &self.heroes[i];
                 let m = h.attack_mod();
-                let Some(w) = &h.weapon else { return (1 + m, format!("1{m:+}"), None) }; // sin armas: 1 + FUE
-                let sneak = (adv > 0 && w.flag("finesse") && h.has_trait("pdri:sneak_attack")).then(|| h.sneak_dice());
-                let (mut total, mut text, mut rolled, sides) = dice::roll(&mut self.rng, &crate::items::weapon_dice(w), crit);
+                let Some(w) = h.wep() else { return (1 + m, format!("1{m:+}"), None) }; // sin armas: 1 + FUE
+                // Ataque Furtivo: con ventaja y arma sutil o a distancia
+                let sneaky = w.flag("finesse") || h.ranged.is_some();
+                let sneak = (adv > 0 && sneaky && h.has_trait("pdri:sneak_attack")).then(|| h.sneak_dice());
+                // el arco cuerpo a cuerpo golpea como un garrote
+                let notation = if w.flag("ranged") && h.ranged.is_none() { "1d4".to_string() } else { crate::items::weapon_dice(w) };
+                let (mut total, mut text, mut rolled, sides) = dice::roll(&mut self.rng, &notation, crit);
                 let n = rolled.len() as i32;
                 let (mut label, mut hi) = (format!("{n}d{sides}"), n * sides);
                 // Ataque Furtivo (con ventaja y arma sutil) y Marca del cazador (+1d6): dobles en crítico
@@ -1012,6 +1028,7 @@ impl Dungeon {
                 }
                 Pending::Sleep { victims, pool, name } => self.apply_sleep(victims, pool, &name),
                 Pending::Heal { caster, who, amount, name } => self.apply_heal(caster, who, amount, &name),
+                p @ Pending::Land { .. } => self.apply_land(p),
             }
         }
     }

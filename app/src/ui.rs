@@ -232,6 +232,8 @@ pub struct Ui {
     pub examining: bool,
     /// Eligiendo el objetivo del conjuro k (el próximo click en el mapa).
     pub casting: Option<usize>,
+    /// Eligiendo adónde lanzar esa arrojadiza (el próximo click en el mapa).
+    pub throwing: Option<Slot>,
     /// En la pantalla de título (la configuración vuelve al título, no al menú de la partida).
     pub in_title: bool,
     /// Lista de personajes: el elegido, el primero que se ve y si BORRAR espera confirmación.
@@ -251,7 +253,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// La acción de la zona de más arriba bajo `p` (pixeles de la UI), o None si el click es para el mapa.
@@ -322,6 +324,8 @@ impl Ui {
                 self.draw_tooltip(atlas, font, out, w, h);
                 let casting = self.casting.and_then(|k| d.local().spell_ids().get(k).cloned());
                 let msg = casting.and_then(|sid| d.spell(&sid).map(|s| format!("Elige el objetivo: {} (Esc cancela)", text(&s["name"]))));
+                let throwing = self.throwing.and_then(|s| d.local().item(s)).map(|it| d.item_title(it));
+                let msg = msg.or_else(|| throwing.map(|t| format!("Elige adonde lanzar: {t} (Esc cancela)")));
                 let msg = msg.or_else(|| self.examining.then(|| "Toca una casilla para examinarla".to_string()));
                 if let Some(msg) = msg {
                     let msg = msg.as_str();
@@ -1141,32 +1145,35 @@ impl Ui {
             out.push(piece(atlas, BANNERS, [0, 161, 128, 57], [tx, ty], [128.0, 57.0], [1.0, 1.0, 1.0, k]));
         }
         let iy = ((h + layout_h) / 2.0).floor() - item;
-        let x0 = (w / 2.0).floor() - item * 2.0;
+        // separación: el texto más largo + 8 px de aire (antes "Acerca de" y "Opciones" se tocaban); si no entra, lo que haya
+        let widest = ["Jugar", "Mods", "Acerca de", "Opciones"].iter().map(|l| font.width(l)).fold(0.0, f32::max);
+        let step = (widest + 8.0).max(item).min(((w - 4.0) / 4.0).floor());
+        let x0 = (w / 2.0).floor() - step * 2.0;
         for (icon, label, x, act) in [
             // Rankings y Badges del original se reemplazaron por Mods; la configuración (PrefsButton) es un botón más
             (0u32, "Jugar", x0, UiAction::OpenRoster),
-            (2, "Mods", x0 + item, UiAction::Open(Window::Page(vec![
+            (2, "Mods", x0 + step, UiAction::Open(Window::Page(vec![
                 ("Mods".into(), YELLOW),
                 ("No hay mods instalados. El sistema de mods todavia no esta disponible.".into(), WHITE),
                 ("Los mods vienen de fuentes externas: ten cuidado de donde los descargas y revisalos antes de instalarlos.".into(), rgba(190, 190, 190, 255)),
                 ("Los mods que traen codigo pueden cambiar el juego de forma considerable y hacer cualquier cosa en tu equipo: instalalos solo si confias en su origen.".into(), rgba(255, 120, 80, 255)),
             ]))),
-            (1, "Acerca de", x0 + item * 2.0, UiAction::Open(Window::Page(vec![
+            (1, "Acerca de", x0 + step * 2.0, UiAction::Open(Window::Page(vec![
                 (format!("PixelDungeon-RollInitiative v{}", game::VERSION), YELLOW),
                 ("Roguelike basado en Pixel Dungeon de Watabou (GPL v3), con las reglas de D&D 5e y multijugador cooperativo.".into(), WHITE),
                 ("Arte y sonido del original. Todo el proyecto se distribuye como GPL v3.".into(), rgba(190, 190, 190, 255)),
             ]))),
-            (u32::MAX, "Opciones", x0 + item * 3.0, UiAction::Open(Window::Settings)),
+            (u32::MAX, "Opciones", x0 + step * 3.0, UiAction::Open(Window::Settings)),
         ] {
-            let ix = x + ((item - 32.0) / 2.0).floor();
+            let ix = x + ((step - 32.0) / 2.0).floor();
             if icon == u32::MAX {
                 // ponytail: el ícono de PrefsButton (Icons.PREFS, 16x16) al doble hasta que haya uno de 32x32
                 out.push(piece(atlas, ICONS, [30, 0, 16, 16], [ix, iy], [32.0, 32.0], WHITE));
             } else {
                 out.push(piece(atlas, DASHBOARD, [icon * 32, 0, 32, 32], [ix, iy], [32.0, 32.0], WHITE));
             }
-            font.text(out, label, x + ((item - font.width(label)) / 2.0).floor(), iy + 34.0, WHITE);
-            self.hot([x, iy, item, item], act, None);
+            font.text(out, label, x + ((step - font.width(label)) / 2.0).floor(), iy + 34.0, WHITE);
+            self.hot([x, iy, step, item], act, None);
         }
         let v = format!("v {}", game::VERSION);
         font.text(out, &v, w - font.width(&v) - 1.0, h - font.height() - 1.0, GREY);
