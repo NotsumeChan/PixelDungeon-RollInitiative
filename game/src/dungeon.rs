@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use serde_json::{Map, Value};
 
 use crate::actor::{ActorId, Scheduler, CALM_ROUNDS, TICK};
-use crate::char::{adjacent, distance, Char};
+use crate::char::{adjacent, distance, Char, TRAIL_MAX};
 use crate::dice;
 use crate::fov::MAX_DISTANCE;
 use crate::geom::NEIGHBOURS9;
@@ -289,6 +289,7 @@ impl Dungeon {
         h.ch.pos = -1; // que free_near no lo cuente como ocupando la escalera
         h.action = None;
         h.visible_enemies.clear();
+        h.ch.trail.clear(); // cambia de piso: aparece en la escalera, no camina hasta ahí
         self.pending.clear();
         if self.floors.contains_key(&depth) {
             self.depth = depth;
@@ -414,12 +415,18 @@ impl Dungeon {
     pub(crate) fn move_char(&mut self, a: ActorId, step: i32) {
         let old = self.ch(a).unwrap().pos;
         let level = &mut self.floor_mut().level;
+        let s = step as usize;
+        debug_assert!(adjacent(old, step) && (level.passable[s] || level.avoid[s]), "paso inválido {old} -> {step}");
         let before = (level.map[old as usize], level.map[step as usize]);
         level.leave(old);
         level.enter(step);
         let changed = (level.map[old as usize], level.map[step as usize]) != before;
         let c = self.ch_mut(a).unwrap();
         c.pos = step;
+        c.trail.push(step);
+        if c.trail.len() > TRAIL_MAX {
+            c.trail.remove(0);
+        }
         c.stepped = true; // el próximo spend() es movimiento (combate 5e)
         let flying = c.flying;
         if changed {

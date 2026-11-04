@@ -2,6 +2,9 @@
 //! dungeon.rs; lo propio de cada uno en hero.rs y mobs.rs.
 use crate::geom::WIDTH;
 
+/// Pasos que se guardan para el render (más que el movimiento de un turno de combate).
+pub const TRAIL_MAX: usize = 16;
+
 /// Level.distance: distancia de Chebyshev (las diagonales cuentan 1).
 pub fn distance(a: i32, b: i32) -> i32 {
     ((a % WIDTH) - (b % WIDTH)).abs().max(((a / WIDTH) - (b / WIDTH)).abs())
@@ -29,6 +32,9 @@ pub struct Char {
     /// Se quedó sin movimiento: su turno termina.
     pub no_moves: bool,
     pub flying: bool,
+    /// Celdas por las que pasó desde que el render miró: el sprite las recorre una por una (sin cortar esquinas
+    /// cuando hizo varios pasos de una vez). Las consume el render; tope TRAIL_MAX.
+    pub trail: Vec<i32>,
 }
 
 impl Char {
@@ -46,6 +52,7 @@ impl Char {
             stepped: false,
             no_moves: false,
             flying: false,
+            trail: Vec::new(),
         }
     }
 

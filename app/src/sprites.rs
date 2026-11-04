@@ -1,6 +1,7 @@
 //! Personajes en pantalla (`screens/charSprite.py` + los efectos de `screens/gameScreen.py`): dónde se dibuja cada uno
 //! (viaja hacia su celda), su animación (quieto, correr, atacar, operar, morir; mira hacia donde va), los cadáveres que
 //! se desvanecen, los textos flotantes, las casillas revisadas y las hojas del pasto. Todo por dt; el azar es visual.
+use std::collections::VecDeque;
 use game::actor::ActorId;
 use game::dungeon::{Dungeon, Fx, Tone};
 use game::geom::WIDTH;
@@ -203,6 +204,8 @@ pub struct Chars {
     first: usize,
     /// Dónde se dibuja cada personaje (pixeles del mundo).
     pub draw: Vec<(ActorId, [f32; 2])>,
+    /// Pasos que a cada sprite le faltan recorrer (esquinas de sprite de cada celda).
+    paths: Vec<(ActorId, VecDeque<[f32; 2]>)>,
     anims: Vec<(ActorId, Anim)>,
     corpses: Vec<Corpse>,
     floats: Vec<Float>,
@@ -222,6 +225,7 @@ impl Chars {
         Self {
             first,
             draw: Vec::new(),
+            paths: Vec::new(),
             anims: Vec::new(),
             corpses: Vec::new(),
             floats: Vec::new(),
@@ -238,6 +242,7 @@ impl Chars {
     /// Piso o partida nueva: todos aparecen en su celda, sin deslizarse ni efectos viejos.
     pub fn clear(&mut self) {
         self.draw.clear();
+        self.paths.clear();
         self.anims.clear();
         self.corpses.clear();
         self.floats.clear();
@@ -263,27 +268,54 @@ impl Chars {
     /// Los sprites viajan a su celda a 1 casilla cada MOVE_TIME; cada héroe del piso se suelta (`animating`) al
     /// llegar (los de otro piso no se dibujan: no esperan).
     pub fn animate(&mut self, d: &mut Dungeon, dt: f32) {
-        let max = TILE / MOVE_TIME * dt;
+        let budget = TILE / MOVE_TIME * dt;
         let mut next = Vec::new();
+        let mut paths = Vec::new();
         for (a, pos) in d.chars() {
             let Some(lk) = self.look(d, a) else { continue };
+            let trail = d.ch_mut(a).map(|c| std::mem::take(&mut c.trail)).unwrap_or_default();
             if pos < 0 {
                 continue;
             }
             let goal = sprite_pos(pos, lk.w, lk.h);
+            let mut path = self.paths.iter().position(|e| e.0 == a).map(|i| self.paths.swap_remove(i).1).unwrap_or_default();
             let p = match self.drawn(a) {
-                Some(cur) if d.level().visible[pos as usize] => {
-                    [cur[0] + (goal[0] - cur[0]).clamp(-max, max), cur[1] + (goal[1] - cur[1]).clamp(-max, max)]
+                Some(mut p) if d.level().visible[pos as usize] => {
+                    // recorre los pasos uno por uno; lo que sobra del frame sigue con el próximo
+                    path.extend(trail.iter().map(|&c| sprite_pos(c, lk.w, lk.h)));
+                    let mut left = budget;
+                    loop {
+                        let t = path.front().copied().unwrap_or(goal);
+                        let dist = (t[0] - p[0]).abs().max((t[1] - p[1]).abs());
+                        if dist > left {
+                            p = [p[0] + (t[0] - p[0]).clamp(-left, left), p[1] + (t[1] - p[1]).clamp(-left, left)];
+                            break;
+                        }
+                        p = t;
+                        left -= dist;
+                        if path.pop_front().is_none() {
+                            break;
+                        }
+                    }
+                    p
                 }
-                _ => goal,
+                _ => {
+                    path.clear(); // fuera de la vista: aparece en su celda
+                    goal
+                }
             };
+            if !path.is_empty() {
+                paths.push((a, path));
+            }
             next.push((a, p));
         }
         self.draw = next;
+        self.paths = paths;
         for i in 0..d.heroes.len() {
             let h = &d.heroes[i];
             let rest = sprite_pos(h.ch.pos, HERO_W, HERO_H);
-            if h.depth != d.depth || self.drawn(ActorId::Hero(i)).is_none_or(|p| p == rest) {
+            let walking = self.paths.iter().any(|e| e.0 == ActorId::Hero(i));
+            if h.depth != d.depth || (!walking && self.drawn(ActorId::Hero(i)).is_none_or(|p| p == rest)) {
                 d.heroes[i].animating = false;
             }
         }
