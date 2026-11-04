@@ -4,7 +4,7 @@
 //! R5: mochila (WndBag), ventana del ítem (WndItem), accesos rápidos e ícono de hambre.
 //! ponytail: sin íconos de estados ni configuración todavía (R5)
 use game::actor::ActorId;
-use game::dice::{ABILITIES, ABILITY_NAMES};
+use game::dice::{self, ABILITIES, ABILITY_NAMES};
 use game::dungeon::Dungeon;
 use game::geom::LENGTH;
 use game::hero::{Action, Slot, Verb, BACKPACK_SIZE, HUNGRY};
@@ -15,7 +15,7 @@ use game::terrain;
 use crate::atlas::Atlas;
 use crate::font::Font;
 use crate::gpu::Sprite;
-use crate::config::{key_label, Bind, Config, FPS_OPTIONS};
+use crate::config::{key_label, Bind, Config, FPS_OPTIONS, RESOLUTIONS};
 use crate::sprites::Chars;
 use crate::{ARCS_BG, ARCS_FG, BANNERS, BUFFS, CHROME, DASHBOARD, EXP_BAR, HP_BAR, ICONS, ITEMS, STATUS, TILES, TOOLBAR, WATER};
 
@@ -126,9 +126,8 @@ pub enum Window {
     Page(Vec<(String, [f32; 4])>),
     /// Lista de personajes (Jugar): JUGAR / NUEVO / BORRAR.
     Roster,
-    /// Título: elegir la clase de la partida nueva.
-    /// ponytail: hasta la lista de personajes y la creación con dados (R5, con el guardado)
-    Classes,
+    /// Creación de personaje (NUEVO): nombre, clase y características con 4d6 (`Ui::create`).
+    Create,
 }
 
 /// Lo que hace un click en la UI; lo aplica la app.
@@ -150,12 +149,14 @@ pub enum UiAction {
     Verb(Slot, Verb),
     SetFps(u32),
     SetFullscreen(bool),
+    /// Tamaño de la ventana (clave de `RESOLUTIONS`).
+    SetResolution(&'static str),
     /// Esperar la próxima tecla para esa acción.
     Rebind(Bind),
     /// Elegir el objetivo del conjuro k en el mapa.
     Cast(usize),
-    /// Título: partida nueva con la clase k.
-    Play(usize),
+    /// Creación de personaje (la app aplica `Cr::Start`; el resto, `Create::apply`).
+    Create(Cr),
     /// Partida: volver a la pantalla de título.
     MainMenu,
     /// Título: abrir la lista de personajes (la app la lee del disco).
@@ -241,6 +242,7 @@ pub struct Ui {
     pub mouse: Option<[f32; 2]>,
     /// Esperando la tecla nueva para esta acción (configuración).
     pub rebinding: Option<Bind>,
+    pub create: Create,
     hot: Vec<Hot>,
     car_cur: Option<ActorId>,
     car_off: f32,
@@ -249,7 +251,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// La acción de la zona de más arriba bajo `p` (pixeles de la UI), o None si el click es para el mapa.
@@ -313,7 +315,7 @@ impl Ui {
             Some(Window::Item(slot)) => self.draw_item(atlas, font, d, out, w, h, slot),
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             Some(Window::Spells) => self.draw_spells(atlas, font, d, out, w, h),
-            Some(Window::Classes | Window::Page(_) | Window::Roster) => self.window = None, // sólo en el título
+            Some(Window::Create | Window::Page(_) | Window::Roster) => self.window = None, // sólo en el título
             Some(Window::Rules) => self.draw_rules(atlas, font, d, out, w, h),
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
             None => {
@@ -870,7 +872,8 @@ impl Ui {
         // WndSettings: idioma, pantalla completa, FPS y escala de la interfaz; los controles en su ventana
         let sw = SETTINGS_W.min(w - 16.0);
         let row_h = LINE_H + MENU_BTN_H + MENU_GAP * 2.0;
-        let ch = 4.0 * row_h + MENU_BTN_H;
+        let desktop = !cfg!(target_os = "android");
+        let ch = if desktop { 5.0 } else { 4.0 } * row_h + MENU_BTN_H;
         let c = [((w - sw) / 2.0).floor(), ((h - ch) / 2.0).floor(), sw, ch];
         let back = if self.in_title { UiAction::Close } else { UiAction::Open(Window::Menu) };
         self.hot([0.0, 0.0, w, h], back.clone(), None); // click afuera = volver
@@ -894,10 +897,17 @@ impl Ui {
                 (format!("{}%", (pref * 100.0).round()), (cfg.ui_scale - pref).abs() < 0.01, Some(UiAction::SetUiScale(pref)))
             })
             .collect();
+        let res: Vec<(String, bool, Option<UiAction>)> = RESOLUTIONS
+            .iter()
+            .map(|&(k, rw, rh)| (format!("{rw}x{rh}"), cfg.resolution == k, Some(UiAction::SetResolution(k))))
+            .collect();
+        let mut rows = vec![("Idioma", lang), ("Pantalla completa (F11)", full)];
+        if desktop {
+            rows.push(("Resolucion (ventana)", res));
+        }
+        rows.extend([("FPS", fps), ("Escala de la interfaz (en partida)", scales)]);
         let mut y = c[1];
-        for (label, options) in
-            [("Idioma", lang), ("Pantalla completa (F11)", full), ("FPS", fps), ("Escala de la interfaz (en partida)", scales)]
-        {
+        for (label, options) in rows {
             font.text(out, label, c[0], y, YELLOW);
             y += LINE_H;
             let n = options.len() as f32;
@@ -971,8 +981,111 @@ impl Ui {
         let has = self.roster_sel.is_some_and(|s| s < rows.len());
         let buttons = [
             ("JUGAR", has.then_some(UiAction::PlayChar)),
-            ("NUEVO", Some(UiAction::Open(Window::Classes))),
+            ("NUEVO", Some(UiAction::Create(Cr::New))),
             (if self.confirm { "CONFIRMAR" } else { "BORRAR" }, has.then_some(UiAction::DeleteChar)),
+        ];
+        let bw = ((w - 16.0 - 4.0) / 3.0).floor();
+        for (k, (label, act)) in buttons.into_iter().enumerate() {
+            self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw + 2.0), h - 20.0, bw, 16.0], label, act);
+        }
+    }
+
+    /// Creación de personaje (createScreen.py, con su mismo layout en 320x180): nombre, clases, las 6
+    /// características, las 7 tiradas, ayuda y TIRAR / LIMPIAR / EMPEZAR. Click / toque en una tirada y luego en una
+    /// característica la asigna; click en una característica sin tirada elegida deja escribir el número. Esc vuelve.
+    /// ponytail: sin arrastrar (el prototipo además arrastraba y cambiaba características); click-click anda en táctil
+    fn draw_create(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, classes: &[RosterRow]) {
+        const SEL_BG: [f32; 4] = rgba(0x99, 0x88, 0x33, 0xAA);
+        const BOX_BG: [f32; 4] = rgba(0x53, 0x56, 0x4D, 0x99);
+        let bg = |on: bool| if on { SEL_BG } else { BOX_BG };
+        let center = |out: &mut Vec<Sprite>, t: &str, r: [f32; 4], y: f32, col| {
+            font.text(out, t, (r[0] + r[2] / 2.0 - (font.width(t) / 2.0).floor()).floor(), y, col)
+        };
+        out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
+        self.hot([0.0, 0.0, w, h], UiAction::Create(Cr::Unfocus), None);
+        let st = self.create.clone();
+        font.text(out, "Crear personaje", 8.0, 3.0, YELLOW);
+
+        // nombre
+        let r = [110.0, 1.0, w - 118.0, 11.0];
+        out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg(st.focus == Some(Focus::Name))));
+        let shown = format!("{}{}", st.name, if st.focus == Some(Focus::Name) { "_" } else { "" });
+        let (t, col) = if shown.is_empty() { ("Nombre: (click para escribir)".to_string(), GREY) } else { (format!("Nombre: {shown}"), WHITE) };
+        font.text(out, &t, r[0] + 2.0, r[1] + 2.0, col);
+        self.hot(r, UiAction::Create(Cr::Name), None);
+
+        // clases (4 columnas; en vertical no entran: 2)
+        let cols = if w < 300.0 { 2 } else { 4 };
+        let step = ((w - 12.0) / cols as f32).floor();
+        for (k, c) in classes.iter().enumerate() {
+            let r = [8.0 + (k % cols) as f32 * step, 15.0 + (k / cols) as f32 * 38.0, step - 4.0, 34.0];
+            out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg(k == st.class)));
+            if let Some(sheet) = c.sheet {
+                out.push(piece(atlas, sheet, [1, 0, 11, 15], [r[0] + 4.0, r[1] + ((r[3] - 15.0) / 2.0).floor()], [11.0, 15.0], WHITE));
+            }
+            font.text(out, &c.name, r[0] + 18.0, r[1] + 6.0, WHITE);
+            font.text(out, &c.status, r[0] + 18.0, r[1] + 18.0, GREY);
+            self.hot(r, UiAction::Create(Cr::Class(k)), None);
+        }
+        let y = 15.0 + classes.len().div_ceil(cols) as f32 * 38.0; // 53 con 4 clases en 320
+
+        // características
+        let step = ((w - 12.0) / 6.0).floor();
+        for (a, name) in ABILITY_NAMES.iter().enumerate() {
+            let r = [8.0 + a as f32 * step, y, step - 4.0, 32.0];
+            let focused = st.focus == Some(Focus::Stat(a));
+            out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg(focused)));
+            center(out, name, r, r[1] + 3.0, YELLOW);
+            if focused {
+                center(out, if st.typed.is_empty() { "_" } else { &st.typed }, r, r[1] + 13.0, WHITE);
+            } else if let Some(v) = st.scores[a] {
+                center(out, &v.to_string(), r, r[1] + 13.0, WHITE);
+            }
+            if let (false, Some(v)) = (focused, st.scores[a]) {
+                center(out, &format!("{:+}", dice::modifier(v)), r, r[1] + 22.0, GREY);
+            }
+            self.hot(r, UiAction::Create(Cr::Stat(a)), None);
+        }
+
+        // tiradas, y el detalle de la elegida a la derecha
+        font.text(out, "Tiradas (4d6, se quita el menor):", 8.0, y + 37.0, WHITE);
+        let step = ((w - 12.0) / 7.0).floor().min(30.0);
+        let cy = y + 47.0;
+        for (i, (v, _)) in st.pool.iter().enumerate() {
+            let r = [8.0 + i as f32 * step, cy, step - 4.0, 16.0];
+            out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg(st.chip == Some(i))));
+            center(out, &v.to_string(), r, r[1] + 4.0, if st.source.contains(&Some(i)) { GREY } else { WHITE });
+            self.hot(r, UiAction::Create(Cr::Chip(i)), None);
+        }
+        let mut hy = y + 68.0;
+        if let Some(i) = st.chip {
+            let (v, d) = st.pool[i];
+            let low = d.iter().position(|x| x == d.iter().min().unwrap()).unwrap();
+            let parts: Vec<String> = d.iter().enumerate().map(|(j, x)| if j == low { format!("[{x}]") } else { x.to_string() }).collect();
+            let detail = format!("{} = {v}", parts.join(" "));
+            let x = 8.0 + 7.0 * step + 4.0;
+            if x + font.width(&detail) <= w {
+                font.text(out, &detail, x, cy + 4.0, GREY);
+            } else {
+                font.text(out, &detail, 8.0, hy, GREY); // vertical: debajo
+                hy += LINE_H;
+            }
+        }
+        let help = "Toca una tirada y luego una caracteristica (sobra 1). Toca una caracteristica para escribir el numero (1-20).";
+        for line in wrap(font, help, w - 16.0) {
+            if hy + LINE_H > h - 21.0 {
+                break;
+            }
+            font.text(out, &line, 8.0, hy, GREY);
+            hy += LINE_H;
+        }
+
+        // botones
+        let ready = dice::valid_scores(&st.scores).is_some();
+        let buttons = [
+            ("TIRAR", Some(UiAction::Create(Cr::Roll))),
+            ("LIMPIAR", Some(UiAction::Create(Cr::Clear))),
+            (if ready { "EMPEZAR" } else { "FALTAN STATS" }, ready.then_some(UiAction::Create(Cr::Start))),
         ];
         let bw = ((w - 16.0 - 4.0) / 3.0).floor();
         for (k, (label, act)) in buttons.into_iter().enumerate() {
@@ -1001,7 +1114,7 @@ impl Ui {
     /// los letreros que laten, el dashboard (Jugar, Acerca de), configuración arriba a la izquierda y la versión.
     /// ponytail: sin Mods (1.x); los letreros se suman con alfa, no con mezcla aditiva
     #[allow(clippy::too_many_arguments)]
-    pub fn draw_title(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, classes: &[String], roster: &[RosterRow]) {
+    pub fn draw_title(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, classes: &[RosterRow], roster: &[RosterRow]) {
         self.t += dt;
         self.hot.clear();
         // Archs: textura repetida, desplazada en Y (SCROLL_SPEED = 20; la de adelante, 40)
@@ -1019,7 +1132,7 @@ impl Ui {
                 y += th;
             }
         }
-        let item = 48.0; // DashboardItem.SIZE
+        let item = (((w - 4.0) / 4.0).floor()).min(48.0); // DashboardItem.SIZE (más angosto en vertical)
         let layout_h = 70.0 + item;
         let (tx, ty) = (((w - 128.0) / 2.0).floor(), ((h - layout_h) / 2.0).floor());
         out.push(piece(atlas, BANNERS, [0, 0, 128, 70], [tx, ty], [128.0, 70.0], WHITE));
@@ -1028,28 +1141,33 @@ impl Ui {
             out.push(piece(atlas, BANNERS, [0, 161, 128, 57], [tx, ty], [128.0, 57.0], [1.0, 1.0, 1.0, k]));
         }
         let iy = ((h + layout_h) / 2.0).floor() - item;
+        let x0 = (w / 2.0).floor() - item * 2.0;
         for (icon, label, x, act) in [
-            // Rankings y Badges del original se reemplazaron por Mods
-            (0u32, "Jugar", (w / 2.0).floor() - item * 1.5, UiAction::OpenRoster),
-            (2, "Mods", (w / 2.0).floor() - item / 2.0, UiAction::Open(Window::Page(vec![
+            // Rankings y Badges del original se reemplazaron por Mods; la configuración (PrefsButton) es un botón más
+            (0u32, "Jugar", x0, UiAction::OpenRoster),
+            (2, "Mods", x0 + item, UiAction::Open(Window::Page(vec![
                 ("Mods".into(), YELLOW),
                 ("No hay mods instalados. El sistema de mods todavia no esta disponible.".into(), WHITE),
                 ("Los mods vienen de fuentes externas: ten cuidado de donde los descargas y revisalos antes de instalarlos.".into(), rgba(190, 190, 190, 255)),
                 ("Los mods que traen codigo pueden cambiar el juego de forma considerable y hacer cualquier cosa en tu equipo: instalalos solo si confias en su origen.".into(), rgba(255, 120, 80, 255)),
             ]))),
-            (1, "Acerca de", (w / 2.0).floor() + item / 2.0, UiAction::Open(Window::Page(vec![
+            (1, "Acerca de", x0 + item * 2.0, UiAction::Open(Window::Page(vec![
                 (format!("PixelDungeon-RollInitiative v{}", game::VERSION), YELLOW),
                 ("Roguelike basado en Pixel Dungeon de Watabou (GPL v3), con las reglas de D&D 5e y multijugador cooperativo.".into(), WHITE),
                 ("Arte y sonido del original. Todo el proyecto se distribuye como GPL v3.".into(), rgba(190, 190, 190, 255)),
             ]))),
+            (u32::MAX, "Opciones", x0 + item * 3.0, UiAction::Open(Window::Settings)),
         ] {
-            out.push(piece(atlas, DASHBOARD, [icon * 32, 0, 32, 32], [x + 8.0, iy], [32.0, 32.0], WHITE));
+            let ix = x + ((item - 32.0) / 2.0).floor();
+            if icon == u32::MAX {
+                // ponytail: el ícono de PrefsButton (Icons.PREFS, 16x16) al doble hasta que haya uno de 32x32
+                out.push(piece(atlas, ICONS, [30, 0, 16, 16], [ix, iy], [32.0, 32.0], WHITE));
+            } else {
+                out.push(piece(atlas, DASHBOARD, [icon * 32, 0, 32, 32], [ix, iy], [32.0, 32.0], WHITE));
+            }
             font.text(out, label, x + ((item - font.width(label)) / 2.0).floor(), iy + 34.0, WHITE);
             self.hot([x, iy, item, item], act, None);
         }
-        // PrefsButton: Icons.PREFS arriba a la izquierda
-        out.push(piece(atlas, ICONS, [30, 0, 16, 16], [1.0, 1.0], [16.0, 16.0], WHITE));
-        self.hot([1.0, 1.0, 16.0, 16.0], UiAction::Open(Window::Settings), Some("Configuracion"));
         let v = format!("v {}", game::VERSION);
         font.text(out, &v, w - font.width(&v) - 1.0, h - font.height() - 1.0, GREY);
         match self.window.clone() {
@@ -1057,22 +1175,7 @@ impl Ui {
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
             Some(Window::Page(paras)) => self.draw_page(atlas, font, out, w, h, &paras),
             Some(Window::Info { icon, title, text, hp }) => self.draw_info(atlas, font, chars, d, out, w, h, icon, &title, &text, hp),
-            Some(Window::Classes) => {
-                let rows = classes.len() as f32 + 1.0;
-                let mh = rows * (MENU_BTN_H + MENU_GAP) - MENU_GAP + LINE_H;
-                let c = [((w - MENU_W) / 2.0).floor(), ((h - mh) / 2.0).floor(), MENU_W, mh];
-                self.hot([0.0, 0.0, w, h], UiAction::Close, None);
-                self.hot(c, UiAction::Nothing, None);
-                Self::draw_window(atlas, out, c);
-                // ponytail: provisorio hasta la creación con dados (nombre, 4d6 y asignación): array estándar
-                font.text(out, "Nuevo: elige la clase", c[0], c[1], YELLOW);
-                for (k, name) in classes.iter().enumerate() {
-                    let rect = [c[0], c[1] + LINE_H + k as f32 * (MENU_BTN_H + MENU_GAP), MENU_W, MENU_BTN_H];
-                    self.draw_button(atlas, font, out, rect, name, Some(UiAction::Play(k)));
-                }
-                let rect = [c[0], c[1] + LINE_H + classes.len() as f32 * (MENU_BTN_H + MENU_GAP), MENU_W, MENU_BTN_H];
-                self.draw_button(atlas, font, out, rect, "Volver", Some(UiAction::OpenRoster));
-            }
+            Some(Window::Create) => self.draw_create(atlas, font, out, w, h, classes),
             Some(Window::Roster) => self.draw_roster(atlas, font, out, w, h, roster),
             _ => self.draw_tooltip(atlas, font, out, w, h),
         }
@@ -1151,4 +1254,115 @@ pub struct RosterRow {
     pub stats: String,
     /// Hoja del atlas de su clase (el avatar); None = clase que no está cargada.
     pub sheet: Option<usize>,
+}
+
+/// Qué recibe lo que se escribe en la creación de personaje.
+#[derive(Clone, Copy, PartialEq)]
+pub enum Focus {
+    Name,
+    Stat(usize),
+}
+
+/// Clicks de la creación de personaje.
+#[derive(Clone)]
+pub enum Cr {
+    /// Abrir la creación desde cero.
+    New,
+    Name,
+    Class(usize),
+    Stat(usize),
+    Chip(usize),
+    Roll,
+    Clear,
+    Unfocus,
+    Start,
+}
+
+const NAME_MAX: usize = 16;
+
+/// Estado de la creación de personaje (CreateState del prototipo).
+#[derive(Clone, Default)]
+pub struct Create {
+    pub name: String,
+    pub class: usize,
+    pub scores: [Option<i32>; 6],
+    /// La tirada asignada a cada característica (None = escrita a mano o vacía).
+    source: [Option<usize>; 6],
+    pool: Vec<(i32, [i32; 4])>,
+    /// Tirada elegida con el primer click (el segundo, en una característica, la asigna).
+    chip: Option<usize>,
+    pub focus: Option<Focus>,
+    typed: String,
+}
+
+impl Create {
+    /// Un click. `seed` sólo se usa al tirar.
+    pub fn apply(&mut self, c: Cr, seed: i64) {
+        match c {
+            Cr::New => *self = Create::default(),
+            Cr::Name => (self.focus, self.chip) = (Some(Focus::Name), None),
+            Cr::Class(k) => self.class = k,
+            Cr::Unfocus => self.focus = None,
+            Cr::Clear => {
+                // como el prototipo: borra las características; nombre, clase y tiradas quedan
+                (self.scores, self.source, self.chip, self.focus) = ([None; 6], [None; 6], None, None);
+                self.typed.clear();
+            }
+            Cr::Roll => {
+                self.pool = dice::roll_ability_pool(&mut game::rng::Rng::new(seed));
+                for a in 0..6 {
+                    if self.source[a].take().is_some() {
+                        self.scores[a] = None; // lo asignado desde tiradas viejas se borra
+                    }
+                }
+                self.chip = None;
+            }
+            Cr::Chip(i) => (self.chip, self.focus) = (if self.chip == Some(i) { None } else { Some(i) }, None),
+            Cr::Stat(a) => match self.chip.take() {
+                Some(i) => {
+                    // la tirada se mueve si ya estaba en otra característica
+                    if let Some(o) = self.source.iter().position(|s| *s == Some(i)) {
+                        (self.scores[o], self.source[o]) = (None, None);
+                    }
+                    (self.scores[a], self.source[a]) = (Some(self.pool[i].0), Some(i));
+                }
+                None => (self.focus, self.typed) = (Some(Focus::Stat(a)), String::new()),
+            },
+            Cr::Start => {}
+        }
+    }
+
+    /// Una tecla y lo que escribe (`text`). False si no había nada enfocado (la tecla sigue su camino).
+    pub fn key(&mut self, code: winit::keyboard::KeyCode, text: Option<&str>) -> bool {
+        use winit::keyboard::KeyCode as K;
+        let next = matches!(code, K::Enter | K::NumpadEnter | K::Tab);
+        match self.focus {
+            None => return false,
+            Some(Focus::Name) => match code {
+                K::Backspace => _ = self.name.pop(),
+                _ if next => (self.focus, self.typed) = (Some(Focus::Stat(0)), String::new()),
+                _ => {
+                    for ch in text.unwrap_or("").chars().filter(|c| !c.is_control()) {
+                        if self.name.chars().count() < NAME_MAX {
+                            self.name.push(ch);
+                        }
+                    }
+                }
+            },
+            Some(Focus::Stat(a)) => {
+                if next {
+                    (self.focus, self.typed) = (Some(Focus::Stat((a + 1) % 6)), String::new());
+                    return true;
+                }
+                match (code, text.and_then(|t| t.chars().next())) {
+                    (K::Backspace, _) => _ = self.typed.pop(),
+                    (_, Some(d)) if d.is_ascii_digit() && self.typed.len() < 2 => self.typed.push(d),
+                    _ => return true,
+                }
+                self.scores[a] = self.typed.parse().ok().filter(|v| (dice::MIN_SCORE..=dice::MAX_SCORE).contains(v));
+                self.source[a] = None;
+            }
+        }
+        true
+    }
 }

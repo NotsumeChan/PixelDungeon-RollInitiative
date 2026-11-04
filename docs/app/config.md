@@ -1,7 +1,8 @@
 # app/src/config.rs
 
 `core/Config.py`: `Local.config`, el mismo INI del prototipo. Rust lee y guarda sólo sus claves y conserva el resto del
-archivo: `[general] maxFPS` (30 / 60 / 120 / 0 = sin límite; sin archivo, 60) y `fullscreen`, y la sección `[keys]`
+archivo: `[general] maxFPS` (30 / 60 / 120 / 0 = sin límite; sin archivo, 60), `fullscreen` y `resolution`
+(tamaño de la ventana, `RESOLUTIONS`: Basic 640x480, Hd 1280x720, Fhd 1920x1080; sin archivo, Hd), y la sección `[keys]`
 (una por acción, con el nombre de la tecla en winit: `up = KeyW`). En escritorio el archivo está en la carpeta desde
 donde se corre; en Android, en la carpeta de datos de la app (`DIR`, lo pone `android_main`).
 

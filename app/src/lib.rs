@@ -19,10 +19,10 @@ use game::dungeon::Dungeon;
 use game::geom::{HEIGHT, LENGTH, WIDTH};
 use game::hero::Action;
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalPosition;
+use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, TouchPhase, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::keyboard::{Key, KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 use atlas::Atlas;
@@ -37,7 +37,7 @@ use ui::{BagMode, Ui, UiAction, Window as UiWindow};
 pub const TITLE: &str = "PixelDungeon-RollInitiative";
 const DRAG_MIN_PX: f64 = 8.0; // arrastrar más que esto (pixeles de pantalla) mueve la cámara; menos es un click
 const PINCH_STEP: f64 = 1.25; // cuánto tiene que cambiar la distancia entre dedos para un paso de zoom
-/// Clases jugables (C cambia de clase y empieza otra partida). ponytail: hasta la creación de personaje (R5)
+/// Clases jugables, en el orden de la creación de personaje.
 const CLASSES: [&str; 4] = ["pdri:warrior", "pdri:mage", "pdri:rogue", "pdri:huntress"];
 
 /// Hojas del atlas, en orden: los índices de `Atlas::rects`. Van dentro del binario (Android sin AssetManager).
@@ -163,7 +163,8 @@ struct App {
     /// En la pantalla de título (la partida de atrás no avanza).
     title: bool,
     /// Nombres de las clases jugables (data/classes.json), para elegir en el título.
-    class_names: Vec<String>,
+    /// Las clases para la creación de personaje: nombre, "Guerrero d10" y avatar.
+    class_rows: Vec<ui::RosterRow>,
     classes: serde_json::Map<String, serde_json::Value>,
     /// El personaje en juego (characters.json) y la lista de personajes (con sus filas para la UI).
     character: Option<serde_json::Value>,
@@ -213,9 +214,20 @@ impl App {
             ui: Ui::new(),
             config: Config::load(),
             title: true,
-            class_names: {
+            class_rows: {
                 let c = game::registry::load("classes").unwrap_or_default();
-                CLASSES.iter().map(|k| c.get(*k).map_or(k.to_string(), |v| game::registry::text(&v["name"]))).collect()
+                CLASSES
+                    .iter()
+                    .map(|k| match c.get(*k) {
+                        Some(v) => ui::RosterRow {
+                            name: game::registry::text(&v["name"]),
+                            status: format!("{} d{}", game::registry::text(&v["dnd_class"]), v["hit_die"]),
+                            stats: String::new(),
+                            sheet: v["sprite"].as_str().and_then(|s| CHAR_SHEETS.iter().position(|e| e.0 == s)).map(|i| i + SHEETS.len()),
+                        },
+                        None => ui::RosterRow { name: k.to_string(), status: String::new(), stats: String::new(), sheet: None },
+                    })
+                    .collect()
             },
             classes: game::registry::load("classes").unwrap_or_default(),
             character: None,
@@ -367,6 +379,15 @@ impl App {
                 self.open_roster();
             }
             UiAction::SetFps(f) => self.config.set_fps(f),
+            UiAction::SetResolution(r) => {
+                self.config.set_resolution(r);
+                if let Some(gpu) = &self.gpu
+                    && !self.config.fullscreen
+                {
+                    let (w, h) = self.config.window_size();
+                    let _ = gpu.window.request_inner_size(PhysicalSize::new(w, h));
+                }
+            }
             UiAction::SetFullscreen(on) => {
                 self.config.set_fullscreen(on);
                 self.apply_fullscreen();
@@ -386,15 +407,27 @@ impl App {
                     gpu.set_ui_scale(s);
                 }
             }
-            UiAction::Play(k) => {
-                // NUEVO: personaje con la clase elegida y el array estándar (hasta la creación con dados)
-                let name = self.class_names.get(k).cloned().unwrap_or_default();
-                let c = characters::new_character(&name, CLASSES[k], game::dice::DEFAULT_SCORES);
+            UiAction::Create(ui::Cr::Start) => {
+                let st = &self.ui.create;
+                let Some(ab) = game::dice::valid_scores(&st.scores) else { return };
+                let name = match st.name.trim() {
+                    "" => self.class_rows[st.class].name.clone(),
+                    n => n.to_string(),
+                };
+                let c = characters::new_character(&name, CLASSES[st.class], ab);
                 self.roster.push(c.clone());
                 if let Err(e) = characters::save(&data_dir(), &self.roster) {
                     log::warn!("no se pudo guardar la lista de personajes: {e}");
                 }
                 self.start(c);
+                self.sync_ime();
+            }
+            UiAction::Create(c) => {
+                if matches!(c, ui::Cr::New) {
+                    self.ui.window = Some(UiWindow::Create);
+                }
+                self.ui.create.apply(c, new_seed());
+                self.sync_ime();
             }
             UiAction::MainMenu => {
                 self.autosave();
@@ -515,6 +548,12 @@ impl App {
         }
         if self.title {
             match code {
+                // Esc en la creación vuelve a la lista de personajes
+                KeyCode::Escape if matches!(self.ui.window, Some(UiWindow::Create)) => {
+                    self.ui.create.focus = None;
+                    self.sync_ime();
+                    self.open_roster();
+                }
                 KeyCode::Escape => self.ui.window = None,
                 KeyCode::F11 => self.ui_action(UiAction::SetFullscreen(!self.config.fullscreen)),
                 _ => {}
@@ -548,6 +587,15 @@ impl App {
                 Some(Bind::Quick2) if free => self.ui_action(UiAction::UseQuick(1)),
                 _ => {}
             },
+        }
+    }
+
+    /// Android: el teclado en pantalla aparece mientras la creación de personaje espera texto.
+    fn sync_ime(&self) {
+        if cfg!(target_os = "android")
+            && let Some(gpu) = &self.gpu
+        {
+            gpu.window.set_ime_allowed(self.title && self.ui.create.focus.is_some());
         }
     }
 
@@ -638,7 +686,7 @@ impl App {
         self.ui.in_title = true;
         self.sprites.clear();
         let w = &self.world;
-        let classes = &self.class_names;
+        let classes = &self.class_rows;
         let rows = &self.roster_rows;
         self.ui.draw_title(&self.atlas, &self.font, &w.chars, &w.d, &self.config, &mut self.sprites, uw as f32, uh as f32, dt, classes, rows);
         let end = self.sprites.len() as u32;
@@ -723,7 +771,12 @@ impl App {
 impl ApplicationHandler for App {
     fn resumed(&mut self, el: &ActiveEventLoop) {
         // Android destruye la superficie al irse al fondo: se recrea ventana y GPU en cada resumed
-        let window = Arc::new(el.create_window(Window::default_attributes().with_title(TITLE)).expect("ventana"));
+        let mut attrs = Window::default_attributes().with_title(TITLE);
+        if !cfg!(target_os = "android") {
+            let (w, h) = self.config.window_size();
+            attrs = attrs.with_inner_size(PhysicalSize::new(w, h));
+        }
+        let window = Arc::new(el.create_window(attrs).expect("ventana"));
         let mut gpu = pollster::block_on(Gpu::new(window, &self.atlas));
         gpu.set_ui_scale(self.config.ui_scale);
         self.gpu = Some(gpu);
@@ -750,7 +803,19 @@ impl ApplicationHandler for App {
             WindowEvent::RedrawRequested => self.frame(),
             WindowEvent::KeyboardInput { event, .. } => {
                 if let PhysicalKey::Code(code) = event.physical_key {
-                    self.key(code, event.state == ElementState::Pressed);
+                    let down = event.state == ElementState::Pressed;
+                    // creación de personaje: el nombre o el número que se está escribiendo
+                    let creating = self.title && matches!(self.ui.window, Some(UiWindow::Create));
+                    if down && creating && code != KeyCode::Escape {
+                        let text = match &event.logical_key {
+                            Key::Character(t) => Some(t.as_str()),
+                            _ => None,
+                        };
+                        if self.ui.create.key(code, text) {
+                            return;
+                        }
+                    }
+                    self.key(code, down);
                 }
             }
             WindowEvent::CursorMoved { position, .. } => {

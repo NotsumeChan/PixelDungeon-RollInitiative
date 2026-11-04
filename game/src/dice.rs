@@ -5,8 +5,11 @@ use crate::rng::Rng;
 pub const ABILITIES: [&str; 6] = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
 /// Abreviaturas en español, en el orden de `ABILITIES`.
 pub const ABILITY_NAMES: [&str; 6] = ["FUE", "DES", "CON", "INT", "SAB", "CAR"];
-/// Array estándar de 5e, en el orden de `ABILITIES`. ponytail: hasta la creación de personaje (R5)
+/// Array estándar de 5e, en el orden de `ABILITIES` (partida sin personaje, y la de fondo del título).
 pub const DEFAULT_SCORES: [i32; 6] = [15, 14, 13, 12, 10, 8];
+/// Rango de una característica escrita a mano en la creación de personaje.
+pub const MIN_SCORE: i32 = 1;
+pub const MAX_SCORE: i32 = 20;
 
 /// "2d6+3" -> (2, 6, 3). "1d8" -> (1, 8, 0). "d4" -> (1, 4, 0).
 pub fn parse(notation: &str) -> Option<(i32, i32, i32)> {
@@ -51,4 +54,24 @@ pub fn modifier(score: i32) -> i32 {
 /// Bonificador de competencia: +2 en niveles 1-4, +3 en 5-8, ...
 pub fn proficiency(level: i32) -> i32 {
     2 + (level - 1).div_euclid(4)
+}
+
+/// 4d6 quitando el menor. Devuelve (valor, los 4 dados) para mostrar cuál se descartó.
+pub fn roll_ability_score(rng: &mut Rng) -> (i32, [i32; 4]) {
+    let dice = [(); 4].map(|_| rng.int_range_incl(1, 6));
+    (dice.iter().sum::<i32>() - dice.iter().min().unwrap(), dice)
+}
+
+/// Creación de personaje: tantas tiradas como características + 1 (7). Se asignan 6 a voluntad y sobra 1.
+pub fn roll_ability_pool(rng: &mut Rng) -> Vec<(i32, [i32; 4])> {
+    (0..=ABILITIES.len()).map(|_| roll_ability_score(rng)).collect()
+}
+
+/// Las 6 características puestas y dentro de rango.
+pub fn valid_scores(scores: &[Option<i32>; 6]) -> Option<[i32; 6]> {
+    let mut out = [0; 6];
+    for (o, s) in out.iter_mut().zip(scores) {
+        *o = s.filter(|v| (MIN_SCORE..=MAX_SCORE).contains(v))?;
+    }
+    Some(out)
 }

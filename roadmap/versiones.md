@@ -11,6 +11,7 @@ en los dos lugares y en la tabla de Rust.
 | 0.2.0 | R2 | Render del mapa: tiles, agua, niebla, cámara, zoom, orientación vertical |
 | 0.3.0 | R3 | Héroe, turnos y rondas 5e por iniciativa, mobs con IA, combate 5e, salvaciones contra la muerte, pisos 1-4 |
 | 0.4.0 | R4, R5a | Personajes animados, dados animados, UI original (estado, iniciativa, barra, examinar, ficha, menú); ítems, mochila, accesos rápidos, pociones y pergaminos, hambre |
+| 0.5.0 | R5 | Creación de personaje con dados (4d6, 7 tiradas, asignar o escribir), lista de personajes y guardado; ya estaban el combate 5e y la ficha |
 
 (Las 0.2 y 0.3 no se marcaron en su momento: el `Cargo.toml` pasó de 0.1.0 a 0.4.0.)
 

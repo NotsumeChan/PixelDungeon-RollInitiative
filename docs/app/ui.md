@@ -41,7 +41,7 @@ R5c: libro de conjuros (F o desde la ficha): bono, CD, espacios y usos gratis; u
 
 Pantalla de título (`draw_title`, TitleScene.java): arcos de fondo que se desplazan (`arcs1.png` / `arcs2.png`, el de
 adelante al doble), el banner con los letreros que laten, el dashboard (Jugar = elegir la clase; Acerca de), la
-configuración arriba a la izquierda y la versión abajo a la derecha. Sin Mods (1.x). El menú de la partida suma "Menú
+la versión abajo a la derecha. Sin Mods (1.x). El menú de la partida suma "Menú
 principal" (vuelve al título; la partida se pierde hasta que haya guardado).
 
 Acceso rápido: usa la acción principal del ítem; si sólo se puede soltar (las arrojadizas hasta R5d), abre la ventana
@@ -58,5 +58,18 @@ Menús como el prototipo (2026-11-04):
   la interfaz (del zoom que entra hacia abajo, entero: 100% / 75% / 50% en HD); Controles en su propia ventana.
 
 Lista de personajes (`Window::Roster`, rosterScreen.py): filas con avatar, nombre, estado ("en partida - piso N,
-nivel M" o la clase y su dado de golpe) y características; JUGAR / NUEVO / BORRAR (confirma). NUEVO elige la clase con
-el array estándar hasta que esté la creación con dados.
+nivel M" o la clase y su dado de golpe) y características; JUGAR / NUEVO / BORRAR (confirma). NUEVO abre la creación.
+
+Creación de personaje (`Window::Create`, `draw_create`, createScreen.py con su mismo layout en 320x180): título y
+nombre arriba, las 4 clases con avatar y "clase d<dado>", las 6 características (valor y modificador), las 7 tiradas
+4d6 (gris las ya usadas; la elegida muestra sus 4 dados con el descartado entre corchetes), ayuda y TIRAR / LIMPIAR /
+EMPEZAR ("FALTAN STATS" en gris hasta tener las 6). Click / toque en una tirada y luego en una característica la pone
+(si estaba en otra, se mueve); click en una característica sin tirada elegida deja escribir el número (1-20); Enter /
+Tab pasa a la siguiente. TIRAR de nuevo borra lo asignado desde las tiradas viejas; LIMPIAR borra las 6. Esc vuelve a
+la lista. El estado es `Ui::create` (`Create`, `Cr`); en vertical las clases van en 2 columnas. Sin arrastrar (el
+prototipo arrastraba tiradas y cambiaba características de lugar): click-click hace lo mismo y anda en táctil.
+
+Título: Jugar, Mods, Acerca de y Opciones (la configuración, antes arriba a la izquierda; usa el ícono PREFS de
+`icons.png` al doble hasta que haya uno de 32x32). En vertical los botones se angostan para que entren los 4.
+Configuración: en escritorio suma "Resolucion (ventana)" (640x480 / 1280x720 / 1920x1080), el `resolution` de
+Local.config.

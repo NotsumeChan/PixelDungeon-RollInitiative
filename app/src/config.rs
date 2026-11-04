@@ -13,6 +13,8 @@ pub static DIR: OnceLock<PathBuf> = OnceLock::new();
 pub const FPS_OPTIONS: [u32; 4] = [30, 60, 120, 0];
 /// Sin archivo: 60 (el prototipo usaba 30; en un panel de 120 Hz se nota).
 const DEFAULT_FPS: u32 = 60;
+/// Tamaño de la ventana (`resolution` en Local.config, `core/constants/Resolutions.py`): (clave, ancho, alto).
+pub const RESOLUTIONS: [(&str, u32, u32); 3] = [("Basic", 640, 480), ("Hd", 1280, 720), ("Fhd", 1920, 1080)];
 
 /// Acciones con tecla configurable. Las flechas siempre mueven; Esc, R, C, F y F11 son fijas.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -107,6 +109,8 @@ pub fn assignable(k: KeyCode) -> bool {
 pub struct Config {
     pub max_fps: u32,
     pub fullscreen: bool,
+    /// Clave de `RESOLUTIONS` (sin archivo o desconocida: "Hd", como el prototipo).
+    pub resolution: &'static str,
     /// Escala de la interfaz respecto del zoom que entra (1 = 100%; `ui_scale` en Local.config, como el prototipo).
     pub ui_scale: f32,
     /// El zoom entero que entra en la ventana (lo pone la app cada frame; no se guarda).
@@ -123,12 +127,15 @@ fn path() -> PathBuf {
 impl Config {
     pub fn load() -> Self {
         let lines: Vec<String> = std::fs::read_to_string(path()).unwrap_or_default().lines().map(str::to_string).collect();
-        let mut c = Self { max_fps: DEFAULT_FPS, fullscreen: false, ui_scale: 1.0, ui_base: 1, keys: Vec::new(), lines };
+        let mut c = Self { max_fps: DEFAULT_FPS, fullscreen: false, resolution: "Hd", ui_scale: 1.0, ui_base: 1, keys: Vec::new(), lines };
         if let Some(s) = c.get("general", "ui_scale").and_then(|v| v.parse().ok()) {
             c.ui_scale = s;
         }
         if let Some(f) = c.get("general", "maxFPS").and_then(|v| v.parse().ok()) {
             c.max_fps = f;
+        }
+        if let Some(r) = c.get("general", "resolution").and_then(|v| RESOLUTIONS.iter().find(|r| r.0 == v)) {
+            c.resolution = r.0;
         }
         c.fullscreen = c.get("general", "fullscreen").is_some_and(|v| v.eq_ignore_ascii_case("true"));
         for b in Bind::ALL {
@@ -175,6 +182,17 @@ impl Config {
     pub fn set_ui_scale(&mut self, s: f32) {
         self.ui_scale = s;
         self.set("general", "ui_scale", &s.to_string());
+        self.save();
+    }
+
+    /// Tamaño de la ventana en pixeles.
+    pub fn window_size(&self) -> (u32, u32) {
+        RESOLUTIONS.iter().find(|r| r.0 == self.resolution).map_or((1280, 720), |r| (r.1, r.2))
+    }
+
+    pub fn set_resolution(&mut self, r: &'static str) {
+        self.resolution = r;
+        self.set("general", "resolution", r);
         self.save();
     }
 

@@ -148,22 +148,29 @@ personajes y creación con dados (necesita el guardado de personajes, R5).
 con la seed y guarda lo que cambió, combate en curso incluido), lista de personajes (`game/characters.rs` y la
 ventana de la app: JUGAR / NUEVO / BORRAR), autoguardado al cambiar de piso, al menú principal, al salir y en Android
 al pasar al fondo; si el héroe muere se borra. Misma carpeta de datos que el prototipo. Para probar: guardar en el piso
-2, salir, volver a entrar y seguir; borrar con confirmación; morir y ver que la partida no queda. Falta: la creación con
-dados (NUEVO hoy elige la clase con el array estándar).
+2, salir, volver a entrar y seguir; borrar con confirmación; morir y ver que la partida no queda. 
+
+**Creación de personaje (R5)** ✏️ (2026-11-04), pendiente de prueba del dueño: NUEVO abre la creación con el layout
+de `createScreen.py`: nombre, clase, 7 tiradas 4d6 (sin el menor) que se asignan tocando la tirada y luego la
+característica, o escribiendo el número (1-20); TIRAR / LIMPIAR / EMPEZAR, Esc vuelve a la lista. En Android aparece el
+teclado en pantalla al tocar el nombre o una característica. Sin arrastrar (el prototipo arrastraba): click-click hace
+lo mismo. **Versión 0.5.0.** Para probar: tirar, asignar, mover una tirada de una característica a otra, escribir un
+número, LIMPIAR, empezar sin nombre (usa el de la clase), en el teléfono el teclado y la creación en vertical.
+
+**Configuración (pedido del dueño, 2026-11-04)** ✏️: la resolución de la ventana (`resolution` de `Local.config`, que
+Rust ignoraba) es una opción de la configuración en escritorio: 640x480 / 1280x720 / 1920x1080, se aplica al momento.
+El botón de configuración de arriba a la izquierda del título pasó al dashboard ("Opciones", con el mismo ícono al
+doble). Para probar: cambiar la resolución en ventana y en pantalla completa, y el título en vertical (4 botones).
 
 ## Para retomar (al cerrar la sesión del 2026-11-04)
 
-**Dónde está todo.** Rama `dev` (17 commits por encima de `main`, sin pushear: `git push -u origin dev`). `main`
-sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide las fases. **Versión 0.4.0**
+**Dónde está todo.** Rama `dev` (por encima de `main`, sin pushear: `git push -u origin dev`). `main`
+sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide las fases. **Versión 0.5.0**
 (`Cargo.toml` del workspace y `android/AndroidManifest.xml`; regla e historial en `roadmap/versiones.md`).
 
 **Siguiente, en este orden:**
-1. **Creación de personaje con dados** (referencia `screens/createScreen.py`, 261 líneas, y `game/dice.py`:
-   `roll_ability_score` = 4d6 sin el menor, `roll_ability_pool` = 7 tiradas, se asignan 6 y sobra 1, `valid_scores`).
-   Nombre, clase, tirar y asignar; reemplaza el NUEVO provisorio (`UiAction::Play` en `app/src/lib.rs`, que hoy
-   crea el personaje con la clase y el array estándar). Los personajes ya se guardan (`game::characters`) y la
-   partida usa sus características (`Dungeon::new_with`). Al terminarla, revisar la tabla de `roadmap/versiones.md`
-   para subir la versión (0.5 = creación con dados + ficha; la 0.6 del prototipo pide además arrastrar ítems).
+1. ~~Creación de personaje con dados~~ ✏️ hecha (0.5.0), falta la prueba del dueño. La 0.6 del prototipo pide además
+   arrastrar (ítems en la mochila; tiradas en la creación).
 2. **R5d, armas a distancia** (referencia `game/hero.py`: `_throw`, `_shoot`, `_ranged_attack`, `_after_shot`,
    `_can_shoot`, `ranged_range`, `_ammo`, y el ataque con `self.ranged` / `self.cover` en `attack_bonus`,
    `advantage`, `roll_damage`). Ya están `game/ballistica.rs` y `Dungeon::shot` (línea de tiro y cobertura).

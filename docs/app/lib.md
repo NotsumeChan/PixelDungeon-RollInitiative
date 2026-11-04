@@ -15,8 +15,7 @@ R3: **jugar un piso** con el héroe (`World`: la partida `game::dungeon::Dungeon
   examinar) o `Dungeon::handle` (caminar con pathfinder, atacar, ayudar a un caído, cambiar de piso en la escalera);
   tocar al propio héroe = buscar. WASD / flechas = un paso (diagonal si se puede, si no por un eje; atacar si hay
   alguien). Espacio = esperar, Q = buscar, I = mochila, 1 / 2 = accesos rápidos, click derecho = elegir el acceso
-  rápido, Esc = cerrar ventana / cancelar examinar / menú, R = otra partida, C = otra clase (sin creación de
-  personaje hasta R5).
+  rápido, Esc = cerrar ventana / cancelar examinar / menú, R = otra partida del mismo personaje.
 - Personajes animados (`sprites.rs`, hojas `CHAR_SHEETS` por el `sprite` de los JSON; sin hoja, el nombre). Lotes del
   mundo: atlas (mapa, cadáveres, personajes) | niebla | atlas otra vez (hojas, textos flotantes, nombres). Los dados
   (`dice_fx.rs`) van en la capa de UI.
@@ -31,7 +30,14 @@ Tope de FPS (`config.max_fps`): `about_to_wait` espera con `ControlFlow::WaitUnt
 R5c: F = rasgo de clase (Segundo Aliento o el libro de conjuros); eligiendo el objetivo de un conjuro, el próximo click en el mapa lo lanza (Esc cancela).
 
 El juego arranca en la pantalla de título (`title`): sólo se dibuja la capa de UI y la partida de atrás no avanza.
-Jugar = partida nueva con la clase elegida. Esc cierra la ventana abierta; F11 = pantalla completa.
+Jugar = la lista de personajes. Esc cierra la ventana abierta (en la creación de personaje, vuelve a la lista);
+F11 = pantalla completa.
+
+Creación de personaje: las teclas van primero a `Ui::create` (nombre o número que se escribe, con el texto de
+`logical_key`); `Cr::Start` crea el personaje (sin nombre: el de la clase), lo guarda en la lista y empieza.
+En Android, `sync_ime` muestra el teclado en pantalla mientras se escribe (`set_ime_allowed`).
+Resolución: en escritorio la ventana se crea con `Config::window_size` y cambia al elegir otra (si no está en
+pantalla completa).
 
 Personajes y guardado: Jugar abre la lista (`open_roster`, lee el disco); JUGAR carga la partida guardada del personaje
 si sigue vivo o empieza una nueva (`start`). Autoguardado (`autosave`) al cambiar de piso, al volver al menú principal,
