@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 use game::actor::ActorId;
 use game::dungeon::Dungeon;
 use game::geom::LENGTH;
-use game::hero::{Action, Slot, Verb};
+use game::hero::{Action, Hero, Slot, Verb};
 use game::{characters, save};
 use serde_json::{json, Map, Value};
 
@@ -332,11 +332,40 @@ pub struct HostGame {
     by_char: BTreeMap<String, usize>,
     last: String,
     sent: Instant,
+    /// false = sala de espera: se suman jugadores pero la partida no corre ni se manda (EMPEZAR la arranca).
+    started: bool,
+    /// Hay que mandar la lista de la sala (alguien entró o se fue).
+    lobby_dirty: bool,
+}
+
+/// ¿Espera la partida a que este héroe elija qué hacer? (vivo, sin acción, sin animación pendiente, ni caído ni
+/// paralizado). Es lo que muestra la lista de "quién falta".
+pub fn needs_input(h: &Hero) -> bool {
+    h.is_alive() && !h.animating && h.waiting()
 }
 
 impl HostGame {
     pub fn new(name: &str) -> std::io::Result<Self> {
-        Ok(Self { host: Host::new(name)?, players: BTreeMap::new(), by_char: BTreeMap::new(), last: String::new(), sent: Instant::now() })
+        Ok(Self {
+            host: Host::new(name)?,
+            players: BTreeMap::new(),
+            by_char: BTreeMap::new(),
+            last: String::new(),
+            sent: Instant::now(),
+            started: false,
+            lobby_dirty: true,
+        })
+    }
+
+    /// EMPEZAR: sale de la sala de espera y manda la partida a todos.
+    pub fn start(&mut self) {
+        self.started = true;
+        self.last.clear();
+    }
+
+    /// Los de la sala: el host y los que se unieron.
+    pub fn names(&self, d: &Dungeon) -> Vec<String> {
+        std::iter::once(d.local().ch.name.clone()).chain(self.players.values().map(|&i| d.heroes[i].ch.name.clone())).collect()
     }
 
     /// ¿Hay un cliente conectado manejando al héroe `j`?
@@ -384,6 +413,7 @@ impl HostGame {
                     d.log(&format!("{name} se une a la partida"));
                     self.host.set_players(1 + self.players.len());
                     self.last.clear(); // que reciba el estado ya
+                    self.lobby_dirty = true;
                 }
                 "action" => {
                     if let Some(&i) = self.players.get(&cid)
@@ -399,21 +429,35 @@ impl HostGame {
                         let name = d.heroes[i].ch.name.clone();
                         d.log(&format!("{name} se va de la partida"));
                         self.host.set_players(1 + self.players.len());
+                        self.lobby_dirty = true;
                     }
                 }
                 _ => {}
             }
         }
+        if !self.started {
+            if self.lobby_dirty {
+                self.lobby_dirty = false;
+                let msg = json!({"t": "lobby", "players": self.names(d)});
+                for &cid in self.players.keys() {
+                    self.host.send(cid, &msg);
+                }
+            }
+            return;
+        }
         if self.players.is_empty() || self.sent.elapsed() < STATE_EVERY {
             return;
         }
-        let data = save::dump(d).to_string();
+        // el estado y quién falta elegir (las acciones no van en el guardado)
+        let wait = json!(d.heroes.iter().map(needs_input).collect::<Vec<_>>()).to_string();
+        let data = format!("{},\"wait\":{wait}", save::dump(d));
         if data == self.last {
             return;
         }
         self.sent = Instant::now();
+        let (save, _) = data.split_once(",\"wait\":").unwrap_or((&data, ""));
         for (&cid, &i) in &self.players {
-            let msg = format!("{{\"t\":\"state\",\"you\":{i},\"save\":{data}}}\n");
+            let msg = format!("{{\"t\":\"state\",\"you\":{i},\"wait\":{wait},\"save\":{save}}}\n");
             self.host.send_raw(cid, msg.as_bytes());
         }
         self.last = data;
@@ -434,6 +478,8 @@ pub struct ClientGame {
     inbox: Receiver<Value>,
     pub refused: Option<String>,
     pub closed: bool,
+    /// Sala de espera: los nombres que mandó el host (se toma al mostrarlo).
+    pub lobby: Option<Vec<String>>,
 }
 
 impl ClientGame {
@@ -443,7 +489,7 @@ impl ClientGame {
         stream.set_nodelay(true)?;
         let (tx, inbox) = channel();
         read_loop(stream.try_clone()?, tx, |m| m);
-        let mut g = Self { stream, inbox, refused: None, closed: false };
+        let mut g = Self { stream, inbox, refused: None, closed: false, lobby: None };
         g.send(&json!({"t": "hello", "version": game::VERSION, "hash": game::registry::content_hash(),
                        "name": c["name"], "char": characters::id(c), "class": c["class"],
                        "abilities": characters::abilities(c)}));
@@ -460,12 +506,17 @@ impl ClientGame {
         self.send(&json!({"t": "action", "a": action_v(a)}));
     }
 
-    pub fn pump(&mut self) -> Option<Dungeon> {
+    /// La partida del último estado y quién falta elegir (por héroe).
+    pub fn pump(&mut self) -> Option<(Dungeon, Vec<bool>)> {
         let mut latest = None;
         while let Ok(m) = self.inbox.try_recv() {
             match m["t"].as_str().unwrap_or("") {
                 "state" => latest = Some(m),
                 "refused" => self.refused = Some(m["why"].as_str().unwrap_or("rechazado").to_string()),
+                "lobby" => {
+                    let names = m["players"].as_array().map(|a| a.iter().filter_map(|n| n.as_str().map(str::to_string)).collect());
+                    self.lobby = names;
+                }
                 "leave" => self.closed = true,
                 _ => {}
             }
@@ -473,9 +524,10 @@ impl ClientGame {
         let mut m = latest?;
         let you = m["you"].as_u64()?;
         m["save"]["local"] = json!(you);
+        let wait = m["wait"].as_array().map_or(Vec::new(), |a| a.iter().map(|b| b.as_bool().unwrap_or(false)).collect());
         // ponytail: se rearma la partida entera (regenera los pisos con la seed) en cada estado; sin dados ni efectos
         // del host todavía (el cliente ve el resultado en el log)
-        save::load(&m["save"])
+        save::load(&m["save"]).map(|d| (d, wait))
     }
 }
 
@@ -527,12 +579,14 @@ mod tests {
         let classes = game::registry::load("classes").unwrap();
         let mut d = Dungeon::new_with(1, "pdri:warrior", game::dice::DEFAULT_SCORES);
         let mut host = HostGame::new("prueba").unwrap();
+        host.start();
         let c = characters::new_character("Cliente", "pdri:mage", game::dice::DEFAULT_SCORES);
         let mut cl = ClientGame::connect(SocketAddr::from(([127, 0, 0, 1], TCP_PORT)), &c).unwrap();
         let t0 = Instant::now();
         let got = loop {
             host.pump(&mut d, &classes);
-            if let Some(cd) = cl.pump() {
+            if let Some((cd, wait)) = cl.pump() {
+                assert_eq!(wait.len(), cd.heroes.len());
                 break cd;
             }
             assert!(t0.elapsed() < Duration::from_secs(5), "no llegó el estado");

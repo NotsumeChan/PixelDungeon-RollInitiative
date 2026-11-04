@@ -85,3 +85,14 @@ Configuración: Idioma = el del contenido (`game::registry::LANGS`: Español / E
 Red LAN: la lista de personajes suma CREAR LAN / UNIRSE (con el personaje elegido). `Window::Join` (`draw_join`): las
 partidas encontradas ("nombre - N jugadores - IP"; gris si es de otra versión o contenido), el aviso de la red
 (conectando, rechazado, se cortó) y VOLVER.
+
+Tanda del 2026-11-04 (pedidos del dueño tras probar en el teléfono):
+- Con 2+ héroes, fuera de combate: lista de los del piso con ✓ / casilla vacía (Icons CHECKED / UNCHECKED) según ya
+  eligieron qué hacer, y "Esperando a ..." cuando la partida espera a otro (en combate, al que le toca).
+- El log muestra a cada uno sus avisos privados (`Dungeon::tell`) y los de todos.
+- Barra: botón del rasgo de clase (ícono de la clase de Icons.java; gris si el Segundo Aliento ya se usó).
+- Título: Salir arriba a la derecha (Icons.EXIT). Lista de personajes: VOLVER. Sala de espera (`Window::Lobby`).
+- Configuración: "Mostrar" en la fila de FPS (el contador en la partida, `showFPS` en Local.config).
+- Vertical (180 de ancho): la mochila usa 5 columnas, la ventana del ítem y la ficha no pasan del ancho (la ficha
+  parte las líneas largas), la lista de personajes usa 3 líneas por fila, y en la creación el nombre va debajo del
+  título. Creación en Android: teclado en pantalla al tocar el nombre o una característica.

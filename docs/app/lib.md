@@ -65,3 +65,9 @@ local) y espera el estado (`awaiting`, para no repetir pasos con la tecla manten
 (`World::update(dt, remote)`), no guarda, y R / nueva partida no hacen nada en red. Si la conexión se corta o el host
 lo rechaza, vuelve a la ventana Unirse con el motivo. Los héroes que nadie maneja (un jugador que se fue o una partida
 guardada con más héroes, fuera del hotseat) descansan solos. Menú principal cierra la partida LAN.
+
+Sala de espera: CREAR LAN carga la partida del personaje y abre `Window::Lobby` (quién se unió e IP); EMPEZAR
+(`StartLan`) entra a jugar, VOLVER cierra la partida LAN. El cliente espera en Unirse viendo quién está en la sala.
+`ui.waiting` (por héroe, ¿la partida espera que elija?): el host lo calcula cada frame y el cliente lo recibe con el
+estado. `UiAction::Trait` = F o el botón de la barra. Atrás de Android = Esc. Sin IME: el teclado del sistema no le
+pasa letras a una NativeActivity; la creación de personaje tiene teclado en pantalla.

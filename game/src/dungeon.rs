@@ -112,7 +112,8 @@ pub struct Dungeon {
     /// rng de juego (combate, IA); cada nivel genera con el suyo.
     pub rng: Rng,
     pub depth: i32,
-    pub messages: Vec<String>,
+    /// El log: (para quién, texto). None = para todos; Some(i) = un aviso sólo para el héroe i (`tell`).
+    pub messages: Vec<(Option<usize>, String)>,
     pub pending: Vec<Pending>,
     /// Tiradas que el héroe local ve; la UI las consume.
     pub dice_events: Vec<DiceEvent>,
@@ -331,7 +332,17 @@ impl Dungeon {
     }
 
     pub fn log(&mut self, msg: &str) {
-        self.messages.push(msg.to_string());
+        self.push_message(None, msg);
+    }
+
+    /// Un aviso sólo para el héroe `i` (lo que intentó y no pudo, lo que encontró, lo que comió...): en red y en el
+    /// hotseat, los demás no lo ven.
+    pub fn tell(&mut self, i: usize, msg: &str) {
+        self.push_message(Some(i), msg);
+    }
+
+    fn push_message(&mut self, to: Option<usize>, msg: &str) {
+        self.messages.push((to, msg.to_string()));
         let extra = self.messages.len().saturating_sub(MAX_MESSAGES);
         self.messages.drain(..extra);
     }
@@ -339,7 +350,7 @@ impl Dungeon {
     // --- pisos ---
     pub(crate) fn descend(&mut self, i: usize) {
         if self.heroes[i].depth >= MAX_DEPTH {
-            self.log("Fin de la demo: el piso 5 no está incluido");
+            self.tell(i, "Fin de la demo: el piso 5 no está incluido");
             return;
         }
         self.go_to(i, self.heroes[i].depth + 1);
@@ -347,7 +358,7 @@ impl Dungeon {
 
     pub(crate) fn ascend(&mut self, i: usize) {
         if self.heroes[i].depth <= 1 {
-            self.log("No puedes salir de la mazmorra");
+            self.tell(i, "No puedes salir de la mazmorra");
             return;
         }
         self.go_to(i, self.heroes[i].depth - 1);

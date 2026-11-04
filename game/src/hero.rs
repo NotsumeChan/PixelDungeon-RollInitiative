@@ -593,10 +593,10 @@ impl Dungeon {
             self.effect(Fx::Anim { who: ActorId::Hero(i), kind: "operate", cell: pos });
         }
         if found {
-            self.log("Encuentras algo oculto");
+            self.tell(i, "Encuentras algo oculto");
             self.observe();
         } else if intentional {
-            self.log("Buscas, pero no encuentras nada");
+            self.tell(i, "Buscas, pero no encuentras nada");
         }
     }
 
@@ -617,7 +617,7 @@ impl Dungeon {
             }
             h.level_up_spells();
             let msg = format!("Subes a nivel {}: +{gain} PV, competencia +{}", h.lvl, h.proficiency());
-            self.log(&msg);
+            self.tell(i, &msg);
             self.status(ActorId::Hero(i), "sube de nivel", Tone::Pos);
         }
     }
@@ -793,10 +793,10 @@ impl Dungeon {
             } else {
                 let new = h.hunger + HUNGER_STEP;
                 if new >= STARVING {
-                    self.log("¡Te mueres de hambre!");
+                    self.tell(i, "¡Te mueres de hambre!");
                     self.heroes[i].action = None;
                 } else if new >= HUNGRY && HUNGRY > h.hunger {
-                    self.log("Tienes hambre");
+                    self.tell(i, "Tienes hambre");
                 }
                 self.heroes[i].hunger = new.min(STARVING);
             }
@@ -885,7 +885,7 @@ impl Dungeon {
         }
         let range = Hero::range_of(item).1;
         if !h.fov[cell as usize] {
-            self.log("No ves esa casilla");
+            self.tell(i, "No ves esa casilla");
             return;
         }
         let (stop, cover) = self.shot(pos, cell);
@@ -893,7 +893,7 @@ impl Dungeon {
             return;
         }
         if distance(pos, stop) > range {
-            self.log("Está demasiado lejos");
+            self.tell(i, "Está demasiado lejos");
             return;
         }
         let Some(one) = self.take_one(i, slot) else { return };
@@ -943,9 +943,9 @@ impl Dungeon {
         heap.kind = HeapKind::Heap;
         if heap.items.is_empty() {
             self.floor_mut().level.heaps.remove(&cell);
-            self.log("Está vacío");
+            self.tell(i, "Está vacío");
         } else {
-            self.log(msg);
+            self.tell(i, msg);
         }
         self.effect(Fx::Anim { who: ActorId::Hero(i), kind: "operate", cell });
         self.spend(ActorId::Hero(i), TIME_TO_OPEN);
@@ -961,7 +961,7 @@ impl Dungeon {
         let item = heap.items[0].clone();
         let msg = if item.id == GOLD { format!("Recoges {} de oro", item.quantity) } else { format!("Recoges {}", self.item_name(&item)) };
         if self.collect(i, item).is_err() {
-            self.log("Tu mochila está llena");
+            self.tell(i, "Tu mochila está llena");
             return;
         }
         let heaps = &mut self.floor_mut().level.heaps;
@@ -970,7 +970,7 @@ impl Dungeon {
         if heap.items.is_empty() {
             heaps.remove(&pos);
         }
-        self.log(&msg);
+        self.tell(i, &msg);
         self.spend(ActorId::Hero(i), TIME_TO_PICK_UP);
     }
 
@@ -984,7 +984,7 @@ impl Dungeon {
                 self.take_one(i, slot);
                 let h = &mut self.heroes[i];
                 h.hunger = (h.hunger - item.data["energy"].as_f64().unwrap_or(0.0)).max(0.0);
-                self.log(&format!("Comes {}", text(&item.data["name"])));
+                self.tell(i, &format!("Comes {}", text(&item.data["name"])));
                 self.effect(Fx::Anim { who: me, kind: "operate", cell: pos });
                 self.spend(me, TIME_TO_EAT);
             }
@@ -1022,7 +1022,7 @@ impl Dungeon {
                     o.cursed_known = true;
                     let o = o.clone();
                     let name = self.item_name(&o);
-                    self.log(&format!("No puedes quitarte {name}: está maldito"));
+                    self.tell(i, &format!("No puedes quitarte {name}: está maldito"));
                     return;
                 }
                 let mut new = h.backpack.remove(k);
@@ -1034,7 +1034,7 @@ impl Dungeon {
                     h.backpack.push(o);
                 }
                 let name = self.item_name(&item);
-                self.log(&format!("Te equipas {name}{}", if cursed { ": ¡está maldito!" } else { "" }));
+                self.tell(i, &format!("Te equipas {name}{}", if cursed { ": ¡está maldito!" } else { "" }));
                 self.spend(me, TIME_TO_EQUIP * if armor { 2.0 } else { 1.0 });
             }
             Verb::Unequip | Verb::Drop if item.cursed && !matches!(slot, Slot::Pack(_)) => {
@@ -1044,11 +1044,11 @@ impl Dungeon {
                 }
                 let name = self.item_name(&item);
                 let what = if verb == Verb::Drop { "soltar" } else { "quitarte" };
-                self.log(&format!("No puedes {what} {name}: está maldito"));
+                self.tell(i, &format!("No puedes {what} {name}: está maldito"));
             }
             Verb::Unequip if !matches!(slot, Slot::Pack(_)) => {
                 if self.heroes[i].backpack.len() >= BACKPACK_SIZE {
-                    self.log("Tu mochila está llena");
+                    self.tell(i, "Tu mochila está llena");
                     return;
                 }
                 let it = self.take_one(i, slot).unwrap();
@@ -1082,13 +1082,13 @@ impl Dungeon {
             "heal" => {
                 let ht = self.heroes[i].ch.ht;
                 self.heal(i, ht);
-                self.log("Tus heridas se cierran");
+                self.tell(i, "Tus heridas se cierran");
             }
             "strength" => {
                 let s = &mut self.heroes[i].abilities[0];
                 *s = (*s + 1).min(20);
                 let msg = format!("Te sientes más fuerte: FUE {s}");
-                self.log(&msg);
+                self.tell(i, &msg);
             }
             "experience" => {
                 let h = &self.heroes[i];
@@ -1105,7 +1105,7 @@ impl Dungeon {
                 };
                 self.known.insert(id);
                 let name = self.item_name(&self.heroes[i].item(slot).unwrap().clone());
-                self.log(&format!("Es {name}"));
+                self.tell(i, &format!("Es {name}"));
             }
             "upgrade" => {
                 let Some(slot) = target else { return };
@@ -1114,7 +1114,7 @@ impl Dungeon {
                 t.cursed = false;
                 t.cursed_known = true;
                 let name = text(&t.data["name"]);
-                self.log(&format!("Tu {name} brilla"));
+                self.tell(i, &format!("Tu {name} brilla"));
             }
             "remove_curse" => {
                 let h = &mut self.heroes[i];
@@ -1126,7 +1126,7 @@ impl Dungeon {
                         any = true;
                     }
                 }
-                self.log(if any { "Una luz limpia tu equipo" } else { "Sientes una calma extraña" });
+                self.tell(i, if any { "Una luz limpia tu equipo" } else { "Sientes una calma extraña" });
             }
             "magic_mapping" => {
                 for c in 0..LENGTH {
@@ -1140,19 +1140,19 @@ impl Dungeon {
                 }
                 self.observe();
                 self.view_changed = true;
-                self.log("Recuerdas el mapa de este piso");
+                self.tell(i, "Recuerdas el mapa de este piso");
             }
             "teleport" => {
                 let mut rng = self.rng.clone();
                 let pos = self.level().random_respawn_cell(&mut rng, |c| self.find_char(c).is_some());
                 self.rng = rng;
                 if pos == -1 {
-                    self.log("No pasa nada");
+                    self.tell(i, "No pasa nada");
                     return;
                 }
                 self.place_char(ActorId::Hero(i), pos);
                 self.heroes[i].action = None;
-                self.log("Apareces en otro lugar");
+                self.tell(i, "Apareces en otro lugar");
             }
             _ => {}
         }

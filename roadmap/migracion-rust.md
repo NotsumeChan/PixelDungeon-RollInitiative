@@ -168,6 +168,14 @@ Para probar (demo): en la PC abrir los puertos si ufw está activo (`sudo ufw al
 CREAR LAN; teléfono (misma Wi-Fi): UNIRSE, tocar la partida. Mirar: que aparezca la partida, entrar, moverse y pelear
 los dos (en combate cada uno en su turno), bajar de piso por separado, que el teléfono se vaya y vuelva (vuelve a su
 héroe), y que el host cierre (el teléfono vuelve a Unirse con el aviso).
+Arreglos tras la primera prueba del dueño (PC + teléfono, 2026-11-04): sala de espera al crear (EMPEZAR / VOLVER;
+el cliente ve quién está), lista de quién falta elegir acción y "Esperando a ...", teclado en pantalla para el nombre
+en Android, botón del rasgo de clase en la barra, avisos del log sólo para quien hizo la acción, margen a los costados
+en Android apaisado, ventanas que entran en vertical, VOLVER en la lista de personajes, Salir en el título, mostrar FPS
+como opción y el botón Atrás de Android como Esc. Para probar: todo eso en el teléfono, en vertical y apaisado.
+Pedido del dueño, después: **chat de texto** en la partida LAN (mensaje `chat` cliente -> host -> todos; en el
+teléfono, con el teclado en pantalla).
+
 Pendientes de R6: personaje portátil (paso 5: el cliente entra con nivel 1 y equipo inicial y al irse no se guarda su
 progreso), sacar al héroe que se va, que el cliente vea dados y efectos, aplicar el estado sin rearmar la partida
 (hoy regenera los pisos en cada estado: puede trabar un poco en el teléfono), el teléfono como host (para recibir

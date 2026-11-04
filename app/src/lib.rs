@@ -23,7 +23,7 @@ use winit::application::ApplicationHandler;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, TouchPhase, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::keyboard::{Key, KeyCode, PhysicalKey};
+use winit::keyboard::{Key, KeyCode, NamedKey, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 use atlas::Atlas;
@@ -381,7 +381,6 @@ impl App {
             self.input.press = None;
             let under = self.ui.click(q, false);
             self.ui.create.release(under.as_ref(), q);
-            self.sync_ime();
             return;
         }
         if self.input.press.take().is_none() || self.input.dragging {
@@ -439,10 +438,30 @@ impl App {
                 self.quit = true;
             }
             UiAction::OpenRoster => {
-                if !matches!(self.net, Net::Client(_)) {
+                // desde el título (sala de espera, Unirse): se deja la partida LAN y de buscar
+                if self.title {
+                    self.net = Net::Off;
                     self.browser = None;
                 }
                 self.open_roster();
+            }
+            UiAction::StartLan => {
+                if let Net::Host(h) = &mut self.net {
+                    h.start();
+                }
+                self.title = false;
+                self.ui = Ui::new();
+                self.pan = [0.0; 2];
+                self.lan_status.clear();
+            }
+            UiAction::Trait => {
+                // rasgo de clase: Segundo Aliento, o el libro de conjuros (F, o el botón de la barra)
+                let h = self.world.d.local();
+                if h.has_trait("pdri:second_wind") {
+                    self.ui_action(UiAction::Act(Action::SecondWind));
+                } else if h.spellcasting().is_some() {
+                    self.ui.window = Some(UiWindow::Spells);
+                }
             }
             UiAction::HostLan => {
                 let Some(c) = self.ui.roster_sel.and_then(|i| self.roster.get(i)).cloned() else { return };
@@ -453,9 +472,13 @@ impl App {
                 }
                 match net::HostGame::new(&name) {
                     Ok(h) => {
+                        // sala de espera: la partida queda cargada y empieza con EMPEZAR
                         self.net = Net::Host(h);
-                        let ip = net::local_ip();
-                        self.world.d.log(&format!("Partida LAN abierta ({ip}): los demas entran con UNIRSE"));
+                        self.title = true;
+                        self.ui = Ui::new();
+                        self.ui.in_title = true;
+                        self.ui.window = Some(UiWindow::Lobby);
+                        self.lan_status = format!("Partida abierta en {}.", net::local_ip());
                     }
                     Err(e) => self.world.d.log(&format!("No se pudo abrir la partida LAN: {e}")),
                 }
@@ -515,6 +538,7 @@ impl App {
                 self.open_roster();
             }
             UiAction::SetFps(f) => self.config.set_fps(f),
+            UiAction::SetShowFps(on) => self.config.set_show_fps(on),
             UiAction::SetLanguage(code) => {
                 // lo que ya está en la partida (nombres de mobs) cambia con lo próximo que se cargue
                 self.config.set_language(code);
@@ -562,14 +586,12 @@ impl App {
                     log::warn!("no se pudo guardar la lista de personajes: {e}");
                 }
                 self.start(c);
-                self.sync_ime();
             }
             UiAction::Create(c) => {
                 if matches!(c, ui::Cr::New) {
                     self.ui.window = Some(UiWindow::Create);
                 }
                 self.ui.create.apply(c, new_seed());
-                self.sync_ime();
             }
             UiAction::MainMenu => {
                 self.autosave();
@@ -697,8 +719,10 @@ impl App {
                 // Esc en la creación vuelve a la lista de personajes
                 KeyCode::Escape if matches!(self.ui.window, Some(UiWindow::Create)) => {
                     self.ui.create.focus = None;
-                    self.sync_ime();
                     self.open_roster();
+                }
+                KeyCode::Escape if matches!(self.ui.window, Some(UiWindow::Lobby | UiWindow::Join)) => {
+                    self.ui_action(UiAction::OpenRoster)
                 }
                 KeyCode::Escape => self.ui.window = None,
                 KeyCode::F11 => self.ui_action(UiAction::SetFullscreen(!self.config.fullscreen)),
@@ -729,14 +753,7 @@ impl App {
             KeyCode::Escape => self.ui.window = Some(UiWindow::Menu),
             KeyCode::F11 => self.ui_action(UiAction::SetFullscreen(!self.config.fullscreen)),
             // rasgo de clase: Segundo Aliento, o el libro de conjuros
-            KeyCode::KeyF if free => {
-                let h = self.world.d.local();
-                if h.has_trait("pdri:second_wind") {
-                    self.ui_action(UiAction::Act(Action::SecondWind));
-                } else if h.spellcasting().is_some() {
-                    self.ui.window = Some(UiWindow::Spells);
-                }
-            }
+            KeyCode::KeyF if free => self.ui_action(UiAction::Trait),
             _ => match bind {
                 Some(Bind::Wait) if free => self.ui_action(UiAction::Act(Action::Rest)),
                 Some(Bind::Search) if free => self.ui_action(UiAction::Act(Action::Search)),
@@ -767,7 +784,10 @@ impl App {
                     c.send_action(a);
                     self.awaiting = true;
                 }
-                if let Some(nd) = c.pump() {
+                if let Some(names) = c.lobby.take() {
+                    self.lan_status = format!("En la sala: {}. Esperando que el host empiece...", names.join(", "));
+                }
+                if let Some((nd, wait)) = c.pump() {
                     self.world.d = nd;
                     self.awaiting = false;
                     if self.title {
@@ -778,6 +798,7 @@ impl App {
                         self.lan_status.clear();
                         self.browser = None;
                     }
+                    self.ui.waiting = wait;
                 }
                 if c.closed || c.refused.is_some() {
                     let why = c.refused.clone().map_or("Se corto la conexion con el host.".to_string(), |w| format!("El host no te dejo entrar: {w}."));
@@ -794,7 +815,11 @@ impl App {
                 }
             }
         }
-        if matches!(self.net, Net::Client(_)) || self.config.hotseat || self.title {
+        if matches!(self.net, Net::Client(_)) {
+            return;
+        }
+        self.ui.waiting = self.world.d.heroes.iter().map(net::needs_input).collect();
+        if self.config.hotseat || self.title {
             return;
         }
         let d = &mut self.world.d;
@@ -804,15 +829,6 @@ impl App {
             if !controlled && h.is_alive() && !h.is_downed() && h.action.is_none() {
                 h.action = Some(Action::Rest);
             }
-        }
-    }
-
-    /// Android: el teclado en pantalla aparece mientras la creación de personaje espera texto.
-    fn sync_ime(&self) {
-        if cfg!(target_os = "android")
-            && let Some(gpu) = &self.gpu
-        {
-            gpu.window.set_ime_allowed(self.title && self.ui.create.focus.is_some());
         }
     }
 
@@ -910,8 +926,14 @@ impl App {
         let w = &self.world;
         let classes = &self.class_rows;
         let rows = &self.roster_rows;
-        let lan: Vec<(String, bool)> = self
-            .lan_games
+        let lobby = match &self.net {
+            Net::Host(h) if matches!(self.ui.window, Some(UiWindow::Lobby)) => Some(h.names(&w.d)),
+            _ => None,
+        };
+        let lan: Vec<(String, bool)> = if let Some(names) = lobby {
+            names.into_iter().map(|n| (n, true)).collect()
+        } else {
+            self.lan_games
             .iter()
             .map(|g| {
                 let i = &g.info;
@@ -920,7 +942,8 @@ impl App {
                 let extra = if ok { String::new() } else { format!(" (v{})", i["version"].as_str().unwrap_or("?")) };
                 (format!("{name} - {} jugadores - {}{extra}", i["players"], g.addr.ip()), ok)
             })
-            .collect();
+            .collect()
+        };
         let status = &self.lan_status;
         self.ui.draw_title(&self.atlas, &self.font, &w.chars, &w.d, &self.config, &mut self.sprites, uw as f32, uh as f32, dt, classes, rows, &lan, status);
         let end = self.sprites.len() as u32;
@@ -1041,7 +1064,14 @@ impl ApplicationHandler for App {
             }
             WindowEvent::RedrawRequested => self.frame(),
             WindowEvent::KeyboardInput { event, .. } => {
-                if let PhysicalKey::Code(code) = event.physical_key {
+                // el botón Atrás de Android hace lo mismo que Esc (cerrar la ventana, volver, menú)
+                let back = event.logical_key == Key::Named(NamedKey::BrowserBack);
+                let code = match event.physical_key {
+                    _ if back => Some(KeyCode::Escape),
+                    PhysicalKey::Code(c) => Some(c),
+                    _ => None,
+                };
+                if let Some(code) = code {
                     let down = event.state == ElementState::Pressed;
                     // creación de personaje: el nombre o el número que se está escribiendo
                     if down && self.creating() && code != KeyCode::Escape {

@@ -56,6 +56,8 @@ un bonus para el último golpe; sólo LAN en la 1.0; cada jugador guarda su pers
 6. **UI**: Jugar -> "Crear partida (LAN)" / "Unirse" con la lista de partidas encontradas; sala de espera; quién falta
    elegir acción; nombre sobre cada héroe.
 7. **Hash de registros**: no se entra si el contenido (`data/`) no coincide. Prepara los mods.
+8. **Chat de texto** (pedido del dueño, 2026-11-04): mensajes entre jugadores de la partida (cliente -> host -> todos,
+   con nombre), en el log o en una ventana propia; en el teléfono con el teclado en pantalla.
 
 ## Riesgos
 - El cambio de modelo de turnos toca el corazón del juego (`game/actor.py`, `hero.py`, `mobs.py`): hacerlo con el modo

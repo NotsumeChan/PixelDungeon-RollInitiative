@@ -134,7 +134,7 @@ impl Dungeon {
             return;
         }
         if !self.heroes[i].second_wind {
-            self.log("Ya usaste el Segundo Aliento");
+            self.tell(i, "Ya usaste el Segundo Aliento");
             return;
         }
         self.heroes[i].second_wind = false;
@@ -168,7 +168,7 @@ impl Dungeon {
         let Some(sid) = self.heroes[i].spell_ids().get(k).cloned() else { return };
         let Some(s) = self.spell(&sid).cloned() else { return };
         if !self.heroes[i].proficient_armor() {
-            self.log("No puedes lanzar conjuros con una armadura sin competencia");
+            self.tell(i, "No puedes lanzar conjuros con una armadura sin competencia");
             return;
         }
         let pos = self.heroes[i].ch.pos;
@@ -179,26 +179,26 @@ impl Dungeon {
             "enemy" => {
                 let t = self.find_char(cell).filter(|&t| t != me && self.heroes[i].fov[cell as usize]);
                 let Some(t) = t else {
-                    self.log("Necesitas un enemigo a la vista");
+                    self.tell(i, "Necesitas un enemigo a la vista");
                     return;
                 };
                 let (stop, c) = self.shot(pos, cell);
                 if stop != cell {
-                    self.log("No hay línea de tiro");
+                    self.tell(i, "No hay línea de tiro");
                     return;
                 }
                 target = Some(t);
                 cover = c;
             }
             "cell" if !self.heroes[i].fov[cell as usize] => {
-                self.log("Necesitas una casilla a la vista");
+                self.tell(i, "Necesitas una casilla a la vista");
                 return;
             }
             "touch" => {
                 // uno mismo o un aliado al lado (también caído)
                 let t = self.find_char(cell);
                 if t != Some(me) && !(matches!(t, Some(ActorId::Hero(_))) && adjacent(pos, cell)) {
-                    self.log("Tócate a ti o a un aliado que esté al lado");
+                    self.tell(i, "Tócate a ti o a un aliado que esté al lado");
                     return;
                 }
                 target = t;
@@ -214,7 +214,7 @@ impl Dungeon {
             } else {
                 let slot = h.slot_for(level);
                 if slot == 0 {
-                    self.log("No te quedan espacios de conjuro");
+                    self.tell(i, "No te quedan espacios de conjuro");
                     return;
                 }
                 h.slots[slot as usize - 1] -= 1;

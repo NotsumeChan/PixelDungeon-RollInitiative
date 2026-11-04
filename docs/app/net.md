@@ -26,3 +26,7 @@ render; el juego llama a `pump` una vez por frame.
 Pendiente (ponytail): el personaje entra con nivel 1 y equipo inicial (personaje portátil, paso 5), al irse su héroe
 no sale de la partida, el cliente rearma la partida entera en cada estado (regenera los pisos) y no ve los dados ni
 los efectos del host (ve el resultado en el log), estado completo en vez de diferencias.
+
+Sala de espera: `HostGame` empieza sin correr la partida (`started = false`): suma a los que se unen y les manda
+`{"t": "lobby", "players": [...]}` al cambiar la lista; `start` (EMPEZAR) manda la partida a todos. El estado lleva
+`wait` (por héroe, si la partida espera que elija: `needs_input`) para la lista de quién falta.

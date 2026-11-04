@@ -125,7 +125,10 @@ fn floor_v(f: &Floor) -> Value {
 pub fn dump(d: &Dungeon) -> Value {
     let (mt, i) = d.rng.state();
     json!({"format": FORMAT, "version": VERSION, "saved": now(), "seed": d.seed, "rng": [mt, i],
-           "messages": d.messages, "known": d.known, "generator": d.generator.weights(),
+           "messages": d.messages.iter().map(|(to, m)| match to {
+               Some(i) => json!([i, m]),
+               None => json!(m),
+           }).collect::<Vec<_>>(), "known": d.known, "generator": d.generator.weights(),
            "quotas": [d.potions_of_strength, d.scrolls_of_upgrade],
            "rules": [d.rules.dot_death_saves, d.rules.save_half],
            "next_mob": d.next_mob, "next_buff": d.next_buff,
@@ -196,7 +199,12 @@ pub fn load(data: &Value) -> Option<Dungeon> {
     let mut d = Dungeon::new_with(seed, hds[0]["class"].as_str()?, ab0);
     let mt: Vec<u32> = ints(&data["rng"][0])?;
     d.rng = Rng::from_state(&mt, data["rng"][1].as_u64()? as usize)?;
-    d.messages = data["messages"].as_array()?.iter().filter_map(|m| m.as_str().map(str::to_string)).collect();
+    // un texto = para todos; [héroe, texto] = un aviso privado
+    let msg = |m: &Value| match m.as_str() {
+        Some(s) => Some((None, s.to_string())),
+        None => Some((Some(m[0].as_u64()? as usize), m[1].as_str()?.to_string())),
+    };
+    d.messages = data["messages"].as_array()?.iter().filter_map(msg).collect();
     d.known = data["known"].as_array()?.iter().filter_map(|k| k.as_str().map(str::to_string)).collect();
     let weights: Vec<f64> = data["generator"].as_array()?.iter().filter_map(Value::as_f64).collect();
     d.generator.set_weights(&weights);

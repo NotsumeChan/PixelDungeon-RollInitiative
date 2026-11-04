@@ -38,6 +38,11 @@ const TOOL_SEARCH: [u32; 4] = [20, 7, 20, 25];
 const TOOL_INFO: [u32; 4] = [40, 7, 21, 25];
 /// Icons.java.
 const ICON_BUSY: [u32; 4] = [8, 0, 8, 8];
+const ICON_CHECKED: [u32; 4] = [54, 12, 12, 12];
+const ICON_UNCHECKED: [u32; 4] = [66, 12, 12, 12];
+const ICON_EXIT: [u32; 4] = [98, 0, 16, 16];
+/// Icons.WARRIOR / MAGE / ROGUE / HUNTRESS: 16x16 desde (0, 29), uno al lado del otro.
+const ICON_CLASS_Y: u32 = 29;
 const TOOL_BAG: [u32; 4] = [60, 7, 23, 25];
 const TOOL_QUICK: [u32; 4] = [83, 7, 22, 25];
 /// BuffIndicator.java: íconos de 7x7 en buffs.png; hambre y famélico son el 5 y el 6.
@@ -128,6 +133,8 @@ pub enum Window {
     Roster,
     /// Partidas encontradas en la LAN (UNIRSE).
     Join,
+    /// Sala de espera del host (CREAR LAN): quién se unió, EMPEZAR / VOLVER.
+    Lobby,
     /// Creación de personaje (NUEVO): nombre, clase y características con 4d6 (`Ui::create`).
     Create,
 }
@@ -150,6 +157,7 @@ pub enum UiAction {
     /// Un verbo de la ventana del ítem (leer con objetivo primero pide el objetivo).
     Verb(Slot, Verb),
     SetFps(u32),
+    SetShowFps(bool),
     SetFullscreen(bool),
     /// Idioma del contenido (código de `game::registry::LANGS`).
     SetLanguage(&'static str),
@@ -176,6 +184,10 @@ pub enum UiAction {
     OpenJoin,
     /// Unirse a la partida i de la lista, con el personaje elegido.
     JoinGame(usize),
+    /// Sala de espera: empezar la partida LAN.
+    StartLan,
+    /// Rasgo de clase: Segundo Aliento o el libro de conjuros (F o el botón de la barra).
+    Trait,
     SetUiScale(f32),
 }
 
@@ -255,6 +267,8 @@ pub struct Ui {
     /// Esperando la tecla nueva para esta acción (configuración).
     pub rebinding: Option<Bind>,
     pub create: Create,
+    /// Por héroe: ¿la partida espera que elija qué hacer? (la lista de quién falta, con 2+ héroes).
+    pub waiting: Vec<bool>,
     hot: Vec<Hot>,
     car_cur: Option<ActorId>,
     car_off: f32,
@@ -263,7 +277,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// La acción de la zona de más arriba bajo `p` (pixeles de la UI), o None si el click es para el mapa.
@@ -317,8 +331,11 @@ impl Ui {
         self.hot.clear();
         self.draw_log(font, d, out, w, h);
         self.draw_status(atlas, font, chars, d, out, w, dt);
-        font.text(out, &format!("FPS {fps}"), 2.0, 34.0, GREY);
+        if cfg.show_fps {
+            font.text(out, &format!("FPS {fps}"), 2.0, 34.0, GREY);
+        }
         self.draw_toolbar(atlas, font, d, out, w, h);
+        self.draw_waiting(atlas, font, d, out, w);
         match self.window.clone() {
             Some(Window::Info { icon, title, text, hp }) => self.draw_info(atlas, font, chars, d, out, w, h, icon, &title, &text, hp),
             Some(Window::Hero) => self.draw_hero(atlas, font, d, out, w, h),
@@ -327,7 +344,7 @@ impl Ui {
             Some(Window::Item(slot)) => self.draw_item(atlas, font, d, out, w, h, slot),
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             Some(Window::Spells) => self.draw_spells(atlas, font, d, out, w, h),
-            Some(Window::Create | Window::Page(_) | Window::Roster | Window::Join) => self.window = None, // sólo en el título
+            Some(Window::Create | Window::Page(_) | Window::Roster | Window::Join | Window::Lobby) => self.window = None, // sólo en el título
             Some(Window::Rules) => self.draw_rules(atlas, font, d, out, w, h),
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
             None => {
@@ -350,8 +367,9 @@ impl Ui {
 
     fn draw_log(&self, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
         let bottom = h - TOOLBAR_H - 1.0;
-        let first = d.messages.len().saturating_sub(LOG_LINES);
-        for (i, msg) in d.messages[first..].iter().enumerate() {
+        let mine: Vec<&String> = d.messages.iter().filter(|m| m.0.is_none_or(|to| to == d.hero)).map(|m| &m.1).collect();
+        let first = mine.len().saturating_sub(LOG_LINES);
+        for (i, msg) in mine[first..].iter().enumerate() {
             font.text(out, msg, 2.0, bottom - (LOG_LINES - i) as f32 * LOG_LINE_H, WHITE);
         }
         let me = d.local();
@@ -517,6 +535,51 @@ impl Ui {
             out.push(piece(atlas, TOOLBAR, region, [x, y], size, WHITE));
             self.hot([x, y, size[0], size[1]], act, Some(tip));
         }
+        // rasgo de clase (F): en el teléfono no hay teclado. El ícono de la clase de Icons.java
+        if me.has_trait("pdri:second_wind") || me.spellcasting().is_some() {
+            let x = 61.0;
+            out.push(piece(atlas, TOOLBAR, TOOL_QUICK, [x, y], [22.0, 25.0], WHITE));
+            let k = ["pdri:warrior", "pdri:mage", "pdri:rogue", "pdri:huntress"].iter().position(|c| *c == me.class_key).unwrap_or(0);
+            let used = me.has_trait("pdri:second_wind") && !me.second_wind;
+            let alpha = if used { 0.4 } else { 1.0 };
+            out.push(piece(atlas, ICONS, [k as u32 * 16, ICON_CLASS_Y, 16, 16], [x + 3.0, y + 5.0], [16.0, 16.0], [1.0, 1.0, 1.0, alpha]));
+            let tip = if me.has_trait("pdri:second_wind") { "Segundo Aliento (F)" } else { "Conjuros (F)" };
+            self.hot([x, y, 22.0, 25.0], UiAction::Trait, Some(tip));
+        }
+    }
+
+    /// Con 2+ héroes, fuera de combate: la lista de los del piso con ✓ si ya eligieron qué hacer (en combate manda el
+    /// carrusel de iniciativa). Y si la partida espera a otro, a quién.
+    fn draw_waiting(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32) {
+        if d.heroes.len() < 2 || self.waiting.len() != d.heroes.len() {
+            return;
+        }
+        let here: Vec<usize> = d.here().collect();
+        let fight = d.floor().scheduler.order.is_some();
+        if !fight {
+            for (row, &i) in here.iter().enumerate() {
+                let y = 45.0 + row as f32 * 13.0;
+                let region = if self.waiting[i] { ICON_UNCHECKED } else { ICON_CHECKED };
+                out.push(piece(atlas, ICONS, region, [2.0, y], [12.0, 12.0], WHITE));
+                let h = &d.heroes[i];
+                let color = if !h.is_alive() || h.is_downed() { GREY } else if i == d.hero { YELLOW } else { WHITE };
+                font.text(out, &h.ch.name, 16.0, y + 2.0, color);
+            }
+        }
+        let others: Vec<&str> = match d.floor().scheduler.current() {
+            Some(ActorId::Hero(j)) if fight && j != d.hero => vec![d.heroes[j].ch.name.as_str()],
+            _ if fight => Vec::new(),
+            // fuera de combate: los que faltan, una vez que elegiste
+            _ if !self.waiting[d.hero] => here.iter().filter(|&&i| i != d.hero && self.waiting[i]).map(|&i| d.heroes[i].ch.name.as_str()).collect(),
+            _ => Vec::new(),
+        };
+        if !others.is_empty() && d.local().is_alive() {
+            let msg = format!("Esperando a {}", others.join(", "));
+            let tw = font.width(&msg);
+            let x = ((w - tw - 8.0) / 2.0).floor();
+            out.push(atlas.rect([x, 48.0], [tw + 8.0, font.height() + 4.0], PROMPT_BG));
+            font.text(out, &msg, x + 4.0, 50.0, WHITE);
+        }
     }
 
     /// Una ranura de la mochila: fondo, ícono (o el de ranura vacía, tenue), cantidad y nivel conocido.
@@ -546,8 +609,10 @@ impl Ui {
     #[allow(clippy::too_many_arguments)]
     fn draw_bag(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32, mode: &BagMode) {
         let me = d.local();
-        let rows = 1 + BACKPACK_SIZE.div_ceil(BAG_COLS);
-        let cw = SLOT_SIZE * BAG_COLS as f32 + SLOT_MARGIN * (BAG_COLS - 1) as f32;
+        // las que entren (5 en vertical): la fila de equipo necesita 4 + el oro
+        let cols = (((w - 16.0 + SLOT_MARGIN) / (SLOT_SIZE + SLOT_MARGIN)).floor() as usize).clamp(5, BAG_COLS);
+        let rows = 1 + BACKPACK_SIZE.div_ceil(cols);
+        let cw = SLOT_SIZE * cols as f32 + SLOT_MARGIN * (cols - 1) as f32;
         let ch = BAG_TITLE_H + SLOT_SIZE * rows as f32 + SLOT_MARGIN * (rows - 1) as f32 + BAG_GAP;
         let c = [((w - cw) / 2.0).floor(), ((h - TOOLBAR_H - ch) / 2.0).floor(), cw, ch];
         self.hot([0.0, 0.0, w, h], UiAction::Close, None); // click afuera = cerrar
@@ -579,7 +644,7 @@ impl Ui {
             (cell(3, 0), None, Some(SLOT_RING)),
         ];
         for k in 0..BACKPACK_SIZE {
-            slots.push((cell(k % BAG_COLS, 1 + k / BAG_COLS), (k < me.backpack.len()).then_some(Slot::Pack(k)), None));
+            slots.push((cell(k % cols, 1 + k / cols), (k < me.backpack.len()).then_some(Slot::Pack(k)), None));
         }
         for (r, slot, placeholder) in slots {
             let item = slot.and_then(|s| me.item(s));
@@ -601,23 +666,24 @@ impl Ui {
             g.quantity = me.gold;
             g
         });
-        Self::draw_slot(atlas, font, d, out, cell(BAG_COLS - 1, 0), gold.as_ref(), Some(14), true);
+        Self::draw_slot(atlas, font, d, out, cell(cols - 1, 0), gold.as_ref(), Some(14), true);
     }
 
     /// WndItem: ícono, nombre, descripción con los números de 5e y un botón por acción.
     #[allow(clippy::too_many_arguments)]
     fn draw_item(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32, slot: Slot) {
         let me = d.local();
+        let iw = ITEM_WND_W.min(w - 16.0);
         let Some(item) = me.item(slot) else {
             self.window = None; // se gastó o se soltó
             return;
         };
-        let name = wrap(font, &d.item_title(item), ITEM_WND_W - 20.0);
-        let info = wrap(font, &d.item_info(item, me), ITEM_WND_W);
+        let name = wrap(font, &d.item_title(item), iw - 20.0);
+        let info = wrap(font, &d.item_info(item, me), iw);
         let btn_h = 16.0;
         let head = (name.len() as f32 * 9.0).max(16.0);
         let ch = head + 4.0 + info.len() as f32 * 9.0 + 4.0 + btn_h;
-        let c = [((w - ITEM_WND_W) / 2.0).floor(), ((h - TOOLBAR_H - ch) / 2.0).floor(), ITEM_WND_W, ch];
+        let c = [((w - iw) / 2.0).floor(), ((h - TOOLBAR_H - ch) / 2.0).floor(), iw, ch];
         self.hot([0.0, 0.0, w, h], UiAction::Close, None);
         Self::draw_window_tinted(atlas, out, c, BAG_TINT);
         self.hot(c, UiAction::Nothing, None);
@@ -629,7 +695,7 @@ impl Ui {
             font.text(out, line, c[0], c[1] + head + 4.0 + k as f32 * 9.0, WHITE);
         }
         let verbs = me.verbs(slot);
-        let bw = ((ITEM_WND_W - (verbs.len() as f32 - 1.0) * 2.0) / verbs.len() as f32).floor();
+        let bw = ((iw - (verbs.len() as f32 - 1.0) * 2.0) / verbs.len() as f32).floor();
         for (k, v) in verbs.into_iter().enumerate() {
             let rect = [c[0] + k as f32 * (bw + 2.0), c[1] + ch - btn_h, bw, btn_h];
             self.draw_button(atlas, font, out, rect, v.label(), Some(UiAction::Verb(slot, v)));
@@ -741,6 +807,9 @@ impl Ui {
             let names: Vec<String> = me.ch.buffs.iter().map(|b| b.name()).collect();
             lines.push((format!("Estados: {}", names.join(", ")), STATES));
         }
+        // en vertical las líneas largas se parten
+        let lines: Vec<(String, [f32; 4])> =
+            lines.into_iter().flat_map(|(l, c)| wrap(font, &l, w - 30.0).into_iter().map(move |x| (x, c))).collect();
         let cw = lines.iter().map(|l| font.width(&l.0)).fold(0.0, f32::max);
         let btn = if trait_btn.is_some() { MENU_BTN_H + MENU_GAP } else { 0.0 };
         let ch = lines.len() as f32 * LINE_H + btn;
@@ -926,6 +995,12 @@ impl Ui {
         let mut y = c[1];
         for (label, options) in rows {
             font.text(out, label, c[0], y, YELLOW);
+            if label == "FPS" {
+                // ver el contador en la partida: un botón chico en la línea del título (no suma una fila)
+                let t = if cfg.show_fps { "Mostrar: Si" } else { "Mostrar: No" };
+                let tw = font.width(t) + 8.0;
+                self.draw_button(atlas, font, out, [c[0] + sw - tw, y - 1.0, tw, LINE_H], t, Some(UiAction::SetShowFps(!cfg.show_fps)));
+            }
             y += LINE_H;
             let n = options.len() as f32;
             let bw = ((sw - MENU_GAP * (n - 1.0)) / n).floor();
@@ -972,9 +1047,10 @@ impl Ui {
     /// nuevo o borrarlo (pide confirmación). Sin personajes, JUGAR y BORRAR quedan grises. La rueda desplaza la lista.
     #[allow(clippy::too_many_arguments)]
     fn draw_roster(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, rows: &[RosterRow]) {
-        const ROW_H: f32 = 30.0;
+        let narrow = w < 260.0;
+        let row_h: f32 = if narrow { 40.0 } else { 30.0 };
         const LIST_Y: f32 = 15.0;
-        let visible = (((h - LIST_Y - 42.0) / (ROW_H + 2.0)).floor() as usize).max(1);
+        let visible = (((h - LIST_Y - 42.0) / (row_h + 2.0)).floor() as usize).max(1);
         self.roster_scroll = self.roster_scroll.min(rows.len().saturating_sub(visible));
         out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
         self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
@@ -984,15 +1060,23 @@ impl Ui {
         }
         for (row, i) in (self.roster_scroll..rows.len().min(self.roster_scroll + visible)).enumerate() {
             let c = &rows[i];
-            let r = [8.0, LIST_Y + row as f32 * (ROW_H + 2.0), w - 16.0, ROW_H];
+            let r = [8.0, LIST_Y + row as f32 * (row_h + 2.0), w - 16.0, row_h];
             let bg = if self.roster_sel == Some(i) { rgba(0x99, 0x88, 0x33, 0xAA) } else { SLOT_BG };
             out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg));
             if let Some(sheet) = c.sheet {
-                out.push(piece(atlas, sheet, [1, 0, 11, 15], [r[0] + 4.0, r[1] + ((ROW_H - 15.0) / 2.0).floor()], [11.0, 15.0], WHITE));
+                out.push(piece(atlas, sheet, [1, 0, 11, 15], [r[0] + 4.0, r[1] + ((row_h - 15.0) / 2.0).floor()], [11.0, 15.0], WHITE));
             }
-            font.text(out, &c.name, r[0] + 20.0, r[1] + 4.0, YELLOW);
-            font.text(out, &c.status, r[0] + 100.0, r[1] + 4.0, GREY);
-            font.text(out, &c.stats, r[0] + 20.0, r[1] + 17.0, WHITE);
+            if narrow {
+                font.text(out, &c.name, r[0] + 20.0, r[1] + 2.0, YELLOW);
+                font.text(out, &c.status, r[0] + 20.0, r[1] + 11.0, GREY);
+                for (k, l) in wrap(font, &c.stats, r[2] - 24.0).iter().take(2).enumerate() {
+                    font.text(out, l, r[0] + 20.0, r[1] + 20.0 + k as f32 * 9.0, WHITE);
+                }
+            } else {
+                font.text(out, &c.name, r[0] + 20.0, r[1] + 4.0, YELLOW);
+                font.text(out, &c.status, r[0] + 100.0, r[1] + 4.0, GREY);
+                font.text(out, &c.stats, r[0] + 20.0, r[1] + 17.0, WHITE);
+            }
             self.hot(r, UiAction::SelectChar(i), None);
         }
         let has = self.roster_sel.is_some_and(|s| s < rows.len());
@@ -1002,8 +1086,12 @@ impl Ui {
             (if self.confirm { "CONFIRMAR" } else { "BORRAR" }, has.then_some(UiAction::DeleteChar)),
         ];
         // red LAN: con el personaje elegido
-        let lan = [("CREAR LAN", has.then_some(UiAction::HostLan)), ("UNIRSE", has.then_some(UiAction::OpenJoin))];
-        let bw2 = ((w - 16.0 - 2.0) / 2.0).floor();
+        let lan = [
+            ("CREAR LAN", has.then_some(UiAction::HostLan)),
+            ("UNIRSE", has.then_some(UiAction::OpenJoin)),
+            ("VOLVER", Some(UiAction::Close)),
+        ];
+        let bw2 = ((w - 16.0 - 4.0) / 3.0).floor();
         for (k, (label, act)) in lan.into_iter().enumerate() {
             self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw2 + 2.0), h - 38.0, bw2, 16.0], label, act);
         }
@@ -1031,7 +1119,9 @@ impl Ui {
         font.text(out, "Crear personaje", 8.0, 3.0, YELLOW);
 
         // nombre
-        let r = [110.0, 1.0, w - 118.0, 11.0];
+        let narrow = w < 300.0;
+        let r = if narrow { [8.0, 13.0, w - 16.0, 11.0] } else { [110.0, 1.0, w - 118.0, 11.0] };
+        let top = if narrow { 27.0 } else { 15.0 };
         out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg(st.focus == Some(Focus::Name))));
         let shown = format!("{}{}", st.name, if st.focus == Some(Focus::Name) { "_" } else { "" });
         let (t, col) = if shown.is_empty() { ("Nombre: (click para escribir)".to_string(), GREY) } else { (format!("Nombre: {shown}"), WHITE) };
@@ -1042,7 +1132,7 @@ impl Ui {
         let cols = if w < 300.0 { 2 } else { 4 };
         let step = ((w - 12.0) / cols as f32).floor();
         for (k, c) in classes.iter().enumerate() {
-            let r = [8.0 + (k % cols) as f32 * step, 15.0 + (k / cols) as f32 * 38.0, step - 4.0, 34.0];
+            let r = [8.0 + (k % cols) as f32 * step, top + (k / cols) as f32 * 38.0, step - 4.0, 34.0];
             out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg(k == st.class)));
             if let Some(sheet) = c.sheet {
                 out.push(piece(atlas, sheet, [1, 0, 11, 15], [r[0] + 4.0, r[1] + ((r[3] - 15.0) / 2.0).floor()], [11.0, 15.0], WHITE));
@@ -1051,7 +1141,7 @@ impl Ui {
             font.text(out, &c.status, r[0] + 18.0, r[1] + 18.0, GREY);
             self.hot(r, UiAction::Create(Cr::Class(k)), None);
         }
-        let y = 15.0 + classes.len().div_ceil(cols) as f32 * 38.0; // 53 con 4 clases en 320
+        let y = top + classes.len().div_ceil(cols) as f32 * 38.0; // 53 con 4 clases en 320
 
         // características
         let step = ((w - 12.0) / 6.0).floor();
@@ -1129,6 +1219,32 @@ impl Ui {
             out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], SEL_BG));
             center(out, &v.to_string(), r, r[1] + 4.0, WHITE);
         }
+
+        // teclado en pantalla: Android (NativeActivity) no le pasa a la app las letras del teclado del sistema
+        if let (true, Some(f)) = (cfg!(target_os = "android"), st.focus) {
+            let rows: &[&str] = if f == Focus::Name { &["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"] } else { &["1234567890"] };
+            let (kw, kh) = (((w - 8.0) / 10.0).floor(), 18.0);
+            let total = (rows.len() + 1) as f32 * (kh + 2.0) + 2.0;
+            let ktop = h - total;
+            out.push(atlas.rect([0.0, ktop - 2.0], [w, total + 2.0], [0.0, 0.0, 0.0, 0.94]));
+            self.hot([0.0, ktop - 2.0, w, total + 2.0], UiAction::Nothing, None);
+            for (ri, row) in rows.iter().enumerate() {
+                let x0 = ((w - row.len() as f32 * kw) / 2.0).floor();
+                for (ci, ch) in row.chars().enumerate() {
+                    let r = [x0 + ci as f32 * kw + 1.0, ktop + ri as f32 * (kh + 2.0), kw - 2.0, kh];
+                    self.draw_button(atlas, font, out, r, &ch.to_string(), Some(UiAction::Create(Cr::Type(ch))));
+                }
+            }
+            let mut last = vec![("BORRAR", Cr::Back), ("LISTO", Cr::Done)];
+            if f == Focus::Name {
+                last.insert(0, ("ESPACIO", Cr::Type(' ')));
+            }
+            let y = ktop + rows.len() as f32 * (kh + 2.0);
+            let bw = ((w - 8.0 - 2.0 * (last.len() as f32 - 1.0)) / last.len() as f32).floor();
+            for (k, (label, cr)) in last.into_iter().enumerate() {
+                self.draw_button(atlas, font, out, [4.0 + k as f32 * (bw + 2.0), y, bw, kh], label, Some(UiAction::Create(cr)));
+            }
+        }
     }
 
     /// Unirse a una partida LAN: las partidas que contestaron (gris = otra versión o contenido) y el estado.
@@ -1153,6 +1269,29 @@ impl Ui {
             font.text(out, l, 8.0, y, if k == 0 && !status.is_empty() { YELLOW } else { GREY });
         }
         self.draw_button(atlas, font, out, [8.0, h - 20.0, w - 16.0, 16.0], "VOLVER", Some(UiAction::OpenRoster));
+    }
+
+    /// Sala de espera del host: quién se unió, la IP, EMPEZAR y VOLVER (cierra la partida).
+    #[allow(clippy::too_many_arguments)]
+    fn draw_lobby(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, players: &[(String, bool)], status: &str) {
+        out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
+        self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
+        font.text(out, "Sala de espera", 8.0, 3.0, YELLOW);
+        font.text(out, status, 8.0, 15.0, GREY);
+        for (i, (name, _)) in players.iter().enumerate() {
+            let r = [8.0, 28.0 + i as f32 * 14.0, w - 16.0, 12.0];
+            out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], SLOT_BG));
+            let label = if i == 0 { format!("{name} (host)") } else { name.clone() };
+            font.text(out, &label, r[0] + 4.0, r[1] + 2.0, if i == 0 { YELLOW } else { WHITE });
+        }
+        let help = "Los demas entran con UNIRSE desde su lista de personajes (misma red Wi-Fi). Tambien pueden entrar con la partida empezada.";
+        let lines = wrap(font, help, w - 16.0);
+        for (k, l) in lines.iter().enumerate() {
+            font.text(out, l, 8.0, h - 24.0 - (lines.len() - k) as f32 * LINE_H, GREY);
+        }
+        let bw = ((w - 16.0 - 2.0) / 2.0).floor();
+        self.draw_button(atlas, font, out, [8.0, h - 20.0, bw, 16.0], "EMPEZAR", Some(UiAction::StartLan));
+        self.draw_button(atlas, font, out, [8.0 + bw + 2.0, h - 20.0, bw, 16.0], "VOLVER", Some(UiAction::OpenRoster));
     }
 
     /// Pantalla de texto (Mods, Acerca de): párrafos centrados sobre negro; click en cualquier lado vuelve.
@@ -1233,6 +1372,8 @@ impl Ui {
             font.text(out, label, x + ((step - font.width(label)) / 2.0).floor(), iy + 34.0, WHITE);
             self.hot([x, iy, step, item], act, None);
         }
+        out.push(piece(atlas, ICONS, ICON_EXIT, [w - 17.0, 1.0], [16.0, 16.0], WHITE));
+        self.hot([w - 18.0, 0.0, 18.0, 18.0], UiAction::Quit, Some("Salir"));
         let v = format!("v {}", game::VERSION);
         font.text(out, &v, w - font.width(&v) - 1.0, h - font.height() - 1.0, GREY);
         match self.window.clone() {
@@ -1243,6 +1384,7 @@ impl Ui {
             Some(Window::Create) => self.draw_create(atlas, font, out, w, h, classes),
             Some(Window::Roster) => self.draw_roster(atlas, font, out, w, h, roster),
             Some(Window::Join) => self.draw_join(atlas, font, out, w, h, lan, lan_status),
+            Some(Window::Lobby) => self.draw_lobby(atlas, font, out, w, h, lan, lan_status),
             _ => self.draw_tooltip(atlas, font, out, w, h),
         }
     }
@@ -1342,6 +1484,10 @@ pub enum Cr {
     Clear,
     Unfocus,
     Start,
+    /// Teclado en pantalla: una tecla, borrar, listo.
+    Type(char),
+    Back,
+    Done,
 }
 
 const NAME_MAX: usize = 16;
@@ -1414,6 +1560,14 @@ impl Create {
                 None => (self.focus, self.typed) = (Some(Focus::Stat(a)), String::new()),
             },
             Cr::Start => {}
+            Cr::Type(c) => {
+                // nombre: mayúscula al empezar cada palabra
+                let up = self.focus != Some(Focus::Name) || self.name.is_empty() || self.name.ends_with(' ');
+                let c = if up { c } else { c.to_ascii_lowercase() };
+                self.key(winit::keyboard::KeyCode::KeyA, Some(&c.to_string()));
+            }
+            Cr::Back => _ = self.key(winit::keyboard::KeyCode::Backspace, None),
+            Cr::Done => self.focus = None,
         }
     }
 

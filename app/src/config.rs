@@ -109,6 +109,8 @@ pub fn assignable(k: KeyCode) -> bool {
 
 pub struct Config {
     pub max_fps: u32,
+    /// Contador de FPS en la partida (`showFPS`; sin archivo, apagado).
+    pub show_fps: bool,
     pub fullscreen: bool,
     /// Idioma del contenido (código de `game::registry::LANGS`; sin archivo, "es").
     pub language: &'static str,
@@ -134,7 +136,7 @@ fn path() -> PathBuf {
 impl Config {
     pub fn load() -> Self {
         let lines: Vec<String> = std::fs::read_to_string(path()).unwrap_or_default().lines().map(str::to_string).collect();
-        let mut c = Self { max_fps: DEFAULT_FPS, fullscreen: false, language: "es", dice_log: false, hotseat: false, resolution: "Hd", ui_scale: 1.0, ui_base: 1, keys: Vec::new(), lines };
+        let mut c = Self { max_fps: DEFAULT_FPS, show_fps: false, fullscreen: false, language: "es", dice_log: false, hotseat: false, resolution: "Hd", ui_scale: 1.0, ui_base: 1, keys: Vec::new(), lines };
         if let Some(s) = c.get("general", "ui_scale").and_then(|v| v.parse().ok()) {
             c.ui_scale = s;
         }
@@ -149,6 +151,7 @@ impl Config {
         if let Some(r) = c.get("general", "resolution").and_then(|v| RESOLUTIONS.iter().find(|r| r.0 == v)) {
             c.resolution = r.0;
         }
+        c.show_fps = c.get("general", "showFPS").is_some_and(|v| v.eq_ignore_ascii_case("true"));
         c.fullscreen = c.get("general", "fullscreen").is_some_and(|v| v.eq_ignore_ascii_case("true"));
         for b in Bind::ALL {
             let k = c.get("keys", b.ini()).and_then(|n| KEYS.iter().copied().find(|&k| key_name(k) == n));
@@ -188,6 +191,12 @@ impl Config {
     pub fn set_fps(&mut self, fps: u32) {
         self.max_fps = fps;
         self.set("general", "maxFPS", &fps.to_string());
+        self.save();
+    }
+
+    pub fn set_show_fps(&mut self, on: bool) {
+        self.show_fps = on;
+        self.set("general", "showFPS", if on { "true" } else { "false" });
         self.save();
     }
 

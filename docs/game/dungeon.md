@@ -43,3 +43,7 @@ R5d: `Pending::Land` (el proyectil del héroe después de verse el dado). `advan
 `roll_damage` usa el arma en curso del héroe (`Hero::wep`): el arco cuerpo a cuerpo tira 1d4.
 
 `set_local(i)`: el héroe que maneja la UI pasa a ser `i` (hotseat) y su piso queda en contexto; loguea "Turno de ...".
+
+Log: `messages` = (para quién, texto). `log` es para todos; `tell(i, ...)` es un aviso sólo para el héroe `i` (lo que
+intentó y no pudo, lo que encontró, comió, se equipó, subir de nivel...): en red y en el hotseat los demás no lo ven.
+El guardado escribe los privados como `[héroe, texto]`.
