@@ -9,7 +9,7 @@ Tres pasadas por frame:
 3. **Composición**: las dos texturas a la pantalla, cada una escalada con su factor entero y centrada (viewport), la
    UI encima con blending premultiplicado (se dibujó sobre transparente).
 
-- Zoom de la UI (`ui_zoom`): el mayor entero que deja al menos 320x180, como `core/Screen.py`. El de la cámara
+- Zoom de la UI (`ui_zoom`): el mayor entero que deja al menos 320x180 (180x320 en vertical), como `core/Screen.py`. El de la cámara
   (`set_world_scale`) lo elige `lib.rs`; el mundo visible es lo que entra con ese factor.
 - `world_view()`: tamaño del mundo visible, su posición en la ventana y su factor (para pasar del mouse a la celda).
 - `set_fog(rgba)`: sube las esquinas de la niebla (33x33) cuando cambia la vista.

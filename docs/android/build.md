@@ -9,7 +9,7 @@ APK sin Gradle ni Java: `NativeActivity` carga `libapp.so` (`android.app.lib_nam
 
 - Por defecto usa el SDK y el NDK que dejó la prueba de buildozer en `~/.buildozer/android/platform/`; en CI,
   `ANDROID_HOME` y `ANDROID_NDK_LATEST_HOME` del runner.
-- Sólo `arm64-v8a` (todos los teléfonos actuales). minSdk 26, targetSdk 35, GLES 3 requerido (wgpu usa Vulkan si
+- Sólo `arm64-v8a` (todos los teléfonos actuales). minSdk 26, targetSdk 35, orientación `fullUser` (gira con el teléfono y respeta el bloqueo de rotación; sin reiniciar la actividad), GLES 3 requerido (wgpu usa Vulkan si
   hay, si no GLES).
 - Permisos de red ya declarados para R6 (incluye `CHANGE_WIFI_MULTICAST_STATE` para el MulticastLock).
 - Instalar: `adb install -r target/android/pdri.apk`; abrir: `adb shell am start -n

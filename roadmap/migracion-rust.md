@@ -75,7 +75,8 @@ compatible con CPython, `geom`, `terrain`, `room`, `patch`, `painters`, `level`,
 
 **Estado R2** ✏️ escrito, pendiente de prueba del dueño: FOV (`game/fov.rs`), visión y puertas en `Level`; capas de
 mundo y UI con zoom entero cada una; agua animada, tiles y niebla con LINEAR en la GPU; cámara que sigue al observador,
-arrastre, zoom con rueda / pellizco; observador con WASD o toque.
+arrastre, zoom con rueda / pellizco; observador con WASD o toque. Orientación vertical (pedido del dueño, sobre todo
+para Android): la app gira con el teléfono y en vertical la UI usa la referencia 180x320.
 
 R0 va primero a propósito: Android fue lo que rompió Python. Si `wgpu` + `winit` no levanta en el teléfono, se sabe
 antes de portar una sola línea de lógica.

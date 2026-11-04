@@ -139,9 +139,11 @@ fn attach(view: &wgpu::TextureView, clear: wgpu::Color) -> [Option<wgpu::RenderP
     })]
 }
 
-/// Zoom entero de la UI para una ventana (como `core/Screen.py`).
+/// Zoom entero de la UI para una ventana (como `core/Screen.py`). En vertical (más alta que ancha) la referencia
+/// se invierte (180x320): pixeles grandes en el teléfono parado, no una UI diminuta.
 fn ui_zoom(w: u32, h: u32) -> u32 {
-    (w / BASE_W).min(h / BASE_H).max(1)
+    let (bw, bh) = if h > w { (BASE_H, BASE_W) } else { (BASE_W, BASE_H) };
+    (w / bw).min(h / bh).max(1)
 }
 
 impl Gpu {
