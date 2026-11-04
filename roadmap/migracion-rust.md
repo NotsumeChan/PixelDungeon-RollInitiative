@@ -106,10 +106,19 @@ ficha, los tooltips con el mouse, y en el teléfono que los botones se puedan to
 Quedan para R5 (dependen de ítems y estados): mochila, accesos rápidos, íconos de estados, partículas de trampas y
 conjuros, configuración. El indicador de ocupado titila en vez de girar (el lote no rota sprites).
 
-**Siguiente: R5**, primero la parte que llega a la 0.7 del prototipo: rasgos de clase (Segundo Aliento, Ataque
-Furtivo, conjuros del Mago y del Explorador), salvaciones, estados como datos (`data/buffs.json`), trampas, ítems y
-mochila, armas a distancia (arrojadizas, bumerán, arco), configuración (idioma, FPS, pantalla completa). Después el
-resto de R5 para la 0.8 (guardado, creación de personaje, lista de personajes, reglas de la partida, hotseat).
+**Estado R5a** ✏️ escrito (2026-11-04), pendiente de prueba del dueño: ítems (`game/items.rs`: generador, montones,
+apariencias sin identificar, nombres e info con los números de 5e), montones en el piso, cofres / tumbas / restos,
+loot de los mobs, mochila de 19, oro, accesos rápidos (1 / 2, click derecho para elegir), comer, beber, leer (con
+objetivo: identificar, mejorar), equipar / quitar / soltar con maldiciones, hambre, y en la UI la mochila, la ventana
+del ítem y el ícono de hambre. Verificado: misma seed = mismas apariencias, mobs y montones que el prototipo (5 seeds x
+2 clases). **Versión 0.4.0** (ver `roadmap/versiones.md`).
+Para probar: recoger y abrir cofres, identificar una poción bebiéndola, leer identificar / mejorar eligiendo el
+objetivo, equipar algo maldito, los accesos rápidos, pasar hambre.
+
+**Siguiente: R5b** (estados como datos `data/buffs.json`, salvaciones, trampas), **R5c** (rasgos de clase y
+conjuros), **R5d** (armas a distancia: arrojadizas, bumerán, arco), **R5e** (configuración: idioma, FPS, pantalla
+completa) = **0.7**. Después el resto de R5 para la 0.8 (guardado, creación y lista de personajes, reglas de la
+partida, hotseat).
 
 **Pendiente del dueño** (al cerrar la sesión del 2026-11-03):
 - `git push origin main` (R1, R2 y la orientación vertical están sólo en local).
