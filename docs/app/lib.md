@@ -29,3 +29,6 @@ Tope de FPS (`config.max_fps`): `about_to_wait` espera con `ControlFlow::WaitUnt
 `Poll` y se dibuja sin parar. Las teclas de juego salen de `Config` (configurables); F11 = pantalla completa.
 
 R5c: F = rasgo de clase (Segundo Aliento o el libro de conjuros); eligiendo el objetivo de un conjuro, el próximo click en el mapa lo lanza (Esc cancela).
+
+El juego arranca en la pantalla de título (`title`): sólo se dibuja la capa de UI y la partida de atrás no avanza.
+Jugar = partida nueva con la clase elegida. Esc cierra la ventana abierta; F11 = pantalla completa.

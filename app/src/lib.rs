@@ -40,7 +40,7 @@ const PINCH_STEP: f64 = 1.25; // cuánto tiene que cambiar la distancia entre de
 const CLASSES: [&str; 4] = ["pdri:warrior", "pdri:mage", "pdri:rogue", "pdri:huntress"];
 
 /// Hojas del atlas, en orden: los índices de `Atlas::rects`. Van dentro del binario (Android sin AssetManager).
-const SHEETS: [&[u8]; 11] = [
+const SHEETS: [&[u8]; 15] = [
     include_bytes!("../../Assets/Fonts/font1x.png"),
     include_bytes!("../../Assets/Tiles/tiles0.png"),
     include_bytes!("../../Assets/Tiles/water0.png"),
@@ -52,6 +52,10 @@ const SHEETS: [&[u8]; 11] = [
     include_bytes!("../../Assets/icons.png"),
     include_bytes!("../../Assets/Items/items.png"),
     include_bytes!("../../Assets/buffs.png"),
+    include_bytes!("../../Assets/arcs1.png"),
+    include_bytes!("../../Assets/arcs2.png"),
+    include_bytes!("../../Assets/banners.png"),
+    include_bytes!("../../Assets/dashboard.png"),
 ];
 const FONT: usize = 0;
 pub(crate) const TILES: usize = 1;
@@ -64,6 +68,10 @@ pub(crate) const EXP_BAR: usize = 7;
 pub(crate) const ICONS: usize = 8;
 pub(crate) const ITEMS: usize = 9;
 pub(crate) const BUFFS: usize = 10;
+pub(crate) const ARCS_BG: usize = 11;
+pub(crate) const ARCS_FG: usize = 12;
+pub(crate) const BANNERS: usize = 13;
+pub(crate) const DASHBOARD: usize = 14;
 
 /// La partida, sus personajes en pantalla y la animación de dados.
 struct World {
@@ -142,6 +150,10 @@ struct App {
     world: World,
     ui: Ui,
     config: Config,
+    /// En la pantalla de título (la partida de atrás no avanza).
+    title: bool,
+    /// Nombres de las clases jugables (data/classes.json), para elegir en el título.
+    class_names: Vec<String>,
     quit: bool,
     input: Input,
     pan: [f32; 2],      // desplazamiento de la cámara al arrastrar (pixeles del mundo)
@@ -171,6 +183,11 @@ impl App {
             world: World::new(new_seed(), 0),
             ui: Ui::new(),
             config: Config::load(),
+            title: true,
+            class_names: {
+                let c = game::registry::load("classes").unwrap_or_default();
+                CLASSES.iter().map(|k| c.get(*k).map_or(k.to_string(), |v| game::registry::text(&v["name"]))).collect()
+            },
             quit: false,
             input: Input::default(),
             pan: [0.0; 2],
@@ -248,6 +265,9 @@ impl App {
             self.ui_action(act);
             return;
         }
+        if self.title {
+            return; // el título no tiene mapa
+        }
         let Some(cell) = self.cell_at(p) else { return };
         if self.ui.examining {
             self.ui.examining = false;
@@ -291,6 +311,17 @@ impl App {
                 self.apply_fullscreen();
             }
             UiAction::Rebind(b) => self.ui.rebinding = Some(b),
+            UiAction::Play(k) => {
+                self.new_world(new_seed(), k);
+                self.ui.in_title = false;
+                self.title = false;
+            }
+            UiAction::MainMenu => {
+                // ponytail: la partida se pierde hasta que haya guardado (R5)
+                self.ui = Ui::new();
+                self.ui.in_title = true;
+                self.title = true;
+            }
             UiAction::Cast(k) => {
                 self.ui.window = None;
                 self.ui.casting = Some(k);
@@ -306,8 +337,10 @@ impl App {
                     self.ui.window = Some(UiWindow::Bag(BagMode::Quick(q)));
                     return;
                 };
-                if let Some(&verb) = h.verbs(slot).first() {
-                    self.ui_action(UiAction::Verb(slot, verb));
+                // la acción principal; si sólo se puede soltar (arrojadizas hasta R5d), se abre la ventana del ítem
+                match h.verbs(slot).first() {
+                    Some(&verb) if verb != Verb::Drop => self.ui_action(UiAction::Verb(slot, verb)),
+                    _ => self.ui.window = Some(UiWindow::Item(slot)),
                 }
             }
             UiAction::Verb(slot, verb) => {
@@ -400,6 +433,14 @@ impl App {
         if !down {
             return;
         }
+        if self.title {
+            match code {
+                KeyCode::Escape => self.ui.window = None,
+                KeyCode::F11 => self.ui_action(UiAction::SetFullscreen(!self.config.fullscreen)),
+                _ => {}
+            }
+            return;
+        }
         let free = self.ui.window.is_none();
         match code {
             KeyCode::KeyR => self.new_world(new_seed(), self.world.class),
@@ -447,10 +488,27 @@ impl App {
         self.pan = [0.0; 2];
     }
 
+    /// La pantalla de título: sólo la capa de UI.
+    fn frame_title(&mut self, dt: f32) {
+        let Some(gpu) = self.gpu.as_ref() else { return };
+        let (uw, uh) = gpu.ui_size();
+        self.ui.in_title = true;
+        self.sprites.clear();
+        let w = &self.world;
+        let classes = &self.class_names;
+        self.ui.draw_title(&self.atlas, &self.font, &w.chars, &w.d, &self.config, &mut self.sprites, uw as f32, uh as f32, dt, classes);
+        let end = self.sprites.len() as u32;
+        self.gpu.as_mut().unwrap().draw(&self.sprites, &[], 0..end);
+    }
+
     fn frame(&mut self) {
         let now = Instant::now();
         let dt = (now - self.last).as_secs_f32().min(0.1);
         self.last = now;
+        if self.title {
+            self.frame_title(dt);
+            return;
+        }
         self.frames += 1;
         if (now - self.fps_since).as_secs_f32() >= 1.0 {
             self.fps = self.frames;

@@ -135,6 +135,10 @@ cobertura (`game/spells.rs`, `game/ballistica.rs`), libro de conjuros (F) y el r
 conjuro y rasgo, que el daño espere al dado, Dormir sobre varios mobs, la Marca del cazador sumando 1d6, Ataque
 Furtivo con daga contra un mob dormido. Faltan los proyectiles y partículas de los conjuros.
 
+Arreglos tras la prueba del dueño (2026-11-04, 2a tanda): el acceso rápido de un arma arrojadiza ya no la suelta
+(abre su ventana hasta que exista lanzar); pantalla de título (Jugar con elección de clase, Acerca de, configuración)
+y "Menú principal" en el menú de la partida.
+
 **Siguiente: R5d** (armas a distancia: arrojadizas, bumerán, arco) = **0.7** junto con lo anterior; el idioma de
 R5e queda para después (estructura de traducción).
 

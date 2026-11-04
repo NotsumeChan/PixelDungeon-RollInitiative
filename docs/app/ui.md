@@ -38,3 +38,11 @@ presiona la tecla nueva; Esc cancela). La mochila y la ventana del ítem tienen 
 ranuras más oscuras (pedido del dueño: estaban muy blancas).
 
 R5c: libro de conjuros (F o desde la ficha): bono, CD, espacios y usos gratis; un botón por conjuro (gris si no se puede) que pide el objetivo en el mapa o se lanza sobre uno mismo. La ficha muestra el rasgo de clase con su botón (Segundo Aliento o Conjuros), para el teléfono.
+
+Pantalla de título (`draw_title`, TitleScene.java): arcos de fondo que se desplazan (`arcs1.png` / `arcs2.png`, el de
+adelante al doble), el banner con los letreros que laten, el dashboard (Jugar = elegir la clase; Acerca de), la
+configuración arriba a la izquierda y la versión abajo a la derecha. Sin Mods (1.x). El menú de la partida suma "Menú
+principal" (vuelve al título; la partida se pierde hasta que haya guardado).
+
+Acceso rápido: usa la acción principal del ítem; si sólo se puede soltar (las arrojadizas hasta R5d), abre la ventana
+del ítem en vez de soltarlo.

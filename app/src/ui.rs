@@ -17,7 +17,7 @@ use crate::font::Font;
 use crate::gpu::Sprite;
 use crate::config::{key_label, Bind, Config, FPS_OPTIONS};
 use crate::sprites::Chars;
-use crate::{BUFFS, CHROME, EXP_BAR, HP_BAR, ICONS, ITEMS, STATUS, TILES, TOOLBAR, WATER};
+use crate::{ARCS_BG, ARCS_FG, BANNERS, BUFFS, CHROME, DASHBOARD, EXP_BAR, HP_BAR, ICONS, ITEMS, STATUS, TILES, TOOLBAR, WATER};
 
 const LINE_H: f32 = 10.0;
 const LOG_LINES: usize = 4;
@@ -118,6 +118,9 @@ pub enum Window {
     Settings,
     /// Libro de conjuros (F).
     Spells,
+    /// Título: elegir la clase de la partida nueva.
+    /// ponytail: hasta la lista de personajes y la creación con dados (R5, con el guardado)
+    Classes,
 }
 
 /// Lo que hace un click en la UI; lo aplica la app.
@@ -143,6 +146,10 @@ pub enum UiAction {
     Rebind(Bind),
     /// Elegir el objetivo del conjuro k en el mapa.
     Cast(usize),
+    /// Título: partida nueva con la clase k.
+    Play(usize),
+    /// Partida: volver a la pantalla de título.
+    MainMenu,
 }
 
 struct Hot {
@@ -208,6 +215,8 @@ pub struct Ui {
     pub examining: bool,
     /// Eligiendo el objetivo del conjuro k (el próximo click en el mapa).
     pub casting: Option<usize>,
+    /// En la pantalla de título (la configuración vuelve al título, no al menú de la partida).
+    pub in_title: bool,
     /// Mouse en la capa de UI (tooltips); None en táctil.
     pub mouse: Option<[f32; 2]>,
     /// Esperando la tecla nueva para esta acción (configuración).
@@ -220,7 +229,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, mouse: None, rebinding: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, in_title: false, mouse: None, rebinding: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// La acción de la zona de más arriba bajo `p` (pixeles de la UI), o None si el click es para el mapa.
@@ -284,6 +293,7 @@ impl Ui {
             Some(Window::Item(slot)) => self.draw_item(atlas, font, d, out, w, h, slot),
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             Some(Window::Spells) => self.draw_spells(atlas, font, d, out, w, h),
+            Some(Window::Classes) => self.window = None, // sólo en el título
             None => {
                 self.draw_tooltip(atlas, font, out, w, h);
                 let casting = self.casting.and_then(|k| d.local().spell_ids().get(k).cloned());
@@ -777,6 +787,7 @@ impl Ui {
             rows.push(("Nueva partida", UiAction::NewGame));
         }
         rows.push(("Configuracion", UiAction::Open(Window::Settings)));
+        rows.push(("Menu principal", UiAction::MainMenu));
         rows.push(("Salir", UiAction::Quit));
         rows.push(("Volver al juego", UiAction::Close));
         let mh = rows.len() as f32 * (MENU_BTN_H + MENU_GAP) - MENU_GAP;
@@ -799,7 +810,8 @@ impl Ui {
         let row_h = LINE_H + MENU_BTN_H + MENU_GAP * 2.0;
         let ch = 2.0 * row_h + LINE_H + ctrl_rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP + MENU_BTN_H;
         let c = [((w - sw) / 2.0).floor(), ((h - ch) / 2.0).floor(), sw, ch];
-        self.hot([0.0, 0.0, w, h], UiAction::Open(Window::Menu), None); // click afuera = volver
+        let back = if self.in_title { UiAction::Close } else { UiAction::Open(Window::Menu) };
+        self.hot([0.0, 0.0, w, h], back.clone(), None); // click afuera = volver
         self.hot(c, UiAction::Nothing, None);
         Self::draw_window(atlas, out, c);
         let mut y = c[1];
@@ -838,7 +850,78 @@ impl Ui {
             }
         }
         y += ctrl_rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP;
-        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], "Volver", Some(UiAction::Open(Window::Menu)));
+        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], "Volver", Some(back));
+    }
+
+    /// Pantalla de título (TitleScene.java): arcos de fondo que se desplazan (el de adelante al doble), el banner con
+    /// los letreros que laten, el dashboard (Jugar, Acerca de), configuración arriba a la izquierda y la versión.
+    /// ponytail: sin Mods (1.x); los letreros se suman con alfa, no con mezcla aditiva
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_title(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, classes: &[String]) {
+        self.t += dt;
+        self.hot.clear();
+        // Archs: textura repetida, desplazada en Y (SCROLL_SPEED = 20; la de adelante, 40)
+        for (sheet, speed) in [(ARCS_BG, 20.0), (ARCS_FG, 40.0)] {
+            let [_, _, tw, th] = atlas.rects[sheet];
+            let (tw, th) = (tw as f32, th as f32);
+            let off_x = (tw / 4.0).floor() - (w % tw / 2.0).floor();
+            let mut y = -((self.t * speed) % th);
+            while y < h {
+                let mut x = -(off_x.rem_euclid(tw));
+                while x < w {
+                    out.push(piece(atlas, sheet, [0, 0, tw as u32, th as u32], [x, y.floor()], [tw, th], WHITE));
+                    x += tw;
+                }
+                y += th;
+            }
+        }
+        let item = 48.0; // DashboardItem.SIZE
+        let layout_h = 70.0 + item;
+        let (tx, ty) = (((w - 128.0) / 2.0).floor(), ((h - layout_h) / 2.0).floor());
+        out.push(piece(atlas, BANNERS, [0, 0, 128, 70], [tx, ty], [128.0, 70.0], WHITE));
+        let k = (-self.t).sin().max(0.0); // letreros: alfa = sin(-t), negativo = invisible
+        if k > 0.0 {
+            out.push(piece(atlas, BANNERS, [0, 161, 128, 57], [tx, ty], [128.0, 57.0], [1.0, 1.0, 1.0, k]));
+        }
+        let iy = ((h + layout_h) / 2.0).floor() - item;
+        for (icon, label, x, act) in [
+            (0u32, "Jugar", (w / 2.0).floor() - item, UiAction::Open(Window::Classes)),
+            (1, "Acerca de", (w / 2.0).floor(), UiAction::Open(Window::Info {
+                icon: None,
+                title: format!("PixelDungeon-RollInitiative v{}", game::VERSION),
+                text: "Roguelike basado en Pixel Dungeon de Watabou, con las reglas de D&D 5e y multijugador cooperativo.\n\nGPL v3. Arte y sonido del original.".into(),
+                hp: None,
+            })),
+        ] {
+            out.push(piece(atlas, DASHBOARD, [icon * 32, 0, 32, 32], [x + 8.0, iy], [32.0, 32.0], WHITE));
+            font.text(out, label, x + ((item - font.width(label)) / 2.0).floor(), iy + 34.0, WHITE);
+            self.hot([x, iy, item, item], act, None);
+        }
+        // PrefsButton: Icons.PREFS arriba a la izquierda
+        out.push(piece(atlas, ICONS, [30, 0, 16, 16], [1.0, 1.0], [16.0, 16.0], WHITE));
+        self.hot([1.0, 1.0, 16.0, 16.0], UiAction::Open(Window::Settings), Some("Configuracion"));
+        let v = format!("v {}", game::VERSION);
+        font.text(out, &v, w - font.width(&v) - 1.0, h - font.height() - 1.0, GREY);
+        match self.window.clone() {
+            Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
+            Some(Window::Info { icon, title, text, hp }) => self.draw_info(atlas, font, chars, d, out, w, h, icon, &title, &text, hp),
+            Some(Window::Classes) => {
+                let rows = classes.len() as f32 + 1.0;
+                let mh = rows * (MENU_BTN_H + MENU_GAP) - MENU_GAP + LINE_H;
+                let c = [((w - MENU_W) / 2.0).floor(), ((h - mh) / 2.0).floor(), MENU_W, mh];
+                self.hot([0.0, 0.0, w, h], UiAction::Close, None);
+                self.hot(c, UiAction::Nothing, None);
+                Self::draw_window(atlas, out, c);
+                font.text(out, "Elige la clase", c[0], c[1], YELLOW);
+                for (k, name) in classes.iter().enumerate() {
+                    let rect = [c[0], c[1] + LINE_H + k as f32 * (MENU_BTN_H + MENU_GAP), MENU_W, MENU_BTN_H];
+                    self.draw_button(atlas, font, out, rect, name, Some(UiAction::Play(k)));
+                }
+                let rect = [c[0], c[1] + LINE_H + classes.len() as f32 * (MENU_BTN_H + MENU_GAP), MENU_W, MENU_BTN_H];
+                self.draw_button(atlas, font, out, rect, "Volver", Some(UiAction::Close));
+            }
+            _ => self.draw_tooltip(atlas, font, out, w, h),
+        }
     }
 
     /// Texto de la zona bajo el mouse (la de más arriba), encima del mouse sin salirse de la pantalla.
