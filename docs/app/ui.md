@@ -19,3 +19,14 @@ que aplica la app. Un click que no toca la UI va al mapa.
   volver). Click afuera o Esc cierran.
 - Tooltips: el texto de la zona bajo el mouse, encima de él y sin salirse de la pantalla (sólo con mouse).
 - Faltan (R5): mochila, accesos rápidos, íconos de estados, configuración, reglas de la partida.
+
+R5a:
+- Barra: mochila (I) y 2 accesos rápidos (1, 2): click = usar con su acción principal (vacío: elegir), click derecho =
+  elegir. Muestran el ícono y la cantidad.
+- Mochila (WndBag): fila de equipo (arma, armadura, 2 anillos vacíos), el oro aparte y 19 ranuras con cantidad y
+  nivel conocido. Modos: ver (abre la ventana del ítem), elegir el objetivo de un pergamino (lo que no sirve sale
+  tenue), elegir el acceso rápido.
+- Ventana del ítem (WndItem): ícono, nombre, descripción con los números de 5e y un botón por acción.
+- `item_icon`: recorte de items.png o, sin sprite, el nombre achicado a 16x16. `draw_heaps`: los montones del piso
+  donde ya se vio (bajo la niebla).
+- Ícono de hambre (buffs.png) en el panel de estado.

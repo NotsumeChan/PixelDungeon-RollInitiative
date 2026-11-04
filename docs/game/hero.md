@@ -20,3 +20,16 @@
 
 `save_bonus(característica)`: mod + competencia si la clase la tiene (`save_prof`); la usa la ficha y las salvaciones
 de R5.
+
+R5a (Belongings.java, Hunger.java):
+- Mochila de 19 (`BACKPACK_SIZE`), oro aparte, kit inicial de la clase (`items`, conocido) y 2 accesos rápidos (por id;
+  el primero de la clase sale de `quick`). `Slot` dice dónde está un ítem (arma, armadura o mochila); `verbs` lo que
+  se puede hacer (la primera es la del acceso rápido).
+- Acciones: `PickUp` (parado encima), `Open` (cofre / tumba / restos desde al lado; lo de adentro queda como montón),
+  `Use(slot, verbo, objetivo)`: comer (baja el hambre), beber / leer (identifica el tipo y aplica su efecto),
+  equipar (la armadura tarda el doble; lo maldito no se saca), quitar, soltar.
+- Efectos por nombre (`effect` en data/items.json): heal, strength, experience, identify, upgrade, remove_curse,
+  magic_mapping, teleport. `target_ok`: qué acepta un pergamino con objetivo (`unknown`, `upgradable`).
+- Hambre (`hunger_act`, viaja con el héroe): +10 cada 10 de tiempo (Pícaro cada 12); hambriento a 260, famélico a
+  360: no regenera y pierde 1 PV con 30% cada vez (se puede morir de hambre).
+- El nivel del arma suma al ataque y a los dados; el de la armadura, a la CA.

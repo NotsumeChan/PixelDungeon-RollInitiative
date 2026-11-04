@@ -1,13 +1,14 @@
 //! UI de la partida (`screens/gameUi.py` + el log y examinar de `screens/gameScreen.py`) con los assets originales:
 //! panel de estado, carrusel de iniciativa, barra de herramientas, log, tooltips y ventanas (examinar, ficha, menú).
 //! UI inmediata: cada frame se dibuja todo y se registran zonas clickeables; el click busca de arriba hacia abajo.
-//! ponytail: sin mochila, accesos rápidos, estados ni configuración; llegan con los ítems y estados (R5)
+//! R5: mochila (WndBag), ventana del ítem (WndItem), accesos rápidos e ícono de hambre.
+//! ponytail: sin íconos de estados ni configuración todavía (R5)
 use game::actor::ActorId;
 use game::dice::{ABILITIES, ABILITY_NAMES};
 use game::dungeon::Dungeon;
 use game::geom::LENGTH;
-use game::hero::Action;
-use game::items::weapon_dice;
+use game::hero::{Action, Slot, Verb, BACKPACK_SIZE, HUNGRY, STARVING};
+use game::items::{weapon_dice, Image, Item, SLOT_ARMOR, SLOT_RING, SLOT_WEAPON};
 use game::registry::text;
 use game::terrain;
 
@@ -15,7 +16,7 @@ use crate::atlas::Atlas;
 use crate::font::Font;
 use crate::gpu::Sprite;
 use crate::sprites::Chars;
-use crate::{CHROME, EXP_BAR, HP_BAR, ICONS, STATUS, TILES, TOOLBAR, WATER};
+use crate::{BUFFS, CHROME, EXP_BAR, HP_BAR, ICONS, ITEMS, STATUS, TILES, TOOLBAR, WATER};
 
 const LINE_H: f32 = 10.0;
 const LOG_LINES: usize = 4;
@@ -36,6 +37,19 @@ const TOOL_SEARCH: [u32; 4] = [20, 7, 20, 25];
 const TOOL_INFO: [u32; 4] = [40, 7, 21, 25];
 /// Icons.java.
 const ICON_BUSY: [u32; 4] = [8, 0, 8, 8];
+const TOOL_BAG: [u32; 4] = [60, 7, 23, 25];
+const TOOL_QUICK: [u32; 4] = [83, 7, 22, 25];
+/// BuffIndicator.java: íconos de 7x7 en buffs.png; hambre y famélico son el 5 y el 6.
+const BUFF_SIZE: u32 = 7;
+const BUFF_HUNGER: u32 = 5;
+const BUFF_STARVATION: u32 = 6;
+/// Mochila: 1a fila = equipo (arma, armadura, 2 anillos) + oro aparte a la derecha; debajo, las ranuras de mochila.
+const SLOT_SIZE: f32 = 28.0;
+const SLOT_MARGIN: f32 = 1.0;
+const BAG_COLS: usize = 7;
+const BAG_TITLE_H: f32 = 12.0;
+const BAG_GAP: f32 = 4.0;
+const ITEM_WND_W: f32 = 170.0;
 /// Carrusel de iniciativa: lado de cada casilla, cuántos retratos, velocidad del deslizamiento (casillas/s), alto.
 const CAROUSEL_SLOT: f32 = 16.0;
 const CAROUSEL_MAX: usize = 7;
@@ -60,6 +74,19 @@ const HP_GREEN: [f32; 4] = rgba(0, 0xEE, 0, 0xFF);
 const TIP_BG: [f32; 4] = rgba(0, 0, 0, 200);
 const PROMPT_BG: [f32; 4] = rgba(0, 0, 0, 170);
 const BUTTON_OFF: [f32; 4] = rgba(110, 110, 110, 0xFF);
+const SLOT_BG: [f32; 4] = rgba(0x53, 0x56, 0x4D, 0x99);
+const LEVEL_UP: [f32; 4] = rgba(80, 255, 80, 0xFF);
+const LEVEL_DOWN: [f32; 4] = rgba(255, 80, 80, 0xFF);
+
+/// Para qué se abre la mochila.
+#[derive(Clone, PartialEq)]
+pub enum BagMode {
+    Browse,
+    /// Elegir el objetivo de un pergamino (identificar, mejorar).
+    Target { scroll: Slot, need: String },
+    /// Elegir qué va en el acceso rápido.
+    Quick(usize),
+}
 
 /// Ícono de la ventana de examinar.
 #[derive(Clone)]
@@ -76,6 +103,9 @@ pub enum Window {
     Hero,
     /// Menú de la partida (WndGame).
     Menu,
+    Bag(BagMode),
+    /// WndItem: un ítem del héroe con sus acciones.
+    Item(Slot),
 }
 
 /// Lo que hace un click en la UI; lo aplica la app.
@@ -90,11 +120,18 @@ pub enum UiAction {
     Examine,
     NewGame,
     Quit,
+    /// Usar el acceso rápido (vacío: elegir qué va).
+    UseQuick(usize),
+    SetQuick(usize, String),
+    /// Un verbo de la ventana del ítem (leer con objetivo primero pide el objetivo).
+    Verb(Slot, Verb),
 }
 
 struct Hot {
     rect: [f32; 4],
     act: UiAction,
+    /// Click derecho (None = el mismo que el izquierdo).
+    alt: Option<UiAction>,
     tip: Option<String>,
 }
 
@@ -165,12 +202,13 @@ impl Ui {
     }
 
     /// La acción de la zona de más arriba bajo `p` (pixeles de la UI), o None si el click es para el mapa.
-    pub fn click(&self, p: [f32; 2]) -> Option<UiAction> {
-        self.hot.iter().rev().find(|h| inside(h.rect, p)).map(|h| h.act.clone())
+    pub fn click(&self, p: [f32; 2], alt: bool) -> Option<UiAction> {
+        let h = self.hot.iter().rev().find(|h| inside(h.rect, p))?;
+        Some(if alt { h.alt.clone().unwrap_or_else(|| h.act.clone()) } else { h.act.clone() })
     }
 
     fn hot(&mut self, rect: [f32; 4], act: UiAction, tip: Option<&str>) {
-        self.hot.push(Hot { rect, act, tip: tip.map(str::to_string) });
+        self.hot.push(Hot { rect, act, alt: None, tip: tip.map(str::to_string) });
     }
 
     /// Toolbar.informer: qué hay en la casilla (el héroe, un mob o el terreno).
@@ -211,11 +249,13 @@ impl Ui {
         self.draw_log(font, d, out, w, h);
         self.draw_status(atlas, font, chars, d, out, w, dt);
         font.text(out, &format!("FPS {fps}"), 2.0, 34.0, GREY);
-        self.draw_toolbar(atlas, out, h);
+        self.draw_toolbar(atlas, font, d, out, w, h);
         match self.window.clone() {
             Some(Window::Info { icon, title, text, hp }) => self.draw_info(atlas, font, chars, d, out, w, h, icon, &title, &text, hp),
             Some(Window::Hero) => self.draw_hero(atlas, font, d, out, w, h),
             Some(Window::Menu) => self.draw_menu(atlas, font, d, out, w, h),
+            Some(Window::Bag(mode)) => self.draw_bag(atlas, font, d, out, w, h, &mode),
+            Some(Window::Item(slot)) => self.draw_item(atlas, font, d, out, w, h, slot),
             None => {
                 self.draw_tooltip(atlas, font, out, w, h);
                 if self.examining {
@@ -276,6 +316,15 @@ impl Ui {
         font.text(out, &lvl, 28.0 - (font.width(&lvl) / 2.0).floor(), 25.0, GOLDEN);
         let depth = h.depth.to_string();
         font.text(out, &depth, w - 24.0 - font.width(&depth) - 18.0, 6.0, DEPTH_COLOR);
+        // BuffIndicator en (32, 11): hambre. ponytail: los estados del héroe llegan en R5b
+        let icon = if h.is_starving() { Some(BUFF_STARVATION) } else if h.hunger >= HUNGRY { Some(BUFF_HUNGER) } else { None };
+        if let Some(icon) = icon {
+            let cols = atlas.rects[BUFFS][2] / BUFF_SIZE;
+            let region = [(icon % cols) * BUFF_SIZE, (icon / cols) * BUFF_SIZE, BUFF_SIZE, BUFF_SIZE];
+            out.push(piece(atlas, BUFFS, region, [32.0, 11.0], [7.0, 7.0], WHITE));
+            let tip = if h.hunger >= STARVING { "Famélico" } else { "Hambriento" };
+            self.hot([32.0, 11.0, 7.0, 7.0], UiAction::Nothing, Some(tip));
+        }
         self.draw_initiative(atlas, font, chars, d, out, w, dt);
         // botón de menú: recorte (114, 3, 12, 11) de status_pane.png -> WndGame
         out.push(piece(atlas, STATUS, [114, 3, 12, 11], [w - 14.0, 3.0], [12.0, 11.0], WHITE));
@@ -347,8 +396,32 @@ impl Ui {
         font.text(out, &label, w - 2.0 - font.width(&label), CAROUSEL_Y + CAROUSEL_SLOT + 1.0, GOLDEN);
     }
 
-    fn draw_toolbar(&mut self, atlas: &Atlas, out: &mut Vec<Sprite>, h: f32) {
+    #[allow(clippy::too_many_arguments)]
+    fn draw_toolbar(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
         let y = h - TOOLBAR_H;
+        let me = d.local();
+        let bag = if self.window.is_some() { UiAction::Close } else { UiAction::Open(Window::Bag(BagMode::Browse)) };
+        out.push(piece(atlas, TOOLBAR, TOOL_BAG, [w - 67.0, y], [23.0, 25.0], WHITE));
+        self.hot([w - 67.0, y, 23.0, 25.0], bag, Some("Mochila (I)"));
+        // 2 accesos rápidos (Toolbar.btnQuick1/2) = teclas 1 y 2. Click = usar (o elegir si está vacío), derecho = elegir
+        for (q, x) in [(0usize, w - 44.0), (1, w - 22.0)] {
+            out.push(piece(atlas, TOOLBAR, TOOL_QUICK, [x, y], [22.0, 25.0], WHITE));
+            let item = me.quick_item(q).and_then(|s| me.item(s));
+            let what = item.map_or("vacío, click derecho para elegir".to_string(), |i| d.item_name(i));
+            let tip = format!("Acceso rápido {}: {what} ({})", q + 1, q + 1);
+            self.hot.push(Hot {
+                rect: [x, y, 22.0, 25.0],
+                act: UiAction::UseQuick(q),
+                alt: Some(UiAction::Open(Window::Bag(BagMode::Quick(q)))),
+                tip: Some(tip),
+            });
+            if let Some(item) = item {
+                item_icon(out, atlas, font, &d.item_image(item), [x + 3.0, y + 5.0], 1.0);
+                if item.quantity > 1 {
+                    font.text(out, &item.quantity.to_string(), x + 2.0, y + 3.0, WHITE);
+                }
+            }
+        }
         let tools = [
             (TOOL_WAIT, 0.0, UiAction::Act(Action::Rest), "Esperar un turno (Espacio)"),
             (TOOL_SEARCH, 20.0, UiAction::Act(Action::Search), "Buscar (Q)"),
@@ -358,6 +431,123 @@ impl Ui {
             let size = [region[2] as f32, region[3] as f32];
             out.push(piece(atlas, TOOLBAR, region, [x, y], size, WHITE));
             self.hot([x, y, size[0], size[1]], act, Some(tip));
+        }
+    }
+
+    /// Una ranura de la mochila: fondo, ícono (o el de ranura vacía, tenue), cantidad y nivel conocido.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_slot(atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, r: [f32; 4], item: Option<&Item>, placeholder: Option<i32>, enabled: bool) {
+        out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], SLOT_BG));
+        let at = [(r[0] + r[2] / 2.0 - 8.0).floor(), (r[1] + r[3] / 2.0 - 8.0).floor()];
+        let Some(item) = item else {
+            if let Some(p) = placeholder {
+                item_icon(out, atlas, font, &Image::Sheet(p), at, 80.0 / 255.0);
+            }
+            return;
+        };
+        item_icon(out, atlas, font, &d.item_image(item), at, if enabled { 1.0 } else { 70.0 / 255.0 });
+        if item.quantity > 1 {
+            font.text(out, &item.quantity.to_string(), r[0] + 1.0, r[1] + 1.0, WHITE);
+        }
+        if item.is_equipment() && item.level_known && item.level != 0 {
+            let lv = format!("{:+}", item.level);
+            let color = if item.level > 0 { LEVEL_UP } else { LEVEL_DOWN };
+            font.text(out, &lv, r[0] + r[2] - font.width(&lv), r[1] + r[3] - font.height(), color);
+        }
+    }
+
+    /// WndBag: equipo, oro y las ranuras de la mochila. Según el modo, click = ver el ítem, elegir el objetivo de un
+    /// pergamino o elegir el acceso rápido.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_bag(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32, mode: &BagMode) {
+        let me = d.local();
+        let rows = 1 + BACKPACK_SIZE.div_ceil(BAG_COLS);
+        let cw = SLOT_SIZE * BAG_COLS as f32 + SLOT_MARGIN * (BAG_COLS - 1) as f32;
+        let ch = BAG_TITLE_H + SLOT_SIZE * rows as f32 + SLOT_MARGIN * (rows - 1) as f32 + BAG_GAP;
+        let c = [((w - cw) / 2.0).floor(), ((h - TOOLBAR_H - ch) / 2.0).floor(), cw, ch];
+        self.hot([0.0, 0.0, w, h], UiAction::Close, None); // click afuera = cerrar
+        Self::draw_window(atlas, out, c);
+        self.hot(c, UiAction::Nothing, None);
+        let title = match mode {
+            BagMode::Browse => "Mochila".to_string(),
+            BagMode::Target { .. } => "Elige un objeto".to_string(),
+            BagMode::Quick(q) => format!("Acceso rapido {}: elige un objeto", q + 1),
+        };
+        font.text(out, &title, c[0], c[1] + 2.0, YELLOW);
+        let cell = |col: usize, row: usize| {
+            let gap = if row > 0 { BAG_GAP } else { 0.0 };
+            [
+                c[0] + col as f32 * (SLOT_SIZE + SLOT_MARGIN),
+                c[1] + BAG_TITLE_H + row as f32 * (SLOT_SIZE + SLOT_MARGIN) + gap,
+                SLOT_SIZE,
+                SLOT_SIZE,
+            ]
+        };
+        let eligible = |slot: Slot, item: &Item| match mode {
+            BagMode::Target { scroll, need } => slot != *scroll && me.item(*scroll).is_some_and(|s| s.id != item.id) && d.target_ok(need, item),
+            _ => true,
+        };
+        let mut slots: Vec<([f32; 4], Option<Slot>, Option<i32>)> = vec![
+            (cell(0, 0), me.weapon.as_ref().map(|_| Slot::Weapon), Some(SLOT_WEAPON)),
+            (cell(1, 0), me.armor.as_ref().map(|_| Slot::Armor), Some(SLOT_ARMOR)),
+            (cell(2, 0), None, Some(SLOT_RING)),
+            (cell(3, 0), None, Some(SLOT_RING)),
+        ];
+        for k in 0..BACKPACK_SIZE {
+            slots.push((cell(k % BAG_COLS, 1 + k / BAG_COLS), (k < me.backpack.len()).then_some(Slot::Pack(k)), None));
+        }
+        for (r, slot, placeholder) in slots {
+            let item = slot.and_then(|s| me.item(s));
+            let ok = slot.zip(item).is_some_and(|(s, i)| eligible(s, i));
+            Self::draw_slot(atlas, font, d, out, r, item, placeholder, ok);
+            let (Some(slot), Some(item)) = (slot, item) else { continue };
+            let act = match mode {
+                BagMode::Browse => UiAction::Open(Window::Item(slot)),
+                BagMode::Quick(q) => UiAction::SetQuick(*q, item.id.clone()),
+                BagMode::Target { scroll, .. } if ok => UiAction::Act(Action::Use(*scroll, Verb::Read, Some(slot))),
+                BagMode::Target { .. } => UiAction::Nothing,
+            };
+            let tip = d.item_name(item);
+            self.hot(r, act, Some(&tip));
+        }
+        // oro: ranura aparte, al final de la fila de equipo
+        let gold = (me.gold > 0).then(|| {
+            let mut g = d.gold_item();
+            g.quantity = me.gold;
+            g
+        });
+        Self::draw_slot(atlas, font, d, out, cell(BAG_COLS - 1, 0), gold.as_ref(), Some(14), true);
+    }
+
+    /// WndItem: ícono, nombre, descripción con los números de 5e y un botón por acción.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_item(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32, slot: Slot) {
+        let me = d.local();
+        let Some(item) = me.item(slot) else {
+            self.window = None; // se gastó o se soltó
+            return;
+        };
+        let name = wrap(font, &d.item_title(item), ITEM_WND_W - 20.0);
+        let info = wrap(font, &d.item_info(item, me), ITEM_WND_W);
+        let btn_h = 16.0;
+        let head = (name.len() as f32 * 9.0).max(16.0);
+        let ch = head + 4.0 + info.len() as f32 * 9.0 + 4.0 + btn_h;
+        let c = [((w - ITEM_WND_W) / 2.0).floor(), ((h - TOOLBAR_H - ch) / 2.0).floor(), ITEM_WND_W, ch];
+        self.hot([0.0, 0.0, w, h], UiAction::Close, None);
+        Self::draw_window(atlas, out, c);
+        self.hot(c, UiAction::Nothing, None);
+        item_icon(out, atlas, font, &d.item_image(item), [c[0], c[1]], 1.0);
+        for (k, line) in name.iter().enumerate() {
+            font.text(out, line, c[0] + 20.0, c[1] + 4.0 + k as f32 * 9.0, YELLOW);
+        }
+        for (k, line) in info.iter().enumerate() {
+            font.text(out, line, c[0], c[1] + head + 4.0 + k as f32 * 9.0, WHITE);
+        }
+        let verbs = me.verbs(slot);
+        let bw = ((ITEM_WND_W - (verbs.len() as f32 - 1.0) * 2.0) / verbs.len() as f32).floor();
+        for (k, v) in verbs.into_iter().enumerate() {
+            let rect = [c[0] + k as f32 * (bw + 2.0), c[1] + ch - btn_h, bw, btn_h];
+            self.draw_button(atlas, font, out, rect, v.label(), Some(UiAction::Verb(slot, v)));
         }
     }
 
@@ -484,5 +674,39 @@ impl Ui {
         let y = (m[1] - 4.0 - bh).floor().clamp(0.0, (h - bh).max(0.0));
         out.push(atlas.rect([x, y], [bw, bh], TIP_BG));
         font.text(out, &tip, x + 3.0, y + 2.0, WHITE);
+    }
+}
+
+/// Un ítem de 16x16 (ItemSpriteSheet): su recorte de items.png (8 columnas) o, sin sprite, su nombre achicado para
+/// entrar en 16x16, una palabra por línea (TextIcon).
+pub fn item_icon(out: &mut Vec<Sprite>, atlas: &Atlas, font: &Font, image: &Image, pos: [f32; 2], alpha: f32) {
+    match image {
+        Image::Sheet(i) => {
+            let i = *i as u32;
+            out.push(piece(atlas, ITEMS, [(i % 8) * 16, (i / 8) * 16, 16, 16], pos, [16.0, 16.0], [1.0, 1.0, 1.0, alpha]));
+        }
+        Image::Text(name) => {
+            let words: Vec<&str> = name.split_whitespace().collect();
+            let tw = words.iter().map(|w| font.width(w)).fold(1.0, f32::max);
+            let th = words.len().max(1) as f32 * font.height();
+            let f = (16.0 / tw).min(16.0 / th).min(1.0);
+            let mut y = pos[1] + (16.0 - th * f) / 2.0;
+            for word in words {
+                let x = pos[0] + (16.0 - font.width(word) * f) / 2.0;
+                font.text_scaled(out, word, x, y, [1.0, 1.0, 1.0, alpha], f);
+                y += font.height() * f;
+            }
+        }
+    }
+}
+
+/// Los montones de ítems del piso: se recuerdan donde ya se vio (la niebla los oscurece).
+pub fn draw_heaps(out: &mut Vec<Sprite>, atlas: &Atlas, font: &Font, d: &Dungeon, ox: f32, oy: f32) {
+    let level = d.level();
+    for (&pos, heap) in &level.heaps {
+        if level.visited[pos as usize] || level.mapped[pos as usize] {
+            let at = [ox + (pos % game::geom::WIDTH) as f32 * 16.0, oy + (pos / game::geom::WIDTH) as f32 * 16.0];
+            item_icon(out, atlas, font, &d.heap_image(heap), at, 1.0);
+        }
     }
 }

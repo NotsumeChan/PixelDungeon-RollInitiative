@@ -22,3 +22,8 @@ salvaciones, si se superó) y `fx` (`Fx::Anim`, `Status`, `Die`, `Checked`, `Lea
 (`roll_event`, `effect`; `status` además pide que el personaje se vea). Los emite el juego en los mismos puntos que
 el prototipo: ataque (animación, d20 y dado de daño), daño (número), esquiva, caer, levantarse, subir de nivel,
 salvaciones y Medicina, iniciativa del héroe, buscar, muerte de un mob y pasto pisado.
+
+Ítems (R5a): `known` y `looks` (identificación), `create_items` al crear un piso con el rng del nivel (comida
+garantizada, cuotas de poción de fuerza y pergamino de mejora, 3+ montones / cofres / restos, tumbas del cementerio),
+y el loot de los mobs. `place_char`: lleva a alguien a una celda lejana sin rastro de pasos (teletransporte).
+Verificado: misma seed = mismas apariencias, mobs y montones (con nivel y maldición) que el prototipo.

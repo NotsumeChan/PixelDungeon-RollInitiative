@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 use crate::actor::{ActorId, TICK};
 use crate::char::{adjacent, distance, Char};
 use crate::dungeon::{Dungeon, Fx, Tone};
+use crate::items::{make_gold, HeapKind, GOLD};
 use crate::fov::{self, MAX_DISTANCE};
 use crate::geom::WIDTH;
 use crate::registry::text;
@@ -255,11 +256,12 @@ impl Dungeon {
             self.earn_exp(h, share);
         }
         // Mob.dropLoot: sólo si los héroes no los superan por mucho (cuenta el de menor nivel)
-        // ponytail: el rng se gasta igual que el prototipo pero no cae nada hasta que existan los ítems (R5)
         if let Some(loot) = m.stats.get("loot") {
             let low = self.here().map(|h| self.heroes[h].lvl).min().unwrap_or(0);
-            if low <= int(&m.stats, "max_lvl") + 2 {
-                let _ = self.rng.float() < loot[1].as_f64().unwrap_or(0.0);
+            if low <= int(&m.stats, "max_lvl") + 2 && self.rng.float() < loot[1].as_f64().unwrap_or(0.0) {
+                let id = loot[0].as_str().unwrap_or(GOLD);
+                let item = if id == GOLD { make_gold(&self.items, &mut self.rng, self.depth) } else { self.new_item(id) };
+                self.floor_mut().level.drop(item, m.ch.pos, HeapKind::Heap);
             }
         }
     }

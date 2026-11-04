@@ -1,6 +1,9 @@
 //! Level.java (create) + RegularLevel.java + SewerLevel.java (`game/level.py`): generación de las Alcantarillas,
 //! pisos 1-4. Port 1:1 del prototipo: cada tirada del rng va en el mismo orden, así la misma seed da el mismo piso.
+use std::collections::BTreeMap;
+
 use crate::fov;
+use crate::items::{Heap, HeapKind, Item};
 use crate::geom::{Rect, HEIGHT, LENGTH, NEIGHBOURS4, NEIGHBOURS8, NEIGHBOURS9, WIDTH};
 use crate::painters::{self, fill, fill_room};
 use crate::patch;
@@ -50,6 +53,8 @@ pub struct Level {
     pub visible: Vec<bool>,
     pub visited: Vec<bool>,
     pub mapped: Vec<bool>,
+    /// Montones de ítems por celda (cofres, tumbas, restos o un montón suelto).
+    pub heaps: BTreeMap<i32, Heap>,
 }
 
 const SECRET_TRAPS: [u8; 8] = [
@@ -93,6 +98,7 @@ impl Level {
             visible: vec![false; n],
             visited: vec![false; n],
             mapped: vec![false; n],
+            heaps: BTreeMap::new(),
         };
         level.create();
         level
@@ -606,6 +612,23 @@ impl Level {
             }
         }
         -1
+    }
+
+    /// RegularLevel.randomDropCell: celda transitable de una sala STANDARD.
+    pub fn random_drop_cell(&self, rng: &mut Rng) -> i32 {
+        loop {
+            if let Some(r) = self.pick_room(rng, RoomType::Standard, 1) {
+                let cell = self.rooms[r].random(rng, 0);
+                if self.passable[cell as usize] {
+                    return cell;
+                }
+            }
+        }
+    }
+
+    /// Level.drop: deja un ítem en el suelo (se apila en el montón que ya haya; `kind` sólo si el montón es nuevo).
+    pub fn drop(&mut self, item: Item, cell: i32, kind: HeapKind) {
+        self.heaps.entry(cell).or_insert(Heap { kind, items: Vec::new() }).add(item);
     }
 
     /// Celda transitable de cualquier sala: destino de los mobs que deambulan.

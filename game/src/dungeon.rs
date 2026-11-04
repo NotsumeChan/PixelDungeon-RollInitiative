@@ -2,7 +2,7 @@
 //! Varios héroes, cada uno en su piso (`Hero::depth`). `depth` es el piso "en contexto": el que se está procesando, o el
 //! del héroe local (`hero`, el que maneja la UI) fuera de `process()`.
 //! El combate 5e (iniciativa, ataque d20 vs CA, críticos, daño) vive aquí porque toca a atacante y objetivo.
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::{Map, Value};
 
@@ -12,12 +12,17 @@ use crate::dice;
 use crate::fov::MAX_DISTANCE;
 use crate::geom::NEIGHBOURS9;
 use crate::hero::Hero;
+use crate::items::{make_gold, Generator, HeapKind, POTION_LOOKS, SCROLL_LOOKS};
 use crate::level::Level;
 use crate::mobs::{pick_mob, Mob, State};
 use crate::pathfinder;
 use crate::registry;
 use crate::rng::Rng;
 use crate::terrain as t;
+
+/// Dungeon.posNeeded / souNeeded: [piso límite, cantidad acumulada esperada, ...].
+const STRENGTH_QUOTA: [i32; 10] = [4, 2, 9, 4, 14, 6, 19, 8, 24, 9];
+const UPGRADE_QUOTA: [i32; 10] = [5, 3, 10, 6, 15, 9, 20, 12, 25, 13];
 
 /// El piso 5 (Goo) queda fuera.
 pub const MAX_DEPTH: i32 = 4;
@@ -96,9 +101,15 @@ pub struct Dungeon {
     pub hero: usize,
     /// La vista del piso local cambió (la UI vuelve a subir la niebla y lo baja).
     pub view_changed: bool,
+    /// Pociones y pergaminos identificados, y con qué apariencia (nombre, índice en items.png) se ve cada uno.
+    pub known: BTreeSet<String>,
+    pub looks: BTreeMap<String, (&'static str, i32)>,
+    generator: Generator,
+    potions_of_strength: i32,
+    scrolls_of_upgrade: i32,
     next_mob: u32,
     classes: Map<String, Value>,
-    items: Map<String, Value>,
+    pub(crate) items: Map<String, Value>,
     mobs_data: Map<String, Value>,
     bestiary: Map<String, Value>,
 }
@@ -108,8 +119,6 @@ fn load(name: &str) -> Map<String, Value> {
 }
 
 impl Dungeon {
-    /// ponytail: falta mezclar las apariencias de pociones y pergaminos al empezar (gasta rng en el prototipo):
-    /// va primero de todo cuando lleguen los ítems (R5)
     pub fn new(seed: i64, hero_class: &str) -> Self {
         let mut d = Self {
             seed,
@@ -124,19 +133,39 @@ impl Dungeon {
             heroes: Vec::new(),
             hero: 0,
             view_changed: true,
+            known: BTreeSet::new(),
+            looks: BTreeMap::new(),
+            generator: Generator::default(),
+            potions_of_strength: 0,
+            scrolls_of_upgrade: 0,
             next_mob: 0,
             classes: load("classes"),
             items: load("items"),
             mobs_data: load("mobs"),
             bestiary: load("bestiary"),
         };
+        // apariencias sin identificar: lo primero que gasta el rng de la partida (como el prototipo)
+        // ponytail: si un mod agrega más de 12 pociones o pergaminos faltan apariencias
+        for cat in ["potion", "scroll"] {
+            let mut order: Vec<usize> = (0..12).collect();
+            d.rng.shuffle(&mut order);
+            let ids: Vec<String> = d.items.iter().filter(|(_, v)| v["category"] == cat).map(|(k, _)| k.clone()).collect();
+            for (id, k) in ids.into_iter().zip(order) {
+                let look = if cat == "potion" { (POTION_LOOKS[k][0], 56 + k as i32) } else { SCROLL_LOOKS[k] };
+                d.looks.insert(id, look);
+            }
+        }
         d.add_hero(hero_class);
         d
     }
 
     /// Suma un héroe a la partida, en la entrada del piso 1.
     pub fn add_hero(&mut self, hero_class: &str) -> usize {
-        self.heroes.push(Hero::new(&self.classes, &self.items, hero_class));
+        let hero = Hero::new(&self.classes, &self.items, hero_class);
+        if let Some(known) = hero.cls.get("known").and_then(Value::as_array) {
+            self.known.extend(known.iter().filter_map(Value::as_str).map(str::to_string));
+        }
+        self.heroes.push(hero);
         let i = self.heroes.len() - 1;
         self.go_to(i, 1);
         i
@@ -283,6 +312,7 @@ impl Dungeon {
             let s = &mut self.floor_mut().scheduler;
             s.remove(ActorId::Hero(i));
             s.remove(ActorId::Regen(i));
+            s.remove(ActorId::Hunger(i));
             self.observe(); // el piso que deja ya no ve lo que veía este héroe
         }
         let h = &mut self.heroes[i];
@@ -301,11 +331,15 @@ impl Dungeon {
             self.heroes[i].ch.pos = level.entrance;
             self.floors.insert(depth, Floor { level, mobs: Vec::new(), scheduler: Scheduler::default() });
             self.depth = depth;
+            self.generator.reset();
             self.floor_mut().scheduler.add(ActorId::Hero(i), 0.0); // primero: en empates actúa antes que nadie
             self.create_mobs();
+            self.create_items();
             self.floor_mut().scheduler.add(ActorId::Respawner, 0.0);
         }
-        self.floor_mut().scheduler.add(ActorId::Regen(i), 0.0);
+        let s = &mut self.floor_mut().scheduler;
+        s.add(ActorId::Regen(i), 0.0);
+        s.add(ActorId::Hunger(i), 0.0);
         self.observe();
         let msg =
             if self.heroes.len() == 1 { format!("Piso {depth}") } else { format!("{}: piso {depth}", self.heroes[i].ch.name) };
@@ -357,6 +391,56 @@ impl Dungeon {
                 pos = self.respawn_cell(&mut rng);
             }
             self.add_mob(&key, pos, State::Sleeping);
+        }
+        self.floor_mut().level.rng = rng;
+    }
+
+    /// Dungeon.chance: garantiza ~N ítems clave antes de cierto piso.
+    fn quota(&self, rng: &mut Rng, quota: &[i32], number: i32) -> bool {
+        for q in quota.chunks(2) {
+            if self.depth <= q[0] {
+                return rng.float() < (q[1] - number) as f64 / (q[0] - self.depth + 1) as f64;
+            }
+        }
+        false
+    }
+
+    /// Level.create (ítems obligatorios) + RegularLevel.createItems + tumbas, con el rng del nivel.
+    /// ponytail: el mimic (caso 5 en pisos > 1) sale como cofre normal hasta que exista
+    fn create_items(&mut self) {
+        let mut rng = self.level().rng.clone();
+        let (depth, cur_str) = (self.depth, self.local().score("STR"));
+        let mut to_spawn = vec![self.generator.random_of("food", &self.items, &mut rng, depth, cur_str)];
+        if self.quota(&mut rng, &STRENGTH_QUOTA, self.potions_of_strength) {
+            to_spawn.push(self.new_item("pdri:potion_strength"));
+            self.potions_of_strength += 1;
+        }
+        if self.quota(&mut rng, &UPGRADE_QUOTA, self.scrolls_of_upgrade) {
+            to_spawn.push(self.new_item("pdri:scroll_upgrade"));
+            self.scrolls_of_upgrade += 1;
+        }
+        let mut n = 3;
+        while rng.float() < 0.4 {
+            n += 1;
+        }
+        for _ in 0..n {
+            let t = rng.int(20);
+            let kind = if t == 0 { HeapKind::Skeleton } else if t <= 5 { HeapKind::Chest } else { HeapKind::Heap };
+            let item = self.generator.random(&self.items, &mut rng, depth, cur_str);
+            let cell = self.level().random_drop_cell(&mut rng);
+            self.floor_mut().level.drop(item, cell, kind);
+        }
+        for item in to_spawn {
+            let cell = self.level().random_drop_cell(&mut rng);
+            self.floor_mut().level.drop(item, cell, HeapKind::Heap);
+        }
+        for (pos, has_item) in self.level().tombs.clone() {
+            let item = if has_item {
+                self.generator.random(&self.items, &mut rng, depth, cur_str)
+            } else {
+                make_gold(&self.items, &mut rng, depth)
+            };
+            self.floor_mut().level.drop(item, pos, HeapKind::Tomb);
         }
         self.floor_mut().level.rng = rng;
     }
@@ -434,6 +518,22 @@ impl Dungeon {
         }
         if !flying {
             self.press(step);
+        }
+    }
+
+    /// Lleva a alguien a una celda lejana (teletransporte): sin rastro de pasos, el sprite aparece ahí.
+    pub(crate) fn place_char(&mut self, a: ActorId, cell: i32) {
+        let old = self.ch(a).unwrap().pos;
+        let level = &mut self.floor_mut().level;
+        level.leave(old);
+        level.enter(cell);
+        let c = self.ch_mut(a).unwrap();
+        c.pos = cell;
+        c.trail.clear();
+        let flying = c.flying;
+        self.observe();
+        if !flying {
+            self.press(cell);
         }
     }
 
@@ -541,6 +641,7 @@ impl Dungeon {
             ActorId::Hero(i) => self.hero_act(i),
             ActorId::Mob(id) => self.mob_act(id),
             ActorId::Regen(i) => self.regen_act(i),
+            ActorId::Hunger(i) => self.hunger_act(i),
             ActorId::Respawner => self.respawn_act(),
         }
     }
@@ -716,7 +817,7 @@ impl Dungeon {
                 let h = &self.heroes[i];
                 let m = h.attack_mod();
                 let Some(w) = &h.weapon else { return (1 + m, format!("1{m:+}"), None) }; // sin armas: 1 + FUE
-                let (total, text, rolled, sides) = dice::roll(&mut self.rng, crate::items::weapon_dice(w), crit);
+                let (total, text, rolled, sides) = dice::roll(&mut self.rng, &crate::items::weapon_dice(w), crit);
                 let n = rolled.len() as i32;
                 let value = rolled.iter().sum();
                 let ev = DiceEvent { label: format!("{n}d{sides}"), value, lo: n, hi: n * sides, ok: None };

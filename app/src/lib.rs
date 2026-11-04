@@ -27,7 +27,8 @@ use font::Font;
 use gpu::{Gpu, Sprite, Tex};
 use map::TILE;
 use sprites::{Chars, CHAR_SHEETS, HERO_H, HERO_W};
-use ui::{Ui, UiAction, Window as UiWindow};
+use game::hero::Verb;
+use ui::{BagMode, Ui, UiAction, Window as UiWindow};
 
 pub const TITLE: &str = "PixelDungeon-RollInitiative";
 const DRAG_MIN_PX: f64 = 8.0; // arrastrar más que esto (pixeles de pantalla) mueve la cámara; menos es un click
@@ -36,7 +37,7 @@ const PINCH_STEP: f64 = 1.25; // cuánto tiene que cambiar la distancia entre de
 const CLASSES: [&str; 4] = ["pdri:warrior", "pdri:mage", "pdri:rogue", "pdri:huntress"];
 
 /// Hojas del atlas, en orden: los índices de `Atlas::rects`. Van dentro del binario (Android sin AssetManager).
-const SHEETS: [&[u8]; 9] = [
+const SHEETS: [&[u8]; 11] = [
     include_bytes!("../../Assets/Fonts/font1x.png"),
     include_bytes!("../../Assets/Tiles/tiles0.png"),
     include_bytes!("../../Assets/Tiles/water0.png"),
@@ -46,6 +47,8 @@ const SHEETS: [&[u8]; 9] = [
     include_bytes!("../../Assets/hp_bar.png"),
     include_bytes!("../../Assets/exp_bar.png"),
     include_bytes!("../../Assets/icons.png"),
+    include_bytes!("../../Assets/Items/items.png"),
+    include_bytes!("../../Assets/buffs.png"),
 ];
 const FONT: usize = 0;
 pub(crate) const TILES: usize = 1;
@@ -56,6 +59,8 @@ pub(crate) const TOOLBAR: usize = 5;
 pub(crate) const HP_BAR: usize = 6;
 pub(crate) const EXP_BAR: usize = 7;
 pub(crate) const ICONS: usize = 8;
+pub(crate) const ITEMS: usize = 9;
+pub(crate) const BUFFS: usize = 10;
 
 /// La partida, sus personajes en pantalla y la animación de dados.
 struct World {
@@ -234,7 +239,7 @@ impl App {
         if self.input.press.take().is_none() || self.input.dragging {
             return;
         }
-        if let Some(act) = self.ui_point(p).and_then(|q| self.ui.click(q)) {
+        if let Some(act) = self.ui_point(p).and_then(|q| self.ui.click(q, false)) {
             self.ui_action(act);
             return;
         }
@@ -271,6 +276,31 @@ impl App {
             UiAction::Examine => self.ui.examining = !self.ui.examining,
             UiAction::NewGame => self.new_world(new_seed(), self.world.class),
             UiAction::Quit => self.quit = true,
+            UiAction::SetQuick(q, id) => {
+                let me = self.world.d.hero;
+                self.world.d.heroes[me].quickslots[q] = Some(id);
+                self.ui.window = None;
+            }
+            UiAction::UseQuick(q) => {
+                let h = self.world.d.local();
+                let Some(slot) = h.quick_item(q) else {
+                    self.ui.window = Some(UiWindow::Bag(BagMode::Quick(q)));
+                    return;
+                };
+                if let Some(&verb) = h.verbs(slot).first() {
+                    self.ui_action(UiAction::Verb(slot, verb));
+                }
+            }
+            UiAction::Verb(slot, verb) => {
+                let h = self.world.d.local();
+                let need = h.item(slot).map_or(String::new(), |i| i.str("target").to_string());
+                if verb == Verb::Read && !need.is_empty() {
+                    self.ui.window = Some(UiWindow::Bag(BagMode::Target { scroll: slot, need })); // primero el objetivo
+                } else {
+                    self.ui.window = None;
+                    self.ui_action(UiAction::Act(Action::Use(slot, verb, None)));
+                }
+            }
         }
     }
 
@@ -348,6 +378,10 @@ impl App {
             KeyCode::Escape => self.ui.window = Some(UiWindow::Menu),
             KeyCode::Space if free => self.ui_action(UiAction::Act(Action::Rest)),
             KeyCode::KeyQ if free => self.ui_action(UiAction::Act(Action::Search)),
+            KeyCode::KeyI if free => self.ui.window = Some(UiWindow::Bag(BagMode::Browse)),
+            KeyCode::KeyI => self.ui.window = None,
+            KeyCode::Digit1 if free => self.ui_action(UiAction::UseQuick(0)),
+            KeyCode::Digit2 if free => self.ui_action(UiAction::UseQuick(1)),
             _ => {}
         }
     }
@@ -401,6 +435,7 @@ impl App {
         let w = &self.world;
         map::water(s, &self.atlas, self.atlas.rects[WATER], ox, oy, self.water_off);
         map::tiles(s, &self.atlas, self.atlas.rects[TILES], w.d.level(), ox, oy);
+        ui::draw_heaps(s, &self.atlas, &self.font, &w.d, ox, oy);
         w.chars.draw_world(&w.d, &self.atlas, s, ox, oy);
         let atlas_end = s.len() as u32;
         s.push(map::fog_quad(ox, oy));
@@ -455,6 +490,12 @@ impl ApplicationHandler for App {
             WindowEvent::MouseInput { state, button: MouseButton::Left, .. } => {
                 let p = self.input.cursor;
                 if state == ElementState::Pressed { self.press(p) } else { self.release(p) }
+            }
+            // click derecho: la acción alternativa de la UI (elegir el acceso rápido)
+            WindowEvent::MouseInput { state: ElementState::Released, button: MouseButton::Right, .. } => {
+                if let Some(act) = self.ui_point(self.input.cursor).and_then(|q| self.ui.click(q, true)) {
+                    self.ui_action(act);
+                }
             }
             WindowEvent::MouseWheel { delta, .. } => {
                 let y = match delta {

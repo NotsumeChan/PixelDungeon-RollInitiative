@@ -281,6 +281,9 @@ impl Chars {
             let mut path = self.paths.iter().position(|e| e.0 == a).map(|i| self.paths.swap_remove(i).1).unwrap_or_default();
             let p = match self.drawn(a) {
                 Some(mut p) if d.level().visible[pos as usize] => {
+                    if trail.is_empty() && path.is_empty() && (goal[0] - p[0]).abs().max((goal[1] - p[1]).abs()) > TILE * 1.5 {
+                        p = goal; // llegó sin caminar (teletransporte): aparece ahí
+                    }
                     // recorre los pasos uno por uno; lo que sobra del frame sigue con el próximo
                     path.extend(trail.iter().map(|&c| sprite_pos(c, lk.w, lk.h)));
                     let mut left = budget;

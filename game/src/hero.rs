@@ -1,7 +1,8 @@
 //! actors/hero/Hero.java + HeroClass.java + buffs/Regeneration.java (`game/hero.py`), con el combate de D&D 5e.
 //! Las clases son datos (`data/classes.json`). R3: moverse, atacar cuerpo a cuerpo, esperar, buscar, escaleras,
 //! estabilizar a un aliado caído, salvaciones contra la muerte, regeneración, XP y niveles.
-//! ponytail: sin hambre, inventario, rasgos de clase ni conjuros; llegan en R5
+//! R5: mochila (Belongings.java), oro, accesos rápidos, recoger y abrir, comer, beber, leer, equipar, soltar y el
+//! hambre (buffs/Hunger.java).
 use serde_json::{Map, Value};
 
 use crate::actor::ActorId;
@@ -9,12 +10,57 @@ use crate::char::{adjacent, Char};
 use crate::dice;
 use crate::dungeon::{Dungeon, Fx, Pending, Tone};
 use crate::geom::{LENGTH, NEIGHBOURS9};
-use crate::items::{armor_ac, Item};
+use crate::items::{armor_ac, capitalize, HeapKind, Item, GOLD};
 use crate::registry::text;
 
 pub const TIME_TO_REST: f64 = 1.0;
 pub const TIME_TO_SEARCH: f64 = 2.0;
 pub const REGENERATION_DELAY: f64 = 10.0;
+pub const BACKPACK_SIZE: usize = 19;
+pub const TIME_TO_PICK_UP: f64 = 1.0;
+/// Key.TIME_TO_UNLOCK: abrir un cofre, una tumba o unos restos.
+pub const TIME_TO_OPEN: f64 = 1.0;
+pub const TIME_TO_DROP: f64 = 0.5;
+pub const TIME_TO_EAT: f64 = 3.0;
+/// Beber / leer.
+pub const TIME_TO_USE: f64 = 1.0;
+/// Arma; la armadura tarda el doble.
+pub const TIME_TO_EQUIP: f64 = 1.0;
+pub const HUNGER_STEP: f64 = 10.0;
+pub const HUNGRY: f64 = 260.0;
+pub const STARVING: f64 = 360.0;
+
+/// Dónde está un ítem del héroe.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Slot {
+    Weapon,
+    Armor,
+    Pack(usize),
+}
+
+/// Qué se hace con un ítem (WndItem).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Verb {
+    Eat,
+    Drink,
+    Read,
+    Equip,
+    Unequip,
+    Drop,
+}
+
+impl Verb {
+    pub fn label(self) -> &'static str {
+        match self {
+            Verb::Eat => "COMER",
+            Verb::Drink => "BEBER",
+            Verb::Read => "LEER",
+            Verb::Equip => "EQUIPAR",
+            Verb::Unequip => "QUITAR",
+            Verb::Drop => "SOLTAR",
+        }
+    }
+}
 
 /// Lo que el héroe hace en sus turnos (Hero.curAction). Se repite turno a turno hasta cumplirse o cortarse.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -27,6 +73,12 @@ pub enum Action {
     Search,
     Descend(i32),
     Ascend(i32),
+    /// Recoger el montón de esa celda (parado encima).
+    PickUp(i32),
+    /// Abrir el cofre / tumba / restos de esa celda (desde al lado o encima).
+    Open(i32),
+    /// Usar un ítem; el último es el objetivo de un pergamino (identificar, mejorar).
+    Use(Slot, Verb, Option<Slot>),
 }
 
 pub struct Hero {
@@ -40,6 +92,12 @@ pub struct Hero {
     pub awareness: f64,
     pub weapon: Option<Item>,
     pub armor: Option<Item>,
+    pub backpack: Vec<Item>,
+    pub gold: i32,
+    /// Accesos rápidos: el id del ítem (el primero que se tenga con ese id).
+    /// ponytail: por id también el equipo; dos iguales no se distinguen
+    pub quickslots: [Option<String>; 2],
+    pub hunger: f64,
     pub action: Option<Action>,
     /// true tras moverse: el render lo baja al terminar la animación del paso (la lógica espera).
     pub animating: bool,
@@ -56,7 +114,25 @@ pub struct Hero {
 impl Hero {
     pub fn new(classes: &Map<String, Value>, items: &Map<String, Value>, class_key: &str) -> Self {
         let cls = classes.get(class_key).unwrap_or_else(|| panic!("clase desconocida: {class_key}")).clone();
-        let item = |k: &str| cls.get(k).and_then(Value::as_str).and_then(|id| Item::new(items, id));
+        let item = |k: &str| {
+            let mut i = cls.get(k).and_then(Value::as_str).and_then(|id| Item::new(items, id))?;
+            i.level_known = true; // el equipo inicial se conoce
+            i.cursed_known = true;
+            Some(i)
+        };
+        let mut backpack = Vec::new();
+        for e in cls.get("items").and_then(Value::as_array).into_iter().flatten() {
+            let (id, qty) = match e {
+                Value::Array(a) => (a[0].as_str().unwrap_or(""), a[1].as_i64().unwrap_or(1) as i32),
+                v => (v.as_str().unwrap_or(""), 1),
+            };
+            if let Some(mut i) = Item::new(items, id) {
+                i.quantity = qty;
+                i.level_known = true;
+                backpack.push(i);
+            }
+        }
+        let quick = cls.get("quick").and_then(Value::as_str).map(str::to_string);
         let mut h = Self {
             ch: Char::new(-1, text(&cls["name"])),
             class_key: class_key.to_string(),
@@ -66,6 +142,10 @@ impl Hero {
             awareness: 0.0,
             weapon: item("start_weapon"),
             armor: item("start_armor"),
+            backpack,
+            gold: 0,
+            quickslots: [quick, None],
+            hunger: 0.0,
             action: None,
             animating: false,
             visible_enemies: Vec::new(),
@@ -111,11 +191,69 @@ impl Hero {
     }
 
     pub fn proficient_weapon(&self) -> bool {
-        self.weapon.as_ref().is_none_or(|w| self.class_has("weapon_prof", &w.id) || self.class_has("weapon_prof", w.str("kind")))
+        self.proficient_weapon_item(self.weapon.as_ref())
+    }
+
+    /// Sin arma (puños): siempre competente.
+    pub fn proficient_weapon_item(&self, w: Option<&Item>) -> bool {
+        w.is_none_or(|w| self.class_has("weapon_prof", &w.id) || self.class_has("weapon_prof", w.str("kind")))
     }
 
     pub fn proficient_armor(&self) -> bool {
-        self.armor.as_ref().is_none_or(|a| a.str("kind") == "clothing" || self.class_has("armor_prof", a.str("kind")))
+        self.proficient_armor_item(self.armor.as_ref())
+    }
+
+    pub fn proficient_armor_item(&self, a: Option<&Item>) -> bool {
+        a.is_none_or(|a| a.str("kind") == "clothing" || self.class_has("armor_prof", a.str("kind")))
+    }
+
+    pub fn is_starving(&self) -> bool {
+        self.hunger >= STARVING
+    }
+
+    pub fn item(&self, slot: Slot) -> Option<&Item> {
+        match slot {
+            Slot::Weapon => self.weapon.as_ref(),
+            Slot::Armor => self.armor.as_ref(),
+            Slot::Pack(k) => self.backpack.get(k),
+        }
+    }
+
+    /// El equipo puesto y la mochila, con dónde está cada uno.
+    pub fn all_items(&self) -> Vec<(Slot, &Item)> {
+        let mut v: Vec<(Slot, &Item)> = Vec::new();
+        if let Some(w) = &self.weapon {
+            v.push((Slot::Weapon, w));
+        }
+        if let Some(a) = &self.armor {
+            v.push((Slot::Armor, a));
+        }
+        v.extend(self.backpack.iter().enumerate().map(|(k, i)| (Slot::Pack(k), i)));
+        v
+    }
+
+    /// El ítem del acceso rápido q (None si no hay o ya no se tiene).
+    pub fn quick_item(&self, q: usize) -> Option<Slot> {
+        let id = self.quickslots[q].as_ref()?;
+        self.all_items().into_iter().find(|(_, i)| &i.id == id).map(|(s, _)| s)
+    }
+
+    /// Qué se puede hacer con el ítem (la primera es la principal: accesos rápidos).
+    pub fn verbs(&self, slot: Slot) -> Vec<Verb> {
+        let Some(item) = self.item(slot) else { return Vec::new() };
+        let mut v = Vec::new();
+        if item.is_equipment() {
+            v.push(if matches!(slot, Slot::Pack(_)) { Verb::Equip } else { Verb::Unequip });
+        } else {
+            match item.category() {
+                "food" => v.push(Verb::Eat),
+                "potion" => v.push(Verb::Drink),
+                "scroll" => v.push(Verb::Read),
+                _ => {}
+            }
+        }
+        v.push(Verb::Drop);
+        v
     }
 
     /// Puntos de FUE que faltan para usar bien el ítem (0 si alcanza).
@@ -137,7 +275,8 @@ impl Hero {
 
     pub fn attack_bonus(&self) -> i32 {
         let prof = if self.proficient_weapon() { self.proficiency() } else { 0 };
-        self.attack_mod() + prof - self.str_missing(self.weapon.as_ref())
+        let level = self.weapon.as_ref().map_or(0, |w| w.level);
+        self.attack_mod() + prof + level - self.str_missing(self.weapon.as_ref())
     }
 
     /// Desventaja propia: arma o armadura demasiado pesada, o armadura sin competencia.
@@ -212,6 +351,10 @@ impl Dungeon {
                 if self.heroes[j].is_downed() { Action::Help(j) } else { Action::Move(cell) }
             }
             Some(a) if seen && a != ActorId::Hero(i) => Action::Attack(a),
+            // cofre, tumba o restos: se abren desde al lado; un montón se recoge parado encima
+            _ if seen && level.heaps.contains_key(&cell) => {
+                if level.heaps[&cell].kind == HeapKind::Heap { Action::PickUp(cell) } else { Action::Open(cell) }
+            }
             _ if stairs && cell == level.exit => Action::Descend(cell),
             _ if stairs && cell == level.entrance => Action::Ascend(cell),
             _ => Action::Move(cell),
@@ -264,11 +407,23 @@ impl Dungeon {
                     self.heroes[i].action = None;
                 }
             }
-            Action::Descend(c) | Action::Ascend(c) if pos == c => {
+            Action::Use(slot, verb, target) => {
                 self.heroes[i].action = None;
-                if matches!(action, Action::Descend(_)) { self.descend(i) } else { self.ascend(i) }
+                self.use_item(i, slot, verb, target);
             }
-            Action::Move(c) | Action::Descend(c) | Action::Ascend(c) => {
+            Action::Open(c) if pos == c || adjacent(pos, c) => {
+                self.heroes[i].action = None;
+                self.open_heap(i, c);
+            }
+            Action::Descend(c) | Action::Ascend(c) | Action::PickUp(c) if pos == c => {
+                self.heroes[i].action = None;
+                match action {
+                    Action::Descend(_) => self.descend(i),
+                    Action::Ascend(_) => self.ascend(i),
+                    _ => self.pick_up(i),
+                }
+            }
+            Action::Move(c) | Action::Descend(c) | Action::Ascend(c) | Action::PickUp(c) | Action::Open(c) => {
                 if !self.hero_get_closer(i, c) {
                     self.heroes[i].action = None;
                 }
@@ -517,9 +672,306 @@ impl Dungeon {
     /// buffs/Regeneration.java: +1 PV cada 10 de tiempo. Caído, sólo si está estable (despierta).
     pub(crate) fn regen_act(&mut self, i: usize) {
         let h = &self.heroes[i];
-        if h.is_alive() && h.ch.hp < h.ch.ht && (h.ch.hp > 0 || h.stable) {
+        if h.is_alive() && h.ch.hp < h.ch.ht && !h.is_starving() && (h.ch.hp > 0 || h.stable) {
             self.heal(i, 1);
         }
         self.spend(ActorId::Regen(i), REGENERATION_DELAY);
+    }
+
+    /// buffs/Hunger.java: +10 de hambre cada 10 de tiempo (Pícaro cada 12). Hambriento a 260, famélico a 360: ahí deja
+    /// de regenerar y pierde 1 PV con 30% de probabilidad cada vez.
+    pub(crate) fn hunger_act(&mut self, i: usize) {
+        let h = &self.heroes[i];
+        if h.is_alive() {
+            if h.is_starving() {
+                if self.rng.float() < 0.3 {
+                    self.hero_damage(i, 1, None); // se puede morir de hambre (como en Java, sin parálisis)
+                }
+            } else {
+                let new = h.hunger + HUNGER_STEP;
+                if new >= STARVING {
+                    self.log("¡Te mueres de hambre!");
+                    self.heroes[i].action = None;
+                } else if new >= HUNGRY && HUNGRY > h.hunger {
+                    self.log("Tienes hambre");
+                }
+                self.heroes[i].hunger = new.min(STARVING);
+            }
+        }
+        let step = self.heroes[i].cls.get("hunger_step").and_then(Value::as_f64).unwrap_or(HUNGER_STEP);
+        self.spend(ActorId::Hunger(i), step);
+    }
+
+    /// Mete un ítem en la mochila (apila si se puede). Si no hay lugar, lo devuelve.
+    pub(crate) fn collect(&mut self, i: usize, item: Item) -> Result<(), Item> {
+        let h = &mut self.heroes[i];
+        if item.id == GOLD {
+            h.gold += item.quantity;
+            return Ok(());
+        }
+        if item.stackable()
+            && let Some(same) = h.backpack.iter_mut().find(|b| b.id == item.id)
+        {
+            same.quantity += item.quantity;
+            return Ok(());
+        }
+        if h.backpack.len() >= BACKPACK_SIZE {
+            return Err(item);
+        }
+        h.backpack.push(item);
+        Ok(())
+    }
+
+    /// Saca una unidad del ítem (de una pila, o el ítem entero).
+    fn take_one(&mut self, i: usize, slot: Slot) -> Option<Item> {
+        let h = &mut self.heroes[i];
+        match slot {
+            Slot::Weapon => h.weapon.take(),
+            Slot::Armor => h.armor.take(),
+            Slot::Pack(k) if h.backpack.get(k)?.quantity > 1 => Some(h.backpack[k].split(1)),
+            Slot::Pack(k) => Some(h.backpack.remove(k)),
+        }
+    }
+
+    /// Hero.actOpenChest + Heap.open: lo de adentro queda en el suelo como un montón normal.
+    /// ponytail: la tumba no invoca espectros ni los restos malditos hacen daño (faltan los Wraith)
+    fn open_heap(&mut self, i: usize, cell: i32) {
+        let Some(heap) = self.floor_mut().level.heaps.get_mut(&cell) else { return };
+        let msg = match heap.kind {
+            HeapKind::Heap => return,
+            HeapKind::Tomb => "Abres la tumba",
+            HeapKind::Skeleton => "Revisas los restos",
+            HeapKind::Chest => "Abres el cofre",
+        };
+        heap.kind = HeapKind::Heap;
+        if heap.items.is_empty() {
+            self.floor_mut().level.heaps.remove(&cell);
+            self.log("Está vacío");
+        } else {
+            self.log(msg);
+        }
+        self.effect(Fx::Anim { who: ActorId::Hero(i), kind: "operate", cell });
+        self.spend(ActorId::Hero(i), TIME_TO_OPEN);
+    }
+
+    fn pick_up(&mut self, i: usize) {
+        let pos = self.heroes[i].ch.pos;
+        let Some(heap) = self.level().heaps.get(&pos) else { return };
+        if heap.kind != HeapKind::Heap {
+            self.open_heap(i, pos); // cofre, tumba o restos bajo los pies: primero se abren
+            return;
+        }
+        let item = heap.items[0].clone();
+        let msg = if item.id == GOLD { format!("Recoges {} de oro", item.quantity) } else { format!("Recoges {}", self.item_name(&item)) };
+        if self.collect(i, item).is_err() {
+            self.log("Tu mochila está llena");
+            return;
+        }
+        let heaps = &mut self.floor_mut().level.heaps;
+        let heap = heaps.get_mut(&pos).unwrap();
+        heap.items.remove(0);
+        if heap.items.is_empty() {
+            heaps.remove(&pos);
+        }
+        self.log(&msg);
+        self.spend(ActorId::Hero(i), TIME_TO_PICK_UP);
+    }
+
+    /// Una acción sobre un ítem pedida desde la UI, en el turno del héroe.
+    fn use_item(&mut self, i: usize, slot: Slot, verb: Verb, target: Option<Slot>) {
+        let me = ActorId::Hero(i);
+        let pos = self.heroes[i].ch.pos;
+        let Some(item) = self.heroes[i].item(slot).cloned() else { return };
+        match verb {
+            Verb::Eat if item.category() == "food" => {
+                self.take_one(i, slot);
+                let h = &mut self.heroes[i];
+                h.hunger = (h.hunger - item.data["energy"].as_f64().unwrap_or(0.0)).max(0.0);
+                self.log(&format!("Comes {}", text(&item.data["name"])));
+                self.effect(Fx::Anim { who: me, kind: "operate", cell: pos });
+                self.spend(me, TIME_TO_EAT);
+            }
+            Verb::Drink | Verb::Read if matches!(item.category(), "potion" | "scroll") => {
+                let need = item.str("target").to_string();
+                let target_item = target.and_then(|t| self.heroes[i].item(t).cloned());
+                if !need.is_empty() {
+                    let ok = target_item.as_ref().is_some_and(|t| t.id != item.id && self.target_ok(&need, t));
+                    if !ok {
+                        return;
+                    }
+                }
+                // al sacar una unidad de la mochila los índices de detrás pueden correrse: el objetivo se busca después
+                let target = target_item.and_then(|t| {
+                    let after = if let (Slot::Pack(a), Some(Slot::Pack(b))) = (slot, target) {
+                        if b > a && item.quantity == 1 { Some(Slot::Pack(b - 1)) } else { Some(Slot::Pack(b)) }
+                    } else {
+                        target
+                    };
+                    after.filter(|s| self.heroes[i].item(*s).is_some_and(|x| x.id == t.id))
+                });
+                self.take_one(i, slot);
+                self.known.insert(item.id.clone());
+                self.item_effect(i, item.str("effect"), target);
+                let kind = if verb == Verb::Read { "read" } else { "operate" };
+                self.effect(Fx::Anim { who: me, kind, cell: pos });
+                self.spend(me, TIME_TO_USE);
+            }
+            Verb::Equip if item.is_equipment() => {
+                let Slot::Pack(k) = slot else { return };
+                let armor = item.category() == "armor";
+                let h = &mut self.heroes[i];
+                let old = if armor { &mut h.armor } else { &mut h.weapon };
+                if let Some(o) = old.as_mut().filter(|o| o.cursed) {
+                    o.cursed_known = true;
+                    let o = o.clone();
+                    let name = self.item_name(&o);
+                    self.log(&format!("No puedes quitarte {name}: está maldito"));
+                    return;
+                }
+                let mut new = h.backpack.remove(k);
+                let old = if armor { &mut h.armor } else { &mut h.weapon };
+                new.level_known = true; // ponytail: en Java se identifica con el uso, no al equiparlo
+                new.cursed_known = true;
+                let cursed = new.cursed;
+                if let Some(o) = old.replace(new) {
+                    h.backpack.push(o);
+                }
+                let name = self.item_name(&item);
+                self.log(&format!("Te equipas {name}{}", if cursed { ": ¡está maldito!" } else { "" }));
+                self.spend(me, TIME_TO_EQUIP * if armor { 2.0 } else { 1.0 });
+            }
+            Verb::Unequip | Verb::Drop if item.cursed && !matches!(slot, Slot::Pack(_)) => {
+                let h = &mut self.heroes[i];
+                if let Some(it) = if slot == Slot::Weapon { h.weapon.as_mut() } else { h.armor.as_mut() } {
+                    it.cursed_known = true;
+                }
+                let name = self.item_name(&item);
+                let what = if verb == Verb::Drop { "soltar" } else { "quitarte" };
+                self.log(&format!("No puedes {what} {name}: está maldito"));
+            }
+            Verb::Unequip if !matches!(slot, Slot::Pack(_)) => {
+                if self.heroes[i].backpack.len() >= BACKPACK_SIZE {
+                    self.log("Tu mochila está llena");
+                    return;
+                }
+                let it = self.take_one(i, slot).unwrap();
+                self.heroes[i].backpack.push(it);
+                self.spend(me, TIME_TO_EQUIP);
+            }
+            Verb::Drop => {
+                let it = match slot {
+                    Slot::Pack(k) => self.heroes[i].backpack.remove(k),
+                    _ => self.take_one(i, slot).unwrap(),
+                };
+                self.floor_mut().level.drop(it, pos, HeapKind::Heap);
+                self.spend(me, TIME_TO_DROP);
+            }
+            _ => {}
+        }
+    }
+
+    /// Qué ítems acepta un pergamino con objetivo (`target` en data/items.json).
+    pub fn target_ok(&self, need: &str, item: &Item) -> bool {
+        match need {
+            "unknown" => !self.is_known(item),
+            "upgradable" => item.is_equipment() || item.flag("upgradable"),
+            _ => false,
+        }
+    }
+
+    /// Efectos de pociones y pergaminos, por nombre (data/items.json: `effect`).
+    fn item_effect(&mut self, i: usize, effect: &str, target: Option<Slot>) {
+        match effect {
+            "heal" => {
+                let ht = self.heroes[i].ch.ht;
+                self.heal(i, ht);
+                self.log("Tus heridas se cierran");
+            }
+            "strength" => {
+                let s = &mut self.heroes[i].abilities[0];
+                *s = (*s + 1).min(20);
+                let msg = format!("Te sientes más fuerte: FUE {s}");
+                self.log(&msg);
+            }
+            "experience" => {
+                let h = &self.heroes[i];
+                let missing = h.max_exp() - h.exp;
+                self.earn_exp(i, missing);
+            }
+            "identify" => {
+                let Some(slot) = target else { return };
+                let id = {
+                    let t = self.target_mut(i, slot);
+                    t.level_known = true;
+                    t.cursed_known = true;
+                    t.id.clone()
+                };
+                self.known.insert(id);
+                let name = self.item_name(&self.heroes[i].item(slot).unwrap().clone());
+                self.log(&format!("Es {name}"));
+            }
+            "upgrade" => {
+                let Some(slot) = target else { return };
+                let t = self.target_mut(i, slot);
+                t.level += 1;
+                t.cursed = false;
+                t.cursed_known = true;
+                let name = text(&t.data["name"]);
+                self.log(&format!("Tu {name} brilla"));
+            }
+            "remove_curse" => {
+                let h = &mut self.heroes[i];
+                let mut any = false;
+                for it in h.weapon.iter_mut().chain(h.armor.iter_mut()).chain(h.backpack.iter_mut()) {
+                    if it.cursed {
+                        it.cursed = false;
+                        it.cursed_known = true;
+                        any = true;
+                    }
+                }
+                self.log(if any { "Una luz limpia tu equipo" } else { "Sientes una calma extraña" });
+            }
+            "magic_mapping" => {
+                for c in 0..LENGTH {
+                    let l = &mut self.floor_mut().level;
+                    if l.discoverable[c as usize] {
+                        l.mapped[c as usize] = true;
+                        if l.secret[c as usize] {
+                            l.discover(c);
+                        }
+                    }
+                }
+                self.observe();
+                self.view_changed = true;
+                self.log("Recuerdas el mapa de este piso");
+            }
+            "teleport" => {
+                let mut rng = self.rng.clone();
+                let pos = self.level().random_respawn_cell(&mut rng, |c| self.find_char(c).is_some());
+                self.rng = rng;
+                if pos == -1 {
+                    self.log("No pasa nada");
+                    return;
+                }
+                self.place_char(ActorId::Hero(i), pos);
+                self.heroes[i].action = None;
+                self.log("Apareces en otro lugar");
+            }
+            _ => {}
+        }
+    }
+
+    fn target_mut(&mut self, i: usize, slot: Slot) -> &mut Item {
+        let h = &mut self.heroes[i];
+        match slot {
+            Slot::Weapon => h.weapon.as_mut().unwrap(),
+            Slot::Armor => h.armor.as_mut().unwrap(),
+            Slot::Pack(k) => &mut h.backpack[k],
+        }
+    }
+
+    /// Nombre de un ítem con mayúscula (títulos de ventanas).
+    pub fn item_title(&self, item: &Item) -> String {
+        capitalize(&self.item_name(item))
     }
 }

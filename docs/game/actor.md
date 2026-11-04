@@ -9,3 +9,5 @@ vive en `Dungeon` (dungeon.rs).
   `Dungeon::combat_step` / `end_round`: cada personaje hace su turno (movimiento `speed_ft / 5` casillas + 1 acción);
   al final de la ronda la regeneración y el respawn avanzan 1 TICK; `CALM_ROUNDS` (2) rondas sin mobs cazando a la
   vista terminan el combate y todos vuelven al tiempo de PD parejos.
+
+`Hunger(i)`: el hambre del héroe i; como `Regen`, viaja con él entre pisos y avanza 1 TICK por ronda en combate.

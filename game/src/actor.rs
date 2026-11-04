@@ -11,6 +11,8 @@ pub enum ActorId {
     Mob(u32),
     /// Regeneración del héroe (buffs/Regeneration.java): viaja con él entre pisos.
     Regen(usize),
+    /// Hambre del héroe (buffs/Hunger.java): viaja con él entre pisos.
+    Hunger(usize),
     /// Level.respawner: uno por piso.
     Respawner,
 }

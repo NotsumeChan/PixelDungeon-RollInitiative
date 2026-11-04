@@ -22,3 +22,6 @@ git worktree add ../pdri-py python-prototipe          # una vez
 diff <(cd ../pdri-py && python -m game.level 1234 3) <(cargo run -q -p game --example level -- 1234 3)
 ```
 Sin salida = mismo piso.
+
+Montones de ítems (R5a): `heaps` (por celda, ordenados), `drop` (se apila en el montón que haya) y
+`random_drop_cell` (sala STANDARD, transitable).
