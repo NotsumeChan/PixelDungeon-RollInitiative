@@ -82,6 +82,7 @@ const BAG_TINT: [f32; 4] = [0.72, 0.72, 0.72, 1.0];
 /// WndSettings.
 const SETTINGS_W: f32 = 200.0;
 const CTRL_H: f32 = 14.0;
+const SPELLS_W: f32 = 190.0;
 const LEVEL_UP: [f32; 4] = rgba(80, 255, 80, 0xFF);
 const LEVEL_DOWN: [f32; 4] = rgba(255, 80, 80, 0xFF);
 
@@ -115,6 +116,8 @@ pub enum Window {
     Item(Slot),
     /// WndSettings: FPS, pantalla completa y controles.
     Settings,
+    /// Libro de conjuros (F).
+    Spells,
 }
 
 /// Lo que hace un click en la UI; lo aplica la app.
@@ -138,6 +141,8 @@ pub enum UiAction {
     SetFullscreen(bool),
     /// Esperar la próxima tecla para esa acción.
     Rebind(Bind),
+    /// Elegir el objetivo del conjuro k en el mapa.
+    Cast(usize),
 }
 
 struct Hot {
@@ -201,6 +206,8 @@ fn capitalize(s: &str) -> String {
 pub struct Ui {
     pub window: Option<Window>,
     pub examining: bool,
+    /// Eligiendo el objetivo del conjuro k (el próximo click en el mapa).
+    pub casting: Option<usize>,
     /// Mouse en la capa de UI (tooltips); None en táctil.
     pub mouse: Option<[f32; 2]>,
     /// Esperando la tecla nueva para esta acción (configuración).
@@ -213,7 +220,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, mouse: None, rebinding: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, mouse: None, rebinding: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// La acción de la zona de más arriba bajo `p` (pixeles de la UI), o None si el click es para el mapa.
@@ -276,10 +283,14 @@ impl Ui {
             Some(Window::Bag(mode)) => self.draw_bag(atlas, font, d, out, w, h, &mode),
             Some(Window::Item(slot)) => self.draw_item(atlas, font, d, out, w, h, slot),
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
+            Some(Window::Spells) => self.draw_spells(atlas, font, d, out, w, h),
             None => {
                 self.draw_tooltip(atlas, font, out, w, h);
-                if self.examining {
-                    let msg = "Toca una casilla para examinarla";
+                let casting = self.casting.and_then(|k| d.local().spell_ids().get(k).cloned());
+                let msg = casting.and_then(|sid| d.spell(&sid).map(|s| format!("Elige el objetivo: {} (Esc cancela)", text(&s["name"]))));
+                let msg = msg.or_else(|| self.examining.then(|| "Toca una casilla para examinarla".to_string()));
+                if let Some(msg) = msg {
+                    let msg = msg.as_str();
                     let tw = font.width(msg);
                     let x = ((w - tw - 8.0) / 2.0).floor();
                     out.push(atlas.rect([x, 34.0], [tw + 8.0, font.height() + 4.0], PROMPT_BG));
@@ -665,17 +676,96 @@ impl Ui {
             (format!("Salvaciones {}", saves.join(" ")), WHITE),
             (format!("XP {}/{}   Oro {}", me.exp, me.max_exp(), me.gold), WHITE),
         ];
+        let trait_btn = if me.has_trait("pdri:second_wind") {
+            let state = if me.second_wind { "disponible" } else { "usado" };
+            lines.push((format!("Segundo Aliento (F): {state}"), WHITE));
+            Some(("Segundo Aliento", me.second_wind.then_some(UiAction::Act(Action::SecondWind))))
+        } else if me.spellcasting().is_some() {
+            lines.push((format!("Conjuros (F): ataque {:+}, CD {}", me.spell_bonus(), me.spell_dc()), WHITE));
+            Some(("Conjuros", Some(UiAction::Open(Window::Spells))))
+        } else {
+            None
+        };
+        if me.has_trait("pdri:sneak_attack") {
+            lines.push((format!("Ataque Furtivo: +{}d6 con ventaja y arma sutil", me.sneak_dice()), WHITE));
+        }
         if !me.ch.buffs.is_empty() {
             let names: Vec<String> = me.ch.buffs.iter().map(|b| b.name()).collect();
             lines.push((format!("Estados: {}", names.join(", ")), STATES));
         }
         let cw = lines.iter().map(|l| font.width(&l.0)).fold(0.0, f32::max);
-        let ch = lines.len() as f32 * LINE_H;
+        let btn = if trait_btn.is_some() { MENU_BTN_H + MENU_GAP } else { 0.0 };
+        let ch = lines.len() as f32 * LINE_H + btn;
         let c = [((w - cw) / 2.0).floor(), ((h - TOOLBAR_H - ch) / 2.0).floor(), cw, ch];
         self.hot([0.0, 0.0, w, h], UiAction::Close, None);
         Self::draw_window(atlas, out, c);
+        self.hot(c, UiAction::Nothing, None);
         for (i, (line, color)) in lines.iter().enumerate() {
             font.text(out, line, c[0], c[1] + i as f32 * LINE_H, *color);
+        }
+        // en el teléfono no hay F: el rasgo de clase se usa desde aquí
+        if let Some((label, act)) = trait_btn {
+            let rect = [c[0], c[1] + ch - MENU_BTN_H, cw, MENU_BTN_H];
+            self.draw_button(atlas, font, out, rect, label, act);
+        }
+    }
+
+    /// Libro de conjuros (F): bono, CD, espacios y usos gratis. Click en un conjuro = elegir el objetivo (o lanzarlo,
+    /// si es sobre uno mismo). En gris los que no se pueden lanzar ahora.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_spells(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
+        let me = d.local();
+        let Some(sc) = me.spellcasting() else {
+            self.window = None;
+            return;
+        };
+        let sw = SPELLS_W.min(w - 16.0);
+        let ability = sc["ability"].as_str().unwrap_or("INT");
+        let short = ABILITIES.iter().position(|a| *a == ability).map_or(ability, |k| ABILITY_NAMES[k]);
+        let max = me.max_slots(me.lvl);
+        let slots: Vec<String> = me.slots.iter().zip(&max).enumerate().map(|(k, (n, m))| format!("nv{} {n}/{m}", k + 1)).collect();
+        let mut head = vec![
+            ("Conjuros".to_string(), YELLOW),
+            (format!("Ataque {:+}   CD {}   ({short})", me.spell_bonus(), me.spell_dc()), WHITE),
+            (format!("Espacios: {}", if slots.is_empty() { "-".to_string() } else { slots.join("  ") }), WHITE),
+        ];
+        for (sid, n) in &me.free_casts {
+            let name = d.spell(sid).map_or(sid.clone(), |s| text(&s["name"]));
+            head.push((format!("{name}: {n} gratis"), WHITE));
+        }
+        let rows: Vec<(usize, String, Vec<String>, bool, bool)> = me
+            .spell_ids()
+            .iter()
+            .enumerate()
+            .filter_map(|(k, sid)| {
+                let s = d.spell(sid)?;
+                let lvl = s["level"].as_i64().unwrap_or(0);
+                let tag = if lvl == 0 { "truco".to_string() } else { format!("nv {lvl}") };
+                let desc = s.get("desc").map_or(String::new(), text);
+                let lines = wrap(font, &desc, sw).into_iter().take(2).collect();
+                Some((k, format!("{} ({tag})", text(&s["name"])), lines, d.can_cast(me, sid), s["target"] == "self"))
+            })
+            .collect();
+        let ch = head.len() as f32 * LINE_H + 4.0 + rows.iter().map(|r| MENU_BTN_H + 2.0 + r.2.len() as f32 * LINE_H + MENU_GAP).sum::<f32>();
+        let c = [((w - sw) / 2.0).floor(), ((h - TOOLBAR_H - ch) / 2.0).floor().max(2.0), sw, ch];
+        self.hot([0.0, 0.0, w, h], UiAction::Close, None);
+        Self::draw_window(atlas, out, c);
+        self.hot(c, UiAction::Nothing, None);
+        let mut y = c[1];
+        for (line, color) in &head {
+            font.text(out, line, c[0], y, *color);
+            y += LINE_H;
+        }
+        y += 4.0;
+        for (k, label, desc, ok, own) in rows {
+            let act = if own { UiAction::Act(Action::Cast(k, me.ch.pos)) } else { UiAction::Cast(k) };
+            self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], &label, ok.then_some(act));
+            y += MENU_BTN_H + 2.0;
+            for line in desc {
+                font.text(out, &line, c[0], y, GREY);
+                y += LINE_H;
+            }
+            y += MENU_GAP;
         }
     }
 

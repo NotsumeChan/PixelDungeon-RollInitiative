@@ -36,3 +36,5 @@ Emboscada (5e): si un héroe va a atacar fuera de combate, primero empieza el co
 iniciativa y su ataque va en su turno; los mobs que no lo habían visto quedan sorprendidos (`Char::surprised`: pierden
 su primer turno). Así un enemigo que muere de un golpe igual tuvo su tirada de iniciativa. El combate que empieza
 porque un mob caza (`start_combat(false)`) no sorprende a nadie, como el prototipo.
+
+R5c: `roll_damage` recibe la ventaja y el objetivo (Ataque Furtivo, Marca del cazador); `target_advantage` = la ventaja que da el objetivo (la usan los conjuros); más `Pending` para los conjuros.

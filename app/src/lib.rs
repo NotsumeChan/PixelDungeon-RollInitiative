@@ -254,6 +254,10 @@ impl App {
             self.ui.examine(&self.world.d, cell);
             return;
         }
+        if let Some(k) = self.ui.casting.take() {
+            self.ui_action(UiAction::Act(Action::Cast(k, cell)));
+            return;
+        }
         let d = &mut self.world.d;
         if !d.local().is_alive() {
             return;
@@ -287,6 +291,10 @@ impl App {
                 self.apply_fullscreen();
             }
             UiAction::Rebind(b) => self.ui.rebinding = Some(b),
+            UiAction::Cast(k) => {
+                self.ui.window = None;
+                self.ui.casting = Some(k);
+            }
             UiAction::SetQuick(q, id) => {
                 let me = self.world.d.hero;
                 self.world.d.heroes[me].quickslots[q] = Some(id);
@@ -399,8 +407,18 @@ impl App {
             // Esc: cierra la ventana abierta, cancela examinar o abre el menú
             KeyCode::Escape if !free => self.ui.window = None,
             KeyCode::Escape if self.ui.examining => self.ui.examining = false,
+            KeyCode::Escape if self.ui.casting.is_some() => self.ui.casting = None,
             KeyCode::Escape => self.ui.window = Some(UiWindow::Menu),
             KeyCode::F11 => self.ui_action(UiAction::SetFullscreen(!self.config.fullscreen)),
+            // rasgo de clase: Segundo Aliento, o el libro de conjuros
+            KeyCode::KeyF if free => {
+                let h = self.world.d.local();
+                if h.has_trait("pdri:second_wind") {
+                    self.ui_action(UiAction::Act(Action::SecondWind));
+                } else if h.spellcasting().is_some() {
+                    self.ui.window = Some(UiWindow::Spells);
+                }
+            }
             _ => match bind {
                 Some(Bind::Wait) if free => self.ui_action(UiAction::Act(Action::Rest)),
                 Some(Bind::Search) if free => self.ui_action(UiAction::Act(Action::Search)),

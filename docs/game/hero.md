@@ -35,3 +35,5 @@ R5a (Belongings.java, Hunger.java):
 - El nivel del arma suma al ataque y a los dados; el de la armadura, a la CA.
 
 R5b: paralizado no actúa (sus turnos pasan solos); con hambre o un estado como origen, el log y "Has muerto (...)" lo nombran. Al morir sale del planificador con regeneración, hambre y estados.
+
+R5c: `second_wind`, `slots`, `free_casts`, `marked`; acciones `Cast(k, celda)` y `SecondWind`; los números del lanzador y los rasgos están en spells.rs.

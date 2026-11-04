@@ -79,6 +79,10 @@ pub enum Action {
     Open(i32),
     /// Usar un ítem; el último es el objetivo de un pergamino (identificar, mejorar).
     Use(Slot, Verb, Option<Slot>),
+    /// Lanzar el conjuro k de la clase (spells.rs) sobre la celda.
+    Cast(usize, i32),
+    /// Segundo Aliento (acción adicional: no gasta tiempo).
+    SecondWind,
 }
 
 pub struct Hero {
@@ -98,6 +102,13 @@ pub struct Hero {
     /// ponytail: por id también el equipo; dos iguales no se distinguen
     pub quickslots: [Option<String>; 2],
     pub hunger: f64,
+    /// Segundo Aliento disponible (se recarga con `recover`).
+    pub second_wind: bool,
+    /// Espacios de conjuro disponibles por nivel, y usos gratis (Enemigo predilecto: Marca del cazador).
+    pub slots: Vec<i32>,
+    pub free_casts: Vec<(String, i32)>,
+    /// Quién tiene su Marca del cazador.
+    pub marked: Option<ActorId>,
     pub action: Option<Action>,
     /// true tras moverse: el render lo baja al terminar la animación del paso (la lógica espera).
     pub animating: bool,
@@ -146,6 +157,10 @@ impl Hero {
             gold: 0,
             quickslots: [quick, None],
             hunger: 0.0,
+            second_wind: true,
+            slots: Vec::new(),
+            free_casts: Vec::new(),
+            marked: None,
             action: None,
             animating: false,
             visible_enemies: Vec::new(),
@@ -161,6 +176,7 @@ impl Hero {
         h.ch.ht = (h.hit_die() + h.ability_mod("CON")).max(1);
         h.ch.hp = h.ch.ht;
         h.update_awareness();
+        h.recover();
         h
     }
 
@@ -420,6 +436,14 @@ impl Dungeon {
                     self.heroes[i].action = None;
                 }
             }
+            Action::Cast(k, cell) => {
+                self.heroes[i].action = None;
+                self.cast(i, k, cell);
+            }
+            Action::SecondWind => {
+                self.heroes[i].action = None;
+                self.second_wind(i);
+            }
             Action::Use(slot, verb, target) => {
                 self.heroes[i].action = None;
                 self.use_item(i, slot, verb, target);
@@ -532,6 +556,7 @@ impl Dungeon {
             if h.lvl < 10 {
                 h.update_awareness();
             }
+            h.level_up_spells();
             let msg = format!("Subes a nivel {}: +{gain} PV, competencia +{}", h.lvl, h.proficiency());
             self.log(&msg);
             self.status(ActorId::Hero(i), "sube de nivel", Tone::Pos);

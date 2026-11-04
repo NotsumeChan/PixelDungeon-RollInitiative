@@ -36,3 +36,5 @@ R5b: íconos de los estados del héroe en el panel (con su nombre de tooltip); "
 Configuración (WndSettings, desde el menú): FPS, pantalla completa (F11) y controles (se toca la acción y se
 presiona la tecla nueva; Esc cancela). La mochila y la ventana del ítem tienen el marco más tenue (`BAG_TINT`) y las
 ranuras más oscuras (pedido del dueño: estaban muy blancas).
+
+R5c: libro de conjuros (F o desde la ficha): bono, CD, espacios y usos gratis; un botón por conjuro (gris si no se puede) que pide el objetivo en el mapa o se lanza sobre uno mismo. La ficha muestra el rasgo de clase con su botón (Segundo Aliento o Conjuros), para el teléfono.

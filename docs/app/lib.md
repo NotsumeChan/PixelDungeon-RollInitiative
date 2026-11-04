@@ -27,3 +27,5 @@ R3: **jugar un piso** con el héroe (`World`: la partida `game::dungeon::Dungeon
 
 Tope de FPS (`config.max_fps`): `about_to_wait` espera con `ControlFlow::WaitUntil` hasta el próximo frame; sin tope,
 `Poll` y se dibuja sin parar. Las teclas de juego salen de `Config` (configurables); F11 = pantalla completa.
+
+R5c: F = rasgo de clase (Segundo Aliento o el libro de conjuros); eligiendo el objetivo de un conjuro, el próximo click en el mapa lo lanza (Esc cancela).

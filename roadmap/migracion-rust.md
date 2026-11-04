@@ -128,10 +128,15 @@ menos brillante.
 **R5e (en parte)** ✏️: configuración en `Local.config` desde el menú: tope de FPS, pantalla completa (F11) y controles
 configurables. Falta el idioma (estructura de traducción).
 
-**Siguiente: R5c** (rasgos de clase y
-conjuros), **R5d** (armas a distancia: arrojadizas, bumerán, arco), **R5e** (configuración: idioma, FPS, pantalla
-completa) = **0.7**. Después el resto de R5 para la 0.8 (guardado, creación y lista de personajes, reglas de la
-partida, hotseat).
+**Estado R5c** ✏️ escrito (2026-11-04), pendiente de prueba del dueño: rasgos de clase (Segundo Aliento, Ataque
+Furtivo, Enemigo predilecto) y conjuros del Mago (Descarga de fuego, Rayo de escarcha, Proyectil mágico, Dormir) y del
+Explorador (Marca del cazador, Curar heridas) como datos, con espacios por nivel, trucos que escalan, línea de tiro y
+cobertura (`game/spells.rs`, `game/ballistica.rs`), libro de conjuros (F) y el rasgo desde la ficha. Para probar: cada
+conjuro y rasgo, que el daño espere al dado, Dormir sobre varios mobs, la Marca del cazador sumando 1d6, Ataque
+Furtivo con daga contra un mob dormido. Faltan los proyectiles y partículas de los conjuros.
+
+**Siguiente: R5d** (armas a distancia: arrojadizas, bumerán, arco) = **0.7** junto con lo anterior; el idioma de
+R5e queda para después (estructura de traducción).
 
 **Pendiente del dueño** (al cerrar la sesión del 2026-11-03):
 - `git push origin main` (R1, R2 y la orientación vertical están sólo en local).

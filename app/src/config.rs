@@ -14,7 +14,7 @@ pub const FPS_OPTIONS: [u32; 4] = [30, 60, 120, 0];
 /// Sin archivo: 60 (el prototipo usaba 30; en un panel de 120 Hz se nota).
 const DEFAULT_FPS: u32 = 60;
 
-/// Acciones con tecla configurable. Las flechas siempre mueven; Esc, R, C y F11 son fijas.
+/// Acciones con tecla configurable. Las flechas siempre mueven; Esc, R, C, F y F11 son fijas.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Bind {
     Up,
@@ -101,7 +101,7 @@ pub fn key_label(k: KeyCode) -> String {
 
 /// ¿Se puede asignar esta tecla? (las fijas no).
 pub fn assignable(k: KeyCode) -> bool {
-    KEYS.contains(&k) && !matches!(k, KeyCode::KeyR | KeyCode::KeyC)
+    KEYS.contains(&k) && !matches!(k, KeyCode::KeyR | KeyCode::KeyC | KeyCode::KeyF)
 }
 
 pub struct Config {

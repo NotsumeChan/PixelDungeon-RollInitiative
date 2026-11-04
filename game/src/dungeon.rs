@@ -73,6 +73,12 @@ pub enum Pending {
     Attack { attacker: ActorId, target: ActorId, hit: bool, dmg: i32, detail: String, simple: String },
     DeathSave { hero: usize, nat: i32 },
     Stabilize { hero: usize, ally: usize, ok: bool },
+    /// Un estado que pone un conjuro al acertar (Rayo de escarcha).
+    Buff { target: ActorId, id: String, duration: Option<f64> },
+    /// Dormir: los mobs por orden de vida hasta gastar la reserva.
+    Sleep { victims: Vec<u32>, pool: i32, name: String },
+    /// Curar heridas: a quién y cuánto.
+    Heal { caster: usize, who: ActorId, amount: i32, name: String },
     /// Salvación contra una trampa: el efecto según si la superó.
     TrapSave { who: ActorId, ability: &'static str, ok: bool, detail: String, seen: bool, effect: crate::traps::TrapEffect },
 }
@@ -129,6 +135,7 @@ pub struct Dungeon {
     next_mob: u32,
     pub(crate) next_buff: u32,
     pub(crate) buffs: Map<String, Value>,
+    pub(crate) spells: Map<String, Value>,
     classes: Map<String, Value>,
     pub(crate) items: Map<String, Value>,
     mobs_data: Map<String, Value>,
@@ -163,6 +170,7 @@ impl Dungeon {
             next_mob: 0,
             next_buff: 0,
             buffs: load("buffs"),
+            spells: load("spells"),
             classes: load("classes"),
             items: load("items"),
             mobs_data: load("mobs"),
@@ -356,6 +364,7 @@ impl Dungeon {
         } else {
             let level = Level::new(self.seed, depth);
             self.heroes[i].ch.pos = level.entrance;
+            self.heroes[i].recover(); // ponytail: hasta que haya descansos, se recupera en cada piso nuevo
             self.floors.insert(depth, Floor { level, mobs: Vec::new(), scheduler: Scheduler::default() });
             self.depth = depth;
             self.generator.reset();
@@ -835,6 +844,10 @@ impl Dungeon {
         self.start_turn(first);
     }
 
+    pub(crate) fn armor_class_of(&self, a: ActorId) -> i32 {
+        self.armor_class(a)
+    }
+
     fn armor_class(&self, a: ActorId) -> i32 {
         match a {
             ActorId::Hero(i) => self.heroes[i].armor_class(),
@@ -852,9 +865,14 @@ impl Dungeon {
     }
 
     /// 1 = ventaja, -1 = desventaja, 0 = normal. Ventaja contra quien no lo vio venir o está caído.
-    fn advantage(&self, att: ActorId, target: ActorId) -> i32 {
+    /// Ventaja por el objetivo: no lo vio venir, está paralizado o caído.
+    pub(crate) fn target_advantage(&self, target: ActorId) -> i32 {
         let unaware = matches!(target, ActorId::Mob(id) if self.mob(id).is_some_and(|m| !m.enemy_seen));
-        let mut adv = if unaware || self.downed(target) || self.has_flag(target, "paralysed") { 1 } else { 0 };
+        if unaware || self.downed(target) || self.has_flag(target, "paralysed") { 1 } else { 0 }
+    }
+
+    fn advantage(&self, att: ActorId, target: ActorId) -> i32 {
+        let mut adv = self.target_advantage(target);
         if matches!(att, ActorId::Hero(i) if self.heroes[i].disadvantaged()) {
             adv -= 1; // ventaja y desventaja juntas se anulan
         }
@@ -862,16 +880,29 @@ impl Dungeon {
     }
 
     /// (daño, texto para el log, evento de dado para la animación). crit = dados dobles.
-    fn roll_damage(&mut self, a: ActorId, crit: bool) -> (i32, String, Option<DiceEvent>) {
+    /// `adv` = la ventaja con la que se atacó (Ataque Furtivo); `target` = a quién (Marca del cazador).
+    fn roll_damage(&mut self, a: ActorId, crit: bool, adv: i32, target: ActorId) -> (i32, String, Option<DiceEvent>) {
         match a {
             ActorId::Hero(i) => {
                 let h = &self.heroes[i];
                 let m = h.attack_mod();
                 let Some(w) = &h.weapon else { return (1 + m, format!("1{m:+}"), None) }; // sin armas: 1 + FUE
-                let (total, text, rolled, sides) = dice::roll(&mut self.rng, &crate::items::weapon_dice(w), crit);
+                let sneak = (adv > 0 && w.flag("finesse") && h.has_trait("pdri:sneak_attack")).then(|| h.sneak_dice());
+                let (mut total, mut text, mut rolled, sides) = dice::roll(&mut self.rng, &crate::items::weapon_dice(w), crit);
                 let n = rolled.len() as i32;
-                let value = rolled.iter().sum();
-                let ev = DiceEvent { label: format!("{n}d{sides}"), value, lo: n, hi: n * sides, ok: None };
+                let (mut label, mut hi) = (format!("{n}d{sides}"), n * sides);
+                // Ataque Furtivo (con ventaja y arma sutil) y Marca del cazador (+1d6): dobles en crítico
+                let marked = self.ch(target).is_some_and(|c| c.buffs.iter().any(|b| b.id == "pdri:hunters_mark"));
+                for extra in [sneak, marked.then_some(1)].into_iter().flatten() {
+                    let (t, et, er, _) = dice::roll(&mut self.rng, &format!("{extra}d6"), crit);
+                    total += t;
+                    text = format!("{text}+{et}");
+                    label = format!("{label}+{}d6", er.len());
+                    hi += 6 * er.len() as i32;
+                    rolled.extend(er);
+                }
+                let k = rolled.len() as i32;
+                let ev = DiceEvent { label, value: rolled.iter().sum(), lo: k, hi, ok: None };
                 (total + m, format!("{text}{m:+}"), Some(ev))
             }
             ActorId::Mob(id) => {
@@ -915,7 +946,7 @@ impl Dungeon {
             return false;
         }
         let crit = nat == 20 || (self.downed(enemy) && adjacent(apos, epos)); // 5e: caído y al lado = crítico
-        let (dmg, dmg_text, event) = self.roll_damage(att, crit);
+        let (dmg, dmg_text, event) = self.roll_damage(att, crit, adv, enemy);
         let dmg = dmg.max(0);
         if !seen {
             self.damage(enemy, dmg, Some(att));
@@ -969,6 +1000,13 @@ impl Dungeon {
                 Pending::DeathSave { hero, nat } => self.apply_death_save(hero, nat),
                 Pending::Stabilize { hero, ally, ok } => self.apply_stabilize(hero, ally, ok),
                 p @ Pending::TrapSave { .. } => self.apply_trap_save(p),
+                Pending::Buff { target, id, duration } => {
+                    if self.alive(target) {
+                        self.add_buff(target, &id, duration, 0, 0);
+                    }
+                }
+                Pending::Sleep { victims, pool, name } => self.apply_sleep(victims, pool, &name),
+                Pending::Heal { caster, who, amount, name } => self.apply_heal(caster, who, amount, &name),
             }
         }
     }

@@ -2,6 +2,7 @@
 //! Port de `game/` del prototipo (rama `python-prototipe`).
 
 pub mod actor;
+pub mod ballistica;
 pub mod buffs;
 pub mod char;
 pub mod dice;
@@ -17,6 +18,7 @@ pub mod pathfinder;
 pub mod patch;
 pub mod registry;
 pub mod rng;
+pub mod spells;
 pub mod room;
 pub mod terrain;
 pub mod traps;
