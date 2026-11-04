@@ -56,3 +56,7 @@ Menús como el prototipo (2026-11-04):
   la de 5e).
 - Configuración: Idioma (sólo Español; English deshabilitado hasta la traducción), Pantalla completa, FPS y Escala de
   la interfaz (del zoom que entra hacia abajo, entero: 100% / 75% / 50% en HD); Controles en su propia ventana.
+
+Lista de personajes (`Window::Roster`, rosterScreen.py): filas con avatar, nombre, estado ("en partida - piso N,
+nivel M" o la clase y su dado de golpe) y características; JUGAR / NUEVO / BORRAR (confirma). NUEVO elige la clase con
+el array estándar hasta que esté la creación con dados.

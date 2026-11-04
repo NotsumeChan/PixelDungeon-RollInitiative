@@ -155,6 +155,17 @@ impl Generator {
         self.weights = CATEGORY_WEIGHTS.to_vec();
     }
 
+    /// Los pesos actuales, en el orden de las categorías (guardado de partidas).
+    pub fn weights(&self) -> Vec<f64> {
+        self.weights.iter().map(|c| c.1).collect()
+    }
+
+    pub fn set_weights(&mut self, w: &[f64]) {
+        for (c, &v) in self.weights.iter_mut().zip(w) {
+            c.1 = v;
+        }
+    }
+
     /// cur_str = FUE del héroe local (equipo: de dos, el de FUE más cercana).
     pub fn random(&mut self, items: &Map<String, Value>, rng: &mut Rng, depth: i32, cur_str: i32) -> Item {
         let w: Vec<f64> = self.weights.iter().map(|c| c.1).collect();

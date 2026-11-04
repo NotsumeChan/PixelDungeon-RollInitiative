@@ -124,6 +124,8 @@ pub enum Window {
     Controls,
     /// Pantalla de texto del título (Mods, Acerca de): centrada sobre negro; click o Esc vuelve.
     Page(Vec<(String, [f32; 4])>),
+    /// Lista de personajes (Jugar): JUGAR / NUEVO / BORRAR.
+    Roster,
     /// Título: elegir la clase de la partida nueva.
     /// ponytail: hasta la lista de personajes y la creación con dados (R5, con el guardado)
     Classes,
@@ -156,6 +158,12 @@ pub enum UiAction {
     Play(usize),
     /// Partida: volver a la pantalla de título.
     MainMenu,
+    /// Título: abrir la lista de personajes (la app la lee del disco).
+    OpenRoster,
+    SelectChar(usize),
+    PlayChar,
+    /// Borrar el personaje elegido: el primer click pide confirmación.
+    DeleteChar,
     SetRule(&'static str, bool),
     SetUiScale(f32),
 }
@@ -225,6 +233,10 @@ pub struct Ui {
     pub casting: Option<usize>,
     /// En la pantalla de título (la configuración vuelve al título, no al menú de la partida).
     pub in_title: bool,
+    /// Lista de personajes: el elegido, el primero que se ve y si BORRAR espera confirmación.
+    pub roster_sel: Option<usize>,
+    pub roster_scroll: usize,
+    pub confirm: bool,
     /// Mouse en la capa de UI (tooltips); None en táctil.
     pub mouse: Option<[f32; 2]>,
     /// Esperando la tecla nueva para esta acción (configuración).
@@ -237,7 +249,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, in_title: false, mouse: None, rebinding: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// La acción de la zona de más arriba bajo `p` (pixeles de la UI), o None si el click es para el mapa.
@@ -301,7 +313,7 @@ impl Ui {
             Some(Window::Item(slot)) => self.draw_item(atlas, font, d, out, w, h, slot),
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             Some(Window::Spells) => self.draw_spells(atlas, font, d, out, w, h),
-            Some(Window::Classes | Window::Page(_)) => self.window = None, // sólo en el título
+            Some(Window::Classes | Window::Page(_) | Window::Roster) => self.window = None, // sólo en el título
             Some(Window::Rules) => self.draw_rules(atlas, font, d, out, w, h),
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
             None => {
@@ -929,6 +941,45 @@ impl Ui {
         self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], "Volver", Some(UiAction::Open(Window::Settings)));
     }
 
+    /// Lista de personajes (rosterScreen.py): elegir uno para jugar (su partida guardada si sigue vivo), crear uno
+    /// nuevo o borrarlo (pide confirmación). Sin personajes, JUGAR y BORRAR quedan grises. La rueda desplaza la lista.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_roster(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, rows: &[RosterRow]) {
+        const ROW_H: f32 = 30.0;
+        const LIST_Y: f32 = 15.0;
+        let visible = (((h - LIST_Y - 24.0) / (ROW_H + 2.0)).floor() as usize).max(1);
+        self.roster_scroll = self.roster_scroll.min(rows.len().saturating_sub(visible));
+        out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
+        self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
+        font.text(out, "Personajes", 8.0, 3.0, YELLOW);
+        if rows.is_empty() {
+            font.text(out, "Todavia no hay personajes. Crea uno con NUEVO.", 8.0, LIST_Y + 10.0, GREY);
+        }
+        for (row, i) in (self.roster_scroll..rows.len().min(self.roster_scroll + visible)).enumerate() {
+            let c = &rows[i];
+            let r = [8.0, LIST_Y + row as f32 * (ROW_H + 2.0), w - 16.0, ROW_H];
+            let bg = if self.roster_sel == Some(i) { rgba(0x99, 0x88, 0x33, 0xAA) } else { SLOT_BG };
+            out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg));
+            if let Some(sheet) = c.sheet {
+                out.push(piece(atlas, sheet, [1, 0, 11, 15], [r[0] + 4.0, r[1] + ((ROW_H - 15.0) / 2.0).floor()], [11.0, 15.0], WHITE));
+            }
+            font.text(out, &c.name, r[0] + 20.0, r[1] + 4.0, YELLOW);
+            font.text(out, &c.status, r[0] + 100.0, r[1] + 4.0, GREY);
+            font.text(out, &c.stats, r[0] + 20.0, r[1] + 17.0, WHITE);
+            self.hot(r, UiAction::SelectChar(i), None);
+        }
+        let has = self.roster_sel.is_some_and(|s| s < rows.len());
+        let buttons = [
+            ("JUGAR", has.then_some(UiAction::PlayChar)),
+            ("NUEVO", Some(UiAction::Open(Window::Classes))),
+            (if self.confirm { "CONFIRMAR" } else { "BORRAR" }, has.then_some(UiAction::DeleteChar)),
+        ];
+        let bw = ((w - 16.0 - 4.0) / 3.0).floor();
+        for (k, (label, act)) in buttons.into_iter().enumerate() {
+            self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw + 2.0), h - 20.0, bw, 16.0], label, act);
+        }
+    }
+
     /// Pantalla de texto (Mods, Acerca de): párrafos centrados sobre negro; click en cualquier lado vuelve.
     fn draw_page(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, paras: &[(String, [f32; 4])]) {
         out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
@@ -950,7 +1001,7 @@ impl Ui {
     /// los letreros que laten, el dashboard (Jugar, Acerca de), configuración arriba a la izquierda y la versión.
     /// ponytail: sin Mods (1.x); los letreros se suman con alfa, no con mezcla aditiva
     #[allow(clippy::too_many_arguments)]
-    pub fn draw_title(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, classes: &[String]) {
+    pub fn draw_title(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, classes: &[String], roster: &[RosterRow]) {
         self.t += dt;
         self.hot.clear();
         // Archs: textura repetida, desplazada en Y (SCROLL_SPEED = 20; la de adelante, 40)
@@ -979,7 +1030,7 @@ impl Ui {
         let iy = ((h + layout_h) / 2.0).floor() - item;
         for (icon, label, x, act) in [
             // Rankings y Badges del original se reemplazaron por Mods
-            (0u32, "Jugar", (w / 2.0).floor() - item * 1.5, UiAction::Open(Window::Classes)),
+            (0u32, "Jugar", (w / 2.0).floor() - item * 1.5, UiAction::OpenRoster),
             (2, "Mods", (w / 2.0).floor() - item / 2.0, UiAction::Open(Window::Page(vec![
                 ("Mods".into(), YELLOW),
                 ("No hay mods instalados. El sistema de mods todavia no esta disponible.".into(), WHITE),
@@ -1013,14 +1064,16 @@ impl Ui {
                 self.hot([0.0, 0.0, w, h], UiAction::Close, None);
                 self.hot(c, UiAction::Nothing, None);
                 Self::draw_window(atlas, out, c);
-                font.text(out, "Elige la clase", c[0], c[1], YELLOW);
+                // ponytail: provisorio hasta la creación con dados (nombre, 4d6 y asignación): array estándar
+                font.text(out, "Nuevo: elige la clase", c[0], c[1], YELLOW);
                 for (k, name) in classes.iter().enumerate() {
                     let rect = [c[0], c[1] + LINE_H + k as f32 * (MENU_BTN_H + MENU_GAP), MENU_W, MENU_BTN_H];
                     self.draw_button(atlas, font, out, rect, name, Some(UiAction::Play(k)));
                 }
                 let rect = [c[0], c[1] + LINE_H + classes.len() as f32 * (MENU_BTN_H + MENU_GAP), MENU_W, MENU_BTN_H];
-                self.draw_button(atlas, font, out, rect, "Volver", Some(UiAction::Close));
+                self.draw_button(atlas, font, out, rect, "Volver", Some(UiAction::OpenRoster));
             }
+            Some(Window::Roster) => self.draw_roster(atlas, font, out, w, h, roster),
             _ => self.draw_tooltip(atlas, font, out, w, h),
         }
     }
@@ -1088,4 +1141,14 @@ fn outline(out: &mut Vec<Sprite>, atlas: &Atlas, r: [f32; 4], color: [f32; 4]) {
     out.push(atlas.rect([r[0], r[1] + r[3] - 1.0], [r[2], 1.0], color));
     out.push(atlas.rect([r[0], r[1]], [1.0, r[3]], color));
     out.push(atlas.rect([r[0] + r[2] - 1.0, r[1]], [1.0, r[3]], color));
+}
+
+/// Una fila de la lista de personajes (la arma la app al abrirla).
+pub struct RosterRow {
+    pub name: String,
+    /// "en partida - piso 2, nivel 3" o la clase de 5e y su dado de golpe.
+    pub status: String,
+    pub stats: String,
+    /// Hoja del atlas de su clase (el avatar); None = clase que no está cargada.
+    pub sheet: Option<usize>,
 }

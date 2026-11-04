@@ -144,7 +144,14 @@ Menú principal | Salir, configuración con idioma (sólo español por ahora), F
 interfaz y controles aparte; nombres nítidos en los ítems sin sprite. Pendiente que pidió el dueño: Jugar -> lista de
 personajes y creación con dados (necesita el guardado de personajes, R5).
 
-**Siguiente: R5d** (armas a distancia: arrojadizas, bumerán, arco) = **0.7** junto con lo anterior; el idioma de
+**Guardado y personajes (R5)** ✏️ (2026-11-04): partidas por personaje en JSON (`game/save.rs`, regenera los niveles
+con la seed y guarda lo que cambió, combate en curso incluido), lista de personajes (`game/characters.rs` y la
+ventana de la app: JUGAR / NUEVO / BORRAR), autoguardado al cambiar de piso, al menú principal, al salir y en Android
+al pasar al fondo; si el héroe muere se borra. Misma carpeta de datos que el prototipo. Para probar: guardar en el piso
+2, salir, volver a entrar y seguir; borrar con confirmación; morir y ver que la partida no queda. Falta: la creación con
+dados (NUEVO hoy elige la clase con el array estándar).
+
+**Siguiente: creación de personaje con dados** (`screens/createScreen.py`), después **R5d** (armas a distancia: arrojadizas, bumerán, arco) = **0.7** junto con lo anterior; el idioma de
 R5e queda para después (estructura de traducción).
 
 **Pendiente del dueño** (al cerrar la sesión del 2026-11-03):

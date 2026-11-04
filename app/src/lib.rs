@@ -13,6 +13,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use config::{Bind, Config};
+use game::{characters, save};
 
 use game::dungeon::Dungeon;
 use game::geom::{HEIGHT, LENGTH, WIDTH};
@@ -76,19 +77,28 @@ pub(crate) const DASHBOARD: usize = 14;
 /// La partida, sus personajes en pantalla y la animación de dados.
 struct World {
     d: Dungeon,
-    class: usize,
     chars: Chars,
     dice: DiceFx,
     depth: i32,
 }
 
 impl World {
-    fn new(seed: i64, class: usize) -> Self {
-        let d = Dungeon::new(seed, CLASSES[class]);
+    /// Partida nueva de un personaje (clase, características y nombre).
+    fn new(seed: i64, class: &str, abilities: [i32; 6], name: &str) -> Self {
+        let mut d = Dungeon::new_with(seed, class, abilities);
+        if !name.is_empty() {
+            d.heroes[0].ch.name = name.to_string();
+        }
+        Self::from_dungeon(d)
+    }
+
+    /// Una partida cargada (o recién creada).
+    fn from_dungeon(d: Dungeon) -> Self {
         let depth = d.depth;
+        let seed = d.seed;
         // el azar visual va aparte del rng de la partida
         let chars = Chars::new(SHEETS.len(), ICONS, seed ^ 0x5EED);
-        Self { d, class, chars, dice: DiceFx::new(seed ^ 0xD1CE), depth }
+        Self { d, chars, dice: DiceFx::new(seed ^ 0xD1CE), depth }
     }
 
     /// Un frame de lógica, en el orden del prototipo: los sprites caminan (y sueltan al héroe al llegar), lo que el
@@ -154,6 +164,13 @@ struct App {
     title: bool,
     /// Nombres de las clases jugables (data/classes.json), para elegir en el título.
     class_names: Vec<String>,
+    classes: serde_json::Map<String, serde_json::Value>,
+    /// El personaje en juego (characters.json) y la lista de personajes (con sus filas para la UI).
+    character: Option<serde_json::Value>,
+    roster: Vec<serde_json::Value>,
+    roster_rows: Vec<ui::RosterRow>,
+    /// Piso del último autoguardado (se guarda al cambiar de piso).
+    saved_depth: i32,
     quit: bool,
     input: Input,
     pan: [f32; 2],      // desplazamiento de la cámara al arrastrar (pixeles del mundo)
@@ -163,6 +180,18 @@ struct App {
     fps_since: Instant,
     frames: u32,
     fps: u32,
+}
+
+/// Carpeta de datos del usuario (personajes y partidas), la misma que el prototipo: Windows %APPDATA%/PixelDND, Linux
+/// $XDG_DATA_HOME/PixelDND (o ~/.local/share/PixelDND); en Android, la carpeta de datos de la app.
+fn data_dir() -> std::path::PathBuf {
+    use std::path::PathBuf;
+    if let Some(d) = config::DIR.get() {
+        return d.clone();
+    }
+    let var = |k: &str| std::env::var_os(k).map(PathBuf::from);
+    let base = if cfg!(windows) { var("APPDATA") } else { var("XDG_DATA_HOME").or_else(|| var("HOME").map(|h| h.join(".local/share"))) };
+    base.unwrap_or_else(|| PathBuf::from(".")).join("PixelDND")
 }
 
 fn new_seed() -> i64 {
@@ -180,7 +209,7 @@ impl App {
             font,
             gpu: None,
             sprites: Vec::new(),
-            world: World::new(new_seed(), 0),
+            world: World::new(new_seed(), CLASSES[0], game::dice::DEFAULT_SCORES, ""),
             ui: Ui::new(),
             config: Config::load(),
             title: true,
@@ -188,6 +217,11 @@ impl App {
                 let c = game::registry::load("classes").unwrap_or_default();
                 CLASSES.iter().map(|k| c.get(*k).map_or(k.to_string(), |v| game::registry::text(&v["name"]))).collect()
             },
+            classes: game::registry::load("classes").unwrap_or_default(),
+            character: None,
+            roster: Vec::new(),
+            roster_rows: Vec::new(),
+            saved_depth: 0,
             quit: false,
             input: Input::default(),
             pan: [0.0; 2],
@@ -303,8 +337,35 @@ impl App {
                 }
             }
             UiAction::Examine => self.ui.examining = !self.ui.examining,
-            UiAction::NewGame => self.new_world(new_seed(), self.world.class),
-            UiAction::Quit => self.quit = true,
+            UiAction::NewGame => self.new_world(new_seed()),
+            UiAction::Quit => {
+                self.autosave();
+                self.quit = true;
+            }
+            UiAction::OpenRoster => self.open_roster(),
+            UiAction::SelectChar(i) => {
+                self.ui.roster_sel = Some(i);
+                self.ui.confirm = false;
+            }
+            UiAction::PlayChar => {
+                if let Some(c) = self.ui.roster_sel.and_then(|i| self.roster.get(i)).cloned() {
+                    self.start(c);
+                }
+            }
+            UiAction::DeleteChar => {
+                let Some(i) = self.ui.roster_sel.filter(|&i| i < self.roster.len()) else { return };
+                if !self.ui.confirm {
+                    self.ui.confirm = true; // primer click: pedir confirmación
+                    return;
+                }
+                let c = self.roster.remove(i);
+                let dir = data_dir();
+                if let Err(e) = characters::save(&dir, &self.roster) {
+                    log::warn!("no se pudo guardar la lista de personajes: {e}");
+                }
+                save::delete_run(&dir, characters::id(&c));
+                self.open_roster();
+            }
             UiAction::SetFps(f) => self.config.set_fps(f),
             UiAction::SetFullscreen(on) => {
                 self.config.set_fullscreen(on);
@@ -326,12 +387,17 @@ impl App {
                 }
             }
             UiAction::Play(k) => {
-                self.new_world(new_seed(), k);
-                self.ui.in_title = false;
-                self.title = false;
+                // NUEVO: personaje con la clase elegida y el array estándar (hasta la creación con dados)
+                let name = self.class_names.get(k).cloned().unwrap_or_default();
+                let c = characters::new_character(&name, CLASSES[k], game::dice::DEFAULT_SCORES);
+                self.roster.push(c.clone());
+                if let Err(e) = characters::save(&data_dir(), &self.roster) {
+                    log::warn!("no se pudo guardar la lista de personajes: {e}");
+                }
+                self.start(c);
             }
             UiAction::MainMenu => {
-                // ponytail: la partida se pierde hasta que haya guardado (R5)
+                self.autosave();
                 self.ui = Ui::new();
                 self.ui.in_title = true;
                 self.title = true;
@@ -457,8 +523,7 @@ impl App {
         }
         let free = self.ui.window.is_none();
         match code {
-            KeyCode::KeyR => self.new_world(new_seed(), self.world.class),
-            KeyCode::KeyC => self.new_world(new_seed(), (self.world.class + 1) % CLASSES.len()),
+            KeyCode::KeyR => self.new_world(new_seed()),
             // Esc: cierra la ventana abierta, cancela examinar o abre el menú
             KeyCode::Escape if !free => self.ui.window = None,
             KeyCode::Escape if self.ui.examining => self.ui.examining = false,
@@ -496,10 +561,74 @@ impl App {
         }
     }
 
-    fn new_world(&mut self, seed: i64, class: usize) {
-        self.world = World::new(seed, class);
+    /// Partida nueva del personaje en juego (R, o Nueva partida al morir).
+    fn new_world(&mut self, seed: i64) {
+        let c = self.character.clone().unwrap_or_default();
+        let class = c["class"].as_str().unwrap_or(CLASSES[0]);
+        self.world = World::new(seed, class, characters::abilities(&c), c["name"].as_str().unwrap_or(""));
+        self.saved_depth = self.world.d.depth;
         self.ui = Ui::new();
         self.pan = [0.0; 2];
+    }
+
+    /// Lee la lista de personajes del disco y arma sus filas (con la partida guardada de cada uno, si sigue vivo).
+    fn open_roster(&mut self) {
+        let dir = data_dir();
+        self.roster = characters::load(&dir);
+        self.roster_rows = self
+            .roster
+            .iter()
+            .map(|c| {
+                let name = c["name"].as_str().unwrap_or("?").to_string();
+                let class = c["class"].as_str().unwrap_or("");
+                let Some(cls) = self.classes.get(class) else {
+                    // clase de un mod que no está cargado (o del prototipo): no se puede jugar
+                    return ui::RosterRow { name, status: format!("clase desconocida: {class}"), stats: String::new(), sheet: None };
+                };
+                let run = save::load_run(&dir, characters::id(c)).filter(|d| d.heroes.iter().any(|h| h.is_alive()));
+                let status = match run {
+                    Some(d) => format!("en partida - piso {}, nivel {}", d.depth, d.local().lvl),
+                    None => format!("{} d{}", game::registry::text(&cls["dnd_class"]), cls["hit_die"]),
+                };
+                let ab = characters::abilities(c);
+                let stats: Vec<String> = (0..6).map(|k| format!("{} {}", game::dice::ABILITY_NAMES[k], ab[k])).collect();
+                let sheet = cls["sprite"].as_str().and_then(|s| CHAR_SHEETS.iter().position(|e| e.0 == s)).map(|k| k + SHEETS.len());
+                ui::RosterRow { name, status, stats: stats.join("  "), sheet }
+            })
+            .collect();
+        self.ui.roster_sel = (!self.roster.is_empty()).then(|| self.ui.roster_sel.unwrap_or(0).min(self.roster.len() - 1));
+        self.ui.confirm = false;
+        self.ui.window = Some(UiWindow::Roster);
+    }
+
+    /// Juega con un personaje: su partida guardada si sigue vivo; si no, una nueva.
+    fn start(&mut self, c: serde_json::Value) {
+        if !self.classes.contains_key(c["class"].as_str().unwrap_or("")) {
+            return; // clase que no está cargada
+        }
+        let run = save::load_run(&data_dir(), characters::id(&c)).filter(|d| d.heroes.iter().any(|h| h.is_alive()));
+        self.character = Some(c);
+        match run {
+            Some(d) => {
+                self.world = World::from_dungeon(d);
+                self.saved_depth = self.world.d.depth;
+            }
+            None => self.new_world(new_seed()),
+        }
+        self.ui = Ui::new();
+        self.pan = [0.0; 2];
+        self.title = false;
+    }
+
+    /// Guarda la partida del personaje en juego (si murió, se borra el guardado).
+    fn autosave(&mut self) {
+        if self.title {
+            return;
+        }
+        let Some(c) = &self.character else { return };
+        if let Err(e) = save::save_run(&data_dir(), &mut self.world.d, characters::id(c)) {
+            log::warn!("no se pudo guardar la partida: {e}");
+        }
     }
 
     /// La pantalla de título: sólo la capa de UI.
@@ -510,7 +639,8 @@ impl App {
         self.sprites.clear();
         let w = &self.world;
         let classes = &self.class_names;
-        self.ui.draw_title(&self.atlas, &self.font, &w.chars, &w.d, &self.config, &mut self.sprites, uw as f32, uh as f32, dt, classes);
+        let rows = &self.roster_rows;
+        self.ui.draw_title(&self.atlas, &self.font, &w.chars, &w.d, &self.config, &mut self.sprites, uw as f32, uh as f32, dt, classes, rows);
         let end = self.sprites.len() as u32;
         self.gpu.as_mut().unwrap().draw(&self.sprites, &[], 0..end);
     }
@@ -544,6 +674,11 @@ impl App {
             }
         }
         w.update(dt);
+        if w.d.depth != self.saved_depth {
+            self.saved_depth = w.d.depth;
+            self.autosave(); // como el prototipo: al cambiar de piso
+        }
+        let w = &mut self.world;
         if w.d.local().animating && self.input.press.is_none() {
             self.pan = [0.0; 2]; // el héroe camina: la cámara vuelve a seguirlo
         }
@@ -597,12 +732,16 @@ impl ApplicationHandler for App {
     }
 
     fn suspended(&mut self, _: &ActiveEventLoop) {
+        self.autosave(); // Android puede cerrar la app estando en el fondo
         self.gpu = None;
     }
 
     fn window_event(&mut self, el: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
         match event {
-            WindowEvent::CloseRequested => el.exit(),
+            WindowEvent::CloseRequested => {
+                self.autosave();
+                el.exit();
+            }
             WindowEvent::Resized(size) => {
                 if let Some(gpu) = self.gpu.as_mut() {
                     gpu.resize(size.width, size.height);
@@ -635,7 +774,11 @@ impl ApplicationHandler for App {
                     MouseScrollDelta::LineDelta(_, y) => y as f64,
                     MouseScrollDelta::PixelDelta(p) => p.y,
                 };
-                if y != 0.0 {
+                if y != 0.0 && self.title {
+                    // lista de personajes: la rueda la desplaza
+                    let s = &mut self.ui.roster_scroll;
+                    *s = if y > 0.0 { s.saturating_sub(1) } else { *s + 1 };
+                } else if y != 0.0 {
                     self.zoom_by(if y > 0.0 { 1 } else { -1 });
                 }
             }

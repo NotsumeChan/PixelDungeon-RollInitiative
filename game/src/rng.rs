@@ -139,6 +139,15 @@ impl Rng {
         0
     }
 
+    /// El estado (guardado de partidas).
+    pub fn state(&self) -> (Vec<u32>, usize) {
+        (self.mt.to_vec(), self.i)
+    }
+
+    pub fn from_state(mt: &[u32], i: usize) -> Option<Self> {
+        Some(Self { mt: mt.try_into().ok()?, i: i.min(N) })
+    }
+
     /// `_randbelow` de CPython (getrandbits con rechazo): [0, n).
     pub fn below(&mut self, n: u32) -> u32 {
         if n == 0 {

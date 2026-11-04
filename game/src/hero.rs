@@ -123,7 +123,7 @@ pub struct Hero {
 }
 
 impl Hero {
-    pub fn new(classes: &Map<String, Value>, items: &Map<String, Value>, class_key: &str) -> Self {
+    pub fn new(classes: &Map<String, Value>, items: &Map<String, Value>, class_key: &str, abilities: [i32; 6]) -> Self {
         let cls = classes.get(class_key).unwrap_or_else(|| panic!("clase desconocida: {class_key}")).clone();
         let item = |k: &str| {
             let mut i = cls.get(k).and_then(Value::as_str).and_then(|id| Item::new(items, id))?;
@@ -147,7 +147,7 @@ impl Hero {
         let mut h = Self {
             ch: Char::new(-1, text(&cls["name"])),
             class_key: class_key.to_string(),
-            abilities: dice::DEFAULT_SCORES,
+            abilities,
             lvl: 1,
             exp: 0,
             awareness: 0.0,
@@ -331,7 +331,7 @@ impl Hero {
         5 + self.lvl * 5
     }
 
-    fn update_awareness(&mut self) {
+    pub(crate) fn update_awareness(&mut self) {
         let base = self.cls["awareness_base"].as_f64().unwrap_or(0.9);
         self.awareness = 1.0 - base.powf((1 + self.lvl.min(9)) as f64 * 0.5);
     }

@@ -129,16 +129,16 @@ pub struct Dungeon {
     /// Pociones y pergaminos identificados, y con qué apariencia (nombre, índice en items.png) se ve cada uno.
     pub known: BTreeSet<String>,
     pub looks: BTreeMap<String, (&'static str, i32)>,
-    generator: Generator,
-    potions_of_strength: i32,
-    scrolls_of_upgrade: i32,
-    next_mob: u32,
+    pub(crate) generator: Generator,
+    pub(crate) potions_of_strength: i32,
+    pub(crate) scrolls_of_upgrade: i32,
+    pub(crate) next_mob: u32,
     pub(crate) next_buff: u32,
     pub(crate) buffs: Map<String, Value>,
     pub(crate) spells: Map<String, Value>,
-    classes: Map<String, Value>,
+    pub(crate) classes: Map<String, Value>,
     pub(crate) items: Map<String, Value>,
-    mobs_data: Map<String, Value>,
+    pub(crate) mobs_data: Map<String, Value>,
     pub(crate) bestiary: Map<String, Value>,
 }
 
@@ -148,6 +148,11 @@ fn load(name: &str) -> Map<String, Value> {
 
 impl Dungeon {
     pub fn new(seed: i64, hero_class: &str) -> Self {
+        Self::new_with(seed, hero_class, dice::DEFAULT_SCORES)
+    }
+
+    /// Partida nueva con las características de un personaje (orden de `dice::ABILITIES`).
+    pub fn new_with(seed: i64, hero_class: &str, abilities: [i32; 6]) -> Self {
         let mut d = Self {
             seed,
             rng: Rng::new(seed),
@@ -187,13 +192,13 @@ impl Dungeon {
                 d.looks.insert(id, look);
             }
         }
-        d.add_hero(hero_class);
+        d.add_hero(hero_class, abilities);
         d
     }
 
     /// Suma un héroe a la partida, en la entrada del piso 1.
-    pub fn add_hero(&mut self, hero_class: &str) -> usize {
-        let hero = Hero::new(&self.classes, &self.items, hero_class);
+    pub fn add_hero(&mut self, hero_class: &str, abilities: [i32; 6]) -> usize {
+        let hero = Hero::new(&self.classes, &self.items, hero_class, abilities);
         if let Some(known) = hero.cls.get("known").and_then(Value::as_array) {
             self.known.extend(known.iter().filter_map(Value::as_str).map(str::to_string));
         }

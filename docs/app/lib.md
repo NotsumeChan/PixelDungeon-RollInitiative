@@ -32,3 +32,7 @@ R5c: F = rasgo de clase (Segundo Aliento o el libro de conjuros); eligiendo el o
 
 El juego arranca en la pantalla de título (`title`): sólo se dibuja la capa de UI y la partida de atrás no avanza.
 Jugar = partida nueva con la clase elegida. Esc cierra la ventana abierta; F11 = pantalla completa.
+
+Personajes y guardado: Jugar abre la lista (`open_roster`, lee el disco); JUGAR carga la partida guardada del personaje
+si sigue vivo o empieza una nueva (`start`). Autoguardado (`autosave`) al cambiar de piso, al volver al menú principal,
+al salir y al pasar al fondo en Android. Carpeta de datos: `data_dir()`. R = partida nueva del mismo personaje.
