@@ -69,9 +69,13 @@ Audio, al final como siempre (cuando se pida: `kira` o `rodio`).
 **Estado R0** ✅ (dueño, 2026-11-03): corre en el teléfono a 120 FPS (el tope del panel). Workspace (`game`, `app`),
 winit 0.30 + wgpu 30, lote de sprites por instancias, fuente bitmap, APK firmado sin Gradle, CI.
 
-**Estado R1** ✏️ escrito, pendiente de comparación del dueño: `Rng` compatible con CPython, `geom`, `terrain`, `room`,
-`patch`, `painters`, `level` (pisos 1-4), `registry`. Volcado ASCII igual al del prototipo para comparar
+**Estado R1** ✅ (2026-11-03): 224 pisos comparados con el prototipo (56 seeds x pisos 1-4), idénticos. `Rng`
+compatible con CPython, `geom`, `terrain`, `room`, `patch`, `painters`, `level`, `registry`; volcado ASCII
 (`docs/game/level.md`).
+
+**Estado R2** ✏️ escrito, pendiente de prueba del dueño: FOV (`game/fov.rs`), visión y puertas en `Level`; capas de
+mundo y UI con zoom entero cada una; agua animada, tiles y niebla con LINEAR en la GPU; cámara que sigue al observador,
+arrastre, zoom con rueda / pellizco; observador con WASD o toque.
 
 R0 va primero a propósito: Android fue lo que rompió Python. Si `wgpu` + `winit` no levanta en el teléfono, se sabe
 antes de portar una sola línea de lógica.

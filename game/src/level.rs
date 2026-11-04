@@ -1,5 +1,6 @@
 //! Level.java (create) + RegularLevel.java + SewerLevel.java (`game/level.py`): generación de las Alcantarillas,
 //! pisos 1-4. Port 1:1 del prototipo: cada tirada del rng va en el mismo orden, así la misma seed da el mismo piso.
+use crate::fov;
 use crate::geom::{Rect, HEIGHT, LENGTH, NEIGHBOURS4, NEIGHBOURS8, NEIGHBOURS9, WIDTH};
 use crate::painters::{self, fill, fill_room};
 use crate::patch;
@@ -45,6 +46,10 @@ pub struct Level {
     pub pit: Vec<bool>,
     /// La celda toca algo que no es pared y no es todo abismo (para buscar secretos).
     pub discoverable: Vec<bool>,
+    /// Lo que se ve ahora (unión de las vistas de los héroes), lo que se vio alguna vez, lo revelado por magia.
+    pub visible: Vec<bool>,
+    pub visited: Vec<bool>,
+    pub mapped: Vec<bool>,
 }
 
 const SECRET_TRAPS: [u8; 8] = [
@@ -85,6 +90,9 @@ impl Level {
             water: Vec::new(),
             pit: Vec::new(),
             discoverable: Vec::new(),
+            visible: vec![false; n],
+            visited: vec![false; n],
+            mapped: vec![false; n],
         };
         level.create();
         level
@@ -517,6 +525,55 @@ impl Level {
                     && near.iter().any(|&c| !self.pit[c])
             })
             .collect();
+    }
+
+    // --- visión (Level.updateFieldOfView + Dungeon.observe) ---
+
+    /// Recalcula `visible` desde cada posición (la unión) y lo suma a `visited`. Devuelve la vista de cada una.
+    /// ponytail: sin estados que cambien la vista (ceguera, visión mental); llegan con los estados (R5)
+    pub fn observe(&mut self, positions: &[i32], distance: i32) -> Vec<Vec<bool>> {
+        let views: Vec<Vec<bool>> =
+            positions.iter().map(|&p| fov::cast_shadow(p % WIDTH, p / WIDTH, &self.los_blocking, distance)).collect();
+        for i in 0..LENGTH as usize {
+            self.visible[i] = views.iter().any(|v| v[i]);
+            self.visited[i] |= self.visible[i];
+        }
+        views
+    }
+
+    // --- cambios de terreno en juego ---
+
+    /// Level.set: cambia una celda y sus flags (no recalcula el cosido del agua).
+    pub fn set(&mut self, pos: i32, terrain: u8) {
+        let (i, f) = (pos as usize, t::flags(terrain));
+        self.map[i] = terrain;
+        self.passable[i] = f & t::PASSABLE != 0;
+        self.los_blocking[i] = f & t::LOS_BLOCKING != 0;
+        self.flamable[i] = f & t::FLAMABLE != 0;
+        self.secret[i] = f & t::SECRET != 0;
+        self.solid[i] = f & t::SOLID != 0;
+        self.avoid[i] = f & t::AVOID != 0;
+        self.pit[i] = f & t::PIT != 0;
+        self.water[i] = f & t::LIQUID != 0;
+    }
+
+    /// Alguien pisa `pos`: la puerta se abre (Door.enter).
+    pub fn enter(&mut self, pos: i32) {
+        if self.map[pos as usize] == t::DOOR {
+            self.set(pos, t::OPEN_DOOR);
+        }
+    }
+
+    /// Alguien sale de `pos`: la puerta se cierra (Door.leave; hay una sola criatura por celda).
+    pub fn leave(&mut self, pos: i32) {
+        if self.map[pos as usize] == t::OPEN_DOOR {
+            self.set(pos, t::DOOR);
+        }
+    }
+
+    /// Un secreto encontrado (puerta / trampa) pasa a su versión visible.
+    pub fn discover(&mut self, pos: i32) {
+        self.set(pos, t::discover(self.map[pos as usize]));
     }
 
     // --- utilidades ---

@@ -1,6 +1,7 @@
 //! Lógica del juego, sin render ni ventana (corre headless: host y herramientas).
 //! Port de `game/` del prototipo (rama `python-prototipe`).
 
+pub mod fov;
 pub mod geom;
 pub mod level;
 pub mod painters;
