@@ -149,6 +149,8 @@ pub enum UiAction {
     Verb(Slot, Verb),
     SetFps(u32),
     SetFullscreen(bool),
+    /// Idioma del contenido (código de `game::registry::LANGS`).
+    SetLanguage(&'static str),
     /// Tamaño de la ventana (clave de `RESOLUTIONS`).
     SetResolution(&'static str),
     /// Esperar la próxima tecla para esa acción.
@@ -883,8 +885,11 @@ impl Ui {
         self.hot([0.0, 0.0, w, h], back.clone(), None); // click afuera = volver
         self.hot(c, UiAction::Nothing, None);
         Self::draw_window(atlas, out, c);
-        // ponytail: sólo español hasta que haya estructura de traducción (los textos están en el código)
-        let lang = vec![("Español".to_string(), true, Some(UiAction::Nothing)), ("English".to_string(), false, None)];
+        // idioma del contenido (nombres y descripciones de los JSON); los textos del código siguen en español
+        let lang: Vec<(String, bool, Option<UiAction>)> = game::registry::LANGS
+            .iter()
+            .map(|&(code, name)| (name.to_string(), cfg.language == code, Some(UiAction::SetLanguage(code))))
+            .collect();
         let full = vec![
             ("Si".to_string(), cfg.fullscreen, Some(UiAction::SetFullscreen(true))),
             ("No".to_string(), !cfg.fullscreen, Some(UiAction::SetFullscreen(false))),
@@ -997,7 +1002,8 @@ impl Ui {
     /// Creación de personaje (createScreen.py, con su mismo layout en 320x180): nombre, clases, las 6
     /// características, las 7 tiradas, ayuda y TIRAR / LIMPIAR / EMPEZAR. Click / toque en una tirada y luego en una
     /// característica la asigna; click en una característica sin tirada elegida deja escribir el número. Esc vuelve.
-    /// ponytail: sin arrastrar (el prototipo además arrastraba y cambiaba características); click-click anda en táctil
+    /// Arrastrar (mouse o dedo): una tirada a una característica, una característica a otra (se cambian) o afuera (se
+    /// quita). Lo arrastrado sigue al puntero.
     fn draw_create(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, classes: &[RosterRow]) {
         const SEL_BG: [f32; 4] = rgba(0x99, 0x88, 0x33, 0xAA);
         const BOX_BG: [f32; 4] = rgba(0x53, 0x56, 0x4D, 0x99);
@@ -1038,21 +1044,24 @@ impl Ui {
         for (a, name) in ABILITY_NAMES.iter().enumerate() {
             let r = [8.0 + a as f32 * step, y, step - 4.0, 32.0];
             let focused = st.focus == Some(Focus::Stat(a));
-            out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg(focused)));
+            let dragging = st.drag.filter(DragState::moved);
+            let drop_here = dragging.is_some_and(|d| inside(r, d.pos));
+            out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg(focused || drop_here)));
             center(out, name, r, r[1] + 3.0, YELLOW);
+            let shown = st.scores[a].filter(|_| dragging.is_none_or(|d| d.what != Drag::Stat(a))); // la arrastrada, vacía
             if focused {
                 center(out, if st.typed.is_empty() { "_" } else { &st.typed }, r, r[1] + 13.0, WHITE);
-            } else if let Some(v) = st.scores[a] {
+            } else if let Some(v) = shown {
                 center(out, &v.to_string(), r, r[1] + 13.0, WHITE);
             }
-            if let (false, Some(v)) = (focused, st.scores[a]) {
+            if let (false, Some(v)) = (focused, shown) {
                 center(out, &format!("{:+}", dice::modifier(v)), r, r[1] + 22.0, GREY);
             }
             self.hot(r, UiAction::Create(Cr::Stat(a)), None);
         }
 
         // tiradas, y el detalle de la elegida a la derecha
-        font.text(out, "Tiradas (4d6, se quita el menor):", 8.0, y + 37.0, WHITE);
+        font.text(out, "Tiradas (4d6, se quita el menor) - arrastralas:", 8.0, y + 37.0, WHITE);
         let step = ((w - 12.0) / 7.0).floor().min(30.0);
         let cy = y + 47.0;
         for (i, (v, _)) in st.pool.iter().enumerate() {
@@ -1075,7 +1084,7 @@ impl Ui {
                 hy += LINE_H;
             }
         }
-        let help = "Toca una tirada y luego una caracteristica (sobra 1). Toca una caracteristica para escribir el numero (1-20).";
+        let help = "Arrastra una tirada a una caracteristica (sobra 1), o entre caracteristicas para cambiarlas. Click en una caracteristica para escribir el numero (1-20).";
         for line in wrap(font, help, w - 16.0) {
             if hy + LINE_H > h - 21.0 {
                 break;
@@ -1094,6 +1103,17 @@ impl Ui {
         let bw = ((w - 16.0 - 4.0) / 3.0).floor();
         for (k, (label, act)) in buttons.into_iter().enumerate() {
             self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw + 2.0), h - 20.0, bw, 16.0], label, act);
+        }
+
+        // lo que se arrastra sigue al puntero (desde que se movió: un click no lo muestra)
+        if let Some(d) = st.drag.filter(DragState::moved) {
+            let v = match d.what {
+                Drag::Chip(i) => st.pool[i].0,
+                Drag::Stat(a) => st.scores[a].unwrap_or(0),
+            };
+            let r = [(d.pos[0] - 13.0).floor(), (d.pos[1] - 8.0).floor(), 26.0, 16.0];
+            out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], SEL_BG));
+            center(out, &v.to_string(), r, r[1] + 4.0, WHITE);
         }
     }
 
@@ -1300,6 +1320,31 @@ pub struct Create {
     chip: Option<usize>,
     pub focus: Option<Focus>,
     typed: String,
+    /// Lo que se está arrastrando (apretado sobre una tirada o una característica con valor).
+    pub drag: Option<DragState>,
+}
+
+/// Qué se arrastra.
+#[derive(Clone, Copy, PartialEq)]
+pub enum Drag {
+    Chip(usize),
+    Stat(usize),
+}
+
+#[derive(Clone, Copy)]
+pub struct DragState {
+    pub what: Drag,
+    pub start: [f32; 2],
+    pub pos: [f32; 2],
+}
+
+/// Menos que esto (pixeles de la UI) entre apretar y soltar = click (como el prototipo).
+const DRAG_MIN: f32 = 3.0;
+
+impl DragState {
+    fn moved(&self) -> bool {
+        (self.pos[0] - self.start[0]).abs() + (self.pos[1] - self.start[1]).abs() >= DRAG_MIN
+    }
 }
 
 impl Create {
@@ -1326,17 +1371,63 @@ impl Create {
             }
             Cr::Chip(i) => (self.chip, self.focus) = (if self.chip == Some(i) { None } else { Some(i) }, None),
             Cr::Stat(a) => match self.chip.take() {
-                Some(i) => {
-                    // la tirada se mueve si ya estaba en otra característica
-                    if let Some(o) = self.source.iter().position(|s| *s == Some(i)) {
-                        (self.scores[o], self.source[o]) = (None, None);
-                    }
-                    (self.scores[a], self.source[a]) = (Some(self.pool[i].0), Some(i));
-                }
+                Some(i) => self.assign(i, a),
                 None => (self.focus, self.typed) = (Some(Focus::Stat(a)), String::new()),
             },
             Cr::Start => {}
         }
+    }
+
+    /// Pone la tirada `i` en `a`; si estaba en otra característica, se mueve.
+    fn assign(&mut self, i: usize, a: usize) {
+        if let Some(o) = self.source.iter().position(|s| *s == Some(i)) {
+            (self.scores[o], self.source[o]) = (None, None);
+        }
+        (self.scores[a], self.source[a]) = (Some(self.pool[i].0), Some(i));
+    }
+
+    /// Apretar: sobre una tirada, o sobre una característica con valor sin tirada elegida, empieza a arrastrar.
+    pub fn press(&mut self, under: Option<&UiAction>, p: [f32; 2]) {
+        let what = match under {
+            Some(UiAction::Create(Cr::Chip(i))) => Drag::Chip(*i),
+            Some(UiAction::Create(Cr::Stat(a))) if self.scores[*a].is_some() && self.chip.is_none() => Drag::Stat(*a),
+            _ => return,
+        };
+        self.drag = Some(DragState { what, start: p, pos: p });
+    }
+
+    pub fn moved_to(&mut self, p: [f32; 2]) {
+        if let Some(d) = &mut self.drag {
+            d.pos = p;
+        }
+    }
+
+    /// Soltar sobre `under`. Sin moverse es un click (el de la tirada o la característica). Devuelve false si no se
+    /// estaba arrastrando (el click sigue su camino normal).
+    pub fn release(&mut self, under: Option<&UiAction>, p: [f32; 2]) -> bool {
+        let Some(mut d) = self.drag.take() else { return false };
+        d.pos = p;
+        let target = match under {
+            Some(UiAction::Create(Cr::Stat(b))) => Some(*b),
+            _ => None,
+        };
+        match (d.moved(), d.what, target) {
+            (false, Drag::Chip(i), _) => self.apply(Cr::Chip(i), 0),
+            (false, Drag::Stat(a), _) => self.apply(Cr::Stat(a), 0),
+            (true, Drag::Chip(i), Some(b)) => {
+                self.assign(i, b);
+                self.chip = None;
+            }
+            (true, Drag::Stat(a), Some(b)) if a != b => {
+                self.scores.swap(a, b);
+                self.source.swap(a, b);
+            }
+            (true, Drag::Stat(_), Some(_)) => {}
+            // arrastrada afuera: se quita (la tirada vuelve a la lista)
+            (true, Drag::Stat(a), None) => (self.scores[a], self.source[a]) = (None, None),
+            (true, Drag::Chip(_), None) => {}
+        }
+        true
     }
 
     /// Una tecla y lo que escribe (`text`). False si no había nada enfocado (la tecla sigue su camino).

@@ -195,6 +195,22 @@ fn data_dir() -> std::path::PathBuf {
     base.unwrap_or_else(|| PathBuf::from(".")).join("PixelDND")
 }
 
+/// Las clases para la creación de personaje, en el idioma actual: nombre, "Guerrero d10" y avatar.
+fn class_rows(c: &serde_json::Map<String, serde_json::Value>) -> Vec<ui::RosterRow> {
+    CLASSES
+        .iter()
+        .map(|k| match c.get(*k) {
+            Some(v) => ui::RosterRow {
+                name: game::registry::text(&v["name"]),
+                status: format!("{} d{}", game::registry::text(&v["dnd_class"]), v["hit_die"]),
+                stats: String::new(),
+                sheet: v["sprite"].as_str().and_then(|s| CHAR_SHEETS.iter().position(|e| e.0 == s)).map(|i| i + SHEETS.len()),
+            },
+            None => ui::RosterRow { name: k.to_string(), status: String::new(), stats: String::new(), sheet: None },
+        })
+        .collect()
+}
+
 fn new_seed() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_micros() as i64 % 2_147_483_647)
 }
@@ -205,6 +221,8 @@ impl App {
         let atlas = Atlas::build(&sheets);
         let font = Font::new(&atlas, FONT);
         let now = Instant::now();
+        let config = Config::load();
+        game::registry::set_lang(config.language);
         Self {
             atlas,
             font,
@@ -212,23 +230,9 @@ impl App {
             sprites: Vec::new(),
             world: World::new(new_seed(), CLASSES[0], game::dice::DEFAULT_SCORES, ""),
             ui: Ui::new(),
-            config: Config::load(),
+            config,
             title: true,
-            class_rows: {
-                let c = game::registry::load("classes").unwrap_or_default();
-                CLASSES
-                    .iter()
-                    .map(|k| match c.get(*k) {
-                        Some(v) => ui::RosterRow {
-                            name: game::registry::text(&v["name"]),
-                            status: format!("{} d{}", game::registry::text(&v["dnd_class"]), v["hit_die"]),
-                            stats: String::new(),
-                            sheet: v["sprite"].as_str().and_then(|s| CHAR_SHEETS.iter().position(|e| e.0 == s)).map(|i| i + SHEETS.len()),
-                        },
-                        None => ui::RosterRow { name: k.to_string(), status: String::new(), stats: String::new(), sheet: None },
-                    })
-                    .collect()
-            },
+            class_rows: class_rows(&game::registry::load("classes").unwrap_or_default()),
             classes: game::registry::load("classes").unwrap_or_default(),
             character: None,
             roster: Vec::new(),
@@ -283,10 +287,27 @@ impl App {
     fn press(&mut self, p: PhysicalPosition<f64>) {
         self.input.press = Some((p, self.pan));
         self.input.dragging = false;
+        // creación de personaje: apretar sobre una tirada o característica puede empezar a arrastrarla
+        if self.creating()
+            && let Some(q) = self.ui_point(p)
+        {
+            let under = self.ui.click(q, false);
+            self.ui.create.press(under.as_ref(), q);
+        }
+    }
+
+    fn creating(&self) -> bool {
+        self.title && matches!(self.ui.window, Some(UiWindow::Create))
     }
 
     fn drag(&mut self, p: PhysicalPosition<f64>) {
         let Some((start, pan0)) = self.input.press else { return };
+        if self.ui.create.drag.is_some()
+            && let Some(q) = self.ui_point(p)
+        {
+            self.ui.create.moved_to(q);
+            return;
+        }
         let (dx, dy) = (p.x - start.x, p.y - start.y);
         if self.input.dragging || dx.abs() + dy.abs() >= DRAG_MIN_PX {
             self.input.dragging = true;
@@ -304,6 +325,15 @@ impl App {
     /// Soltar sin arrastrar = click / toque. Primero la UI (de arriba hacia abajo); si no la toca, el mapa: examinar
     /// la casilla o Hero.handle (caminar, atacar, ayudar o cambiar de piso). Sobre el propio héroe = buscar.
     fn release(&mut self, p: PhysicalPosition<f64>) {
+        if self.ui.create.drag.is_some()
+            && let Some(q) = self.ui_point(p)
+        {
+            self.input.press = None;
+            let under = self.ui.click(q, false);
+            self.ui.create.release(under.as_ref(), q);
+            self.sync_ime();
+            return;
+        }
         if self.input.press.take().is_none() || self.input.dragging {
             return;
         }
@@ -383,6 +413,12 @@ impl App {
                 self.open_roster();
             }
             UiAction::SetFps(f) => self.config.set_fps(f),
+            UiAction::SetLanguage(code) => {
+                // lo que ya está en la partida (nombres de mobs) cambia con lo próximo que se cargue
+                self.config.set_language(code);
+                game::registry::set_lang(code);
+                self.class_rows = class_rows(&self.classes);
+            }
             UiAction::SetResolution(r) => {
                 self.config.set_resolution(r);
                 if let Some(gpu) = &self.gpu
@@ -721,6 +757,7 @@ impl App {
         }
 
         // --- lógica: teclas mantenidas, animaciones, dados y turnos ---
+        self.world.d.verbose_rolls = self.config.dice_log; // [dev] dice_log
         let w = &mut self.world;
         if w.ready() {
             let h = self.input.held;
@@ -813,8 +850,7 @@ impl ApplicationHandler for App {
                 if let PhysicalKey::Code(code) = event.physical_key {
                     let down = event.state == ElementState::Pressed;
                     // creación de personaje: el nombre o el número que se está escribiendo
-                    let creating = self.title && matches!(self.ui.window, Some(UiWindow::Create));
-                    if down && creating && code != KeyCode::Escape {
+                    if down && self.creating() && code != KeyCode::Escape {
                         let text = match &event.logical_key {
                             Key::Character(t) => Some(t.as_str()),
                             _ => None,

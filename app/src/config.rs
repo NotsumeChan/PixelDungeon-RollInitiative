@@ -1,7 +1,8 @@
 //! Configuración local (`core/Config.py`): `Local.config`, el mismo INI del prototipo. Se leen y guardan sólo las
 //! claves que usa Rust (FPS, pantalla completa, controles); el resto del archivo se conserva tal cual.
 //! En escritorio está en la carpeta desde donde se corre el juego; en Android, en la carpeta de datos de la app.
-//! ponytail: sin idioma todavía (los textos del código están en español; falta la estructura para traducirlos)
+//! El idioma (`language`) es el del contenido (los JSON); los textos del código están en español, como el prototipo.
+//! ponytail: sin traducción de los textos del código (falta la estructura); English sólo cambia el contenido
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
@@ -109,6 +110,10 @@ pub fn assignable(k: KeyCode) -> bool {
 pub struct Config {
     pub max_fps: u32,
     pub fullscreen: bool,
+    /// Idioma del contenido (código de `game::registry::LANGS`; sin archivo, "es").
+    pub language: &'static str,
+    /// `[dev] dice_log`: el log muestra el cálculo de cada tirada (opción de desarrollador, sólo en el archivo).
+    pub dice_log: bool,
     /// Clave de `RESOLUTIONS` (sin archivo o desconocida: "Hd", como el prototipo).
     pub resolution: &'static str,
     /// Escala de la interfaz respecto del zoom que entra (1 = 100%; `ui_scale` en Local.config, como el prototipo).
@@ -127,13 +132,17 @@ fn path() -> PathBuf {
 impl Config {
     pub fn load() -> Self {
         let lines: Vec<String> = std::fs::read_to_string(path()).unwrap_or_default().lines().map(str::to_string).collect();
-        let mut c = Self { max_fps: DEFAULT_FPS, fullscreen: false, resolution: "Hd", ui_scale: 1.0, ui_base: 1, keys: Vec::new(), lines };
+        let mut c = Self { max_fps: DEFAULT_FPS, fullscreen: false, language: "es", dice_log: false, resolution: "Hd", ui_scale: 1.0, ui_base: 1, keys: Vec::new(), lines };
         if let Some(s) = c.get("general", "ui_scale").and_then(|v| v.parse().ok()) {
             c.ui_scale = s;
         }
         if let Some(f) = c.get("general", "maxFPS").and_then(|v| v.parse().ok()) {
             c.max_fps = f;
         }
+        if let Some(l) = c.get("general", "language").and_then(|v| game::registry::LANGS.iter().find(|l| l.0 == v)) {
+            c.language = l.0;
+        }
+        c.dice_log = c.get("dev", "dice_log").is_some_and(|v| v.eq_ignore_ascii_case("true"));
         if let Some(r) = c.get("general", "resolution").and_then(|v| RESOLUTIONS.iter().find(|r| r.0 == v)) {
             c.resolution = r.0;
         }
@@ -188,6 +197,12 @@ impl Config {
     /// Tamaño de la ventana en pixeles.
     pub fn window_size(&self) -> (u32, u32) {
         RESOLUTIONS.iter().find(|r| r.0 == self.resolution).map_or((1280, 720), |r| (r.1, r.2))
+    }
+
+    pub fn set_language(&mut self, code: &'static str) {
+        self.language = code;
+        self.set("general", "language", code);
+        self.save();
     }
 
     pub fn set_resolution(&mut self, r: &'static str) {

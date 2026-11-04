@@ -157,6 +157,16 @@ teclado en pantalla al tocar el nombre o una característica. Sin arrastrar (el 
 lo mismo. **Versión 0.5.0.** Para probar: tirar, asignar, mover una tirada de una característica a otra, escribir un
 número, LIMPIAR, empezar sin nombre (usa el de la clase), en el teléfono el teclado y la creación en vertical.
 
+**Cierre de la 0.7** ✏️ (2026-11-04), pendiente de prueba del dueño: arrastrar en la creación de personaje como el
+prototipo (tirada -> característica, característica -> característica las cambia, afuera la quita; con mouse o dedo),
+idioma del contenido en la configuración (Español / English: nombres y descripciones de los JSON; los textos del
+código siguen en español, como el prototipo) y `[dev] dice_log = true` en `Local.config` para el log de tiradas
+detallado. **Versión 0.7.0**, con una excepción a la regla de versiones: faltan las partículas y el proyectil en
+vuelo (pulido visual). Para probar: arrastrar en la PC y con el dedo, un click sigue eligiendo; cambiar a English y
+ver ítems / mobs / clases; `dice_log`.
+Nota: "arrastrar ítems en la mochila" no existía en el prototipo (su drag and drop de la 0.6 era sólo en la
+creación); se saca de pendientes.
+
 **Estado R5d** ✏️ escrito (2026-11-04), pendiente de prueba del dueño: armas a distancia. LANZAR (primera acción de las
 arrojadizas y del acceso rápido; se elige la casilla como un conjuro), el arco con flechas (tocar un mob a tiro
 dispara; sin flechas o fuera de alcance, cuerpo a cuerpo con 1d4), el bumerán vuelve a la mochila, los dardos ponen su
@@ -175,23 +185,22 @@ doble). Para probar: cambiar la resolución en ventana y en pantalla completa, y
 ## Para retomar (al cerrar la sesión del 2026-11-04)
 
 **Dónde está todo.** Rama `dev` (por encima de `main`, sin pushear: `git push -u origin dev`). `main`
-sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide las fases. **Versión 0.5.0**
+sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide las fases. **Versión 0.7.0**
 (`Cargo.toml` del workspace y `android/AndroidManifest.xml`; regla e historial en `roadmap/versiones.md`).
 
 **Siguiente, en este orden:**
 1. ~~Creación de personaje con dados~~ ✏️ hecha (0.5.0), falta la prueba del dueño. La 0.6 del prototipo pide además
    arrastrar (ítems en la mochila; tiradas en la creación).
-2. ~~R5d, armas a distancia~~ ✏️ hecha, falta la prueba del dueño. La versión sigue en 0.5.0: la 0.6 del prototipo
-   pide además arrastrar (ítems en la mochila, tiradas en la creación); con eso se pasa directo a la **0.7**.
-3. **Idioma**: estructura de traducción para los textos del código (hoy en español; los JSON ya traen `es` / `en`,
-   ver `registry::text`). La configuración ya muestra el selector (English deshabilitado).
+2. ~~R5d, armas a distancia~~ ✏️ y ~~arrastrar~~ ✏️ hechos: **0.7.0**, falta la prueba del dueño.
+3. **Idioma**: el del contenido ya se elige (Español / English); falta la estructura de traducción para los textos
+   del código (hoy en español, como el prototipo). No bloquea ninguna versión.
 4. Resto de R5 para la **0.8**: hotseat (2 héroes en la misma PC, modo de prueba de la red), y lo que falte de
    paridad con `python-prototipe`.
 
 **Pendientes conocidos (pulido):** partículas de trampas y conjuros y proyectiles en vuelo (`screens/particles.py`),
 nubes de gas que se expanden (Blob), el indicador de ocupado gira en el original (acá titila: `Sprite` no rota),
 mimic, habilidades especiales de los mobs (Swarm, Skeleton, Thief), FLEEING, descansos (hoy se recupera todo al
-llegar a un piso nuevo), arrastrar ítems en la mochila.
+llegar a un piso nuevo).
 
 **Lo que reportó el dueño en la sesión del 2026-11-04 (ya arreglado, falta que lo confirme):** gnoll que cruzaba
 paredes (era el sprite: ahora sigue cada paso), iniciativa al matar de un golpe (atacar inicia el combate con

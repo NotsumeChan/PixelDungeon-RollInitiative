@@ -66,8 +66,10 @@ nombre arriba, las 4 clases con avatar y "clase d<dado>", las 6 características
 EMPEZAR ("FALTAN STATS" en gris hasta tener las 6). Click / toque en una tirada y luego en una característica la pone
 (si estaba en otra, se mueve); click en una característica sin tirada elegida deja escribir el número (1-20); Enter /
 Tab pasa a la siguiente. TIRAR de nuevo borra lo asignado desde las tiradas viejas; LIMPIAR borra las 6. Esc vuelve a
-la lista. El estado es `Ui::create` (`Create`, `Cr`); en vertical las clases van en 2 columnas. Sin arrastrar (el
-prototipo arrastraba tiradas y cambiaba características de lugar): click-click hace lo mismo y anda en táctil.
+la lista. El estado es `Ui::create` (`Create`, `Cr`); en vertical las clases van en 2 columnas.
+Arrastrar (mouse o dedo, `Create::press` / `moved_to` / `release`, como el prototipo): una tirada a una característica
+la pone, una característica a otra las cambia, una característica afuera la quita; lo arrastrado sigue al puntero y la
+característica de abajo se resalta. Menos de 3 px entre apretar y soltar es un click.
 
 Título: Jugar, Mods, Acerca de y Opciones (la configuración, antes arriba a la izquierda; usa el ícono PREFS de
 `icons.png` al doble hasta que haya uno de 32x32). Los botones se separan por el texto más largo + 8 px (para que no
@@ -77,3 +79,5 @@ Local.config.
 
 R5d: LANZAR en la ventana del ítem (o el acceso rápido de una arrojadiza) deja `throwing` = el ítem: el aviso de
 arriba pide la casilla ("Elige adonde lanzar", Esc cancela) y el próximo click en el mapa lanza.
+
+Configuración: Idioma = el del contenido (`game::registry::LANGS`: Español / English), se aplica al momento.

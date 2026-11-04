@@ -2,6 +2,8 @@
 //! conjuros). Las carpetas se leen en orden y lo último pisa a lo anterior (base de los mods). Una entrada con
 //! `"base": "<id>"` copia esa otra entrada y aplica sus campos encima.
 //! El orden de las entradas se conserva (serde_json con `preserve_order`): decide tiradas, como el dict de Python.
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use serde_json::{Map, Value};
 
 /// El contenido del juego base va dentro del binario (Android sin AssetManager).
@@ -44,12 +46,29 @@ fn resolve(entries: &Map<String, Value>, key: &str, seen: &mut Vec<String>) -> R
     Ok(out)
 }
 
-/// Texto de contenido: `str` o `{"es": ..., "en": ...}`.
-/// ponytail: idioma fijo en español hasta la configuración (R5); si falta "es", el primero que haya
+/// Idiomas del contenido (`game/lang.py`): (código, nombre). Lo elige la configuración (`language` en Local.config).
+pub const LANGS: [(&str, &str); 2] = [("es", "Español"), ("en", "English")];
+static LANG: AtomicUsize = AtomicUsize::new(0);
+
+/// Cambia el idioma del contenido (un código desconocido se ignora). Sólo afecta textos: nunca una tirada.
+pub fn set_lang(code: &str) {
+    if let Some(i) = LANGS.iter().position(|l| l.0 == code) {
+        LANG.store(i, Ordering::Relaxed);
+    }
+}
+
+pub fn lang() -> &'static str {
+    LANGS[LANG.load(Ordering::Relaxed)].0
+}
+
+/// Texto de contenido: `str` o `{"es": ..., "en": ...}`. Si falta el idioma actual, inglés; si no, el primero que haya
+/// (un mod puede traer sólo los suyos).
 pub fn text(v: &Value) -> String {
     match v {
         Value::String(s) => s.clone(),
-        Value::Object(o) => o.get("es").or_else(|| o.values().next()).and_then(Value::as_str).unwrap_or("?").to_string(),
+        Value::Object(o) => {
+            o.get(lang()).or_else(|| o.get("en")).or_else(|| o.values().next()).and_then(Value::as_str).unwrap_or("?").to_string()
+        }
         _ => "?".to_string(),
     }
 }

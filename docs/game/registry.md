@@ -6,3 +6,6 @@ archivo (decide tiradas, como el dict de Python). Una base que no existe o un ci
 
 `text(valor)`: un texto de contenido (`str` o `{"es", "en"}`) en el idioma del juego. Por ahora siempre `es` (si
 falta, el primero que haya); el idioma se elige con la configuración (R5).
+
+Idioma (`LANGS`, `set_lang`, `lang`, como `game/lang.py`): `text` elige el idioma actual; si falta, inglés y si no el
+primero que haya. Sólo cambia textos, nunca una tirada (dos jugadores con distinto idioma ven la misma partida).

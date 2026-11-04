@@ -9,6 +9,8 @@ donde se corre; en Android, en la carpeta de datos de la app (`DIR`, lo pone `an
 - `Bind`: acciones con tecla configurable (moverse, esperar, buscar, mochila, accesos rápidos). Las flechas siempre
   mueven; Esc, R, C y F11 son fijas. `rebind` intercambia si la tecla ya era de otra acción.
 - Cada cambio se guarda al momento; si no se puede escribir, sigue en memoria (aviso en el log).
-- Falta el idioma: los textos del código están en español y falta la estructura para traducirlos.
+- `language` (es / en): el idioma del contenido (`game::registry::set_lang`). Los textos del código siguen en
+  español, como en el prototipo; falta la estructura para traducirlos.
+- `[dev] dice_log = true`: el log muestra el cálculo de cada tirada (`Dungeon::verbose_rolls`). Sólo en el archivo.
 
 `ui_scale` (escala de la interfaz, como el prototipo): la app la pasa a `Gpu::set_ui_scale`; `ui_base` es el zoom que entra, para armar las opciones.

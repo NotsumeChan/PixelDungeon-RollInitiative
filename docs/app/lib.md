@@ -45,3 +45,8 @@ al salir y al pasar al fondo en Android. Carpeta de datos: `data_dir()`. R = par
 
 R5d: con `ui.throwing` el próximo click en el mapa es `Action::Throw` (Esc cancela). El arco no necesita UI: tocar
 un mob a tiro dispara.
+
+Arrastrar en la creación de personaje: `press` / `drag` / `release` pasan primero por `Ui::create` (si se apretó sobre
+una tirada o una característica con valor), antes que el arrastre de la cámara. El idioma se aplica antes de crear la
+partida de fondo (`App::new`) y al cambiarlo se rehacen las filas de clases. `[dev] dice_log` se copia a
+`verbose_rolls` cada frame.
