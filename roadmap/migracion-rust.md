@@ -78,26 +78,22 @@ mundo y UI con zoom entero cada una; agua animada, tiles y niebla con LINEAR en 
 arrastre, zoom con rueda / pellizco; observador con WASD o toque. Orientación vertical (pedido del dueño, sobre todo
 para Android): la app gira con el teléfono y en vertical la UI usa la referencia 180x320.
 
-**Siguiente: R3** (sin empezar a escribir; sólo leídas las referencias). Notas para retomar:
-- Referencias en `python-prototipe`: `game/dice.py`, `pathfinder.py`, `actor.py` (planificador por tiempo + rondas 5e
-  del paso 3 de la fase 5), `char.py`, `hero.py`, `mobs.py`, `dungeon.py`, y de `items.py` sólo `weapon_dice` /
-  `armor_ac`. Copia de lectura rápida: `git archive python-prototipe game data | tar -x -C /tmp/pdri-py` (`/tmp` se
-  borra al reiniciar).
-- Alcance propuesto de R3 (como la fase 3 del prototipo + el combate 5e): `dice.rs`, `pathfinder.rs`, `actor.rs`
-  (tiempo de PD fuera de combate; en combate iniciativa d20 + DES, movimiento `speed_ft / 5` casillas + 1 acción,
-  estados y timers 1 TICK por ronda, fin tras 2 rondas calmas), `char.rs` (PV, CA, ataque d20 vs CA, crítico,
-  daño, muerte, paso con puertas), `hero.rs` (clase de `data/classes.json`, características, competencia, PV de
-  nivel, moverse con pathfinder, atacar cuerpo a cuerpo, esperar, buscar, escaleras, estabilizar aliado caído,
-  salvaciones contra la muerte, regeneración, XP y niveles), `mobs.rs` (IA SLEEPING / WANDERING / HUNTING, stats de
-  `data/mobs.json` convertidos a 5e con `mob_ac` / `mob_attack_bonus`, bestiario, respawner, XP repartida +1 al
-  último golpe), `dungeon.rs` (pisos visitados, varios héroes, `pending` de los dados).
-- Equipo mínimo en R3: sólo el arma y la armadura iniciales de la clase (leídas de `data/items.json` por
-  `registry`) para la tirada de ataque, el daño y la CA. Inventario, hambre, estados, conjuros, trampas y armas a
-  distancia van en R5.
-- Render en R3: personajes con el primer frame de su hoja (las animaciones son R4), HUD mínimo (PV, CA, ronda y
-  turno, últimas líneas del log). Sin la animación de dados todavía: `pending` se resuelve en el acto.
-- Determinismo: las tiradas del rng de la partida en el mismo orden que el prototipo (no hay comparación automática
-  en R3 porque depende del input; se prueba a mano).
+**Estado R3** ✏️ escrito (2026-11-04), pendiente de prueba del dueño: `dice`, `pathfinder`, `actor` (planificador +
+rondas 5e), `char`, `items` (arma y armadura iniciales), `hero` (clase de `data/classes.json`, ataque 5e, buscar,
+escaleras arriba y abajo, estabilizar, salvaciones contra la muerte, regeneración, XP y niveles), `mobs` (IA SLEEPING /
+WANDERING / HUNTING, bestiario, respawner, XP repartida) y `dungeon` (pisos visitados, varios héroes, `pending`). La
+app juega con el héroe: click / toque con pathfinder, WASD, espacio = esperar, Q o tocarse = buscar, R / C = partida /
+clase; personajes con el primer frame de su hoja; HUD con PV, CA, XP, ronda y turno, y el log.
+Verificado headless (simulación descartable, no queda en el repo): 40 partidas sin pánicos ni bucles, combates, bajada
+hasta el piso 4 y muertes por salvaciones; los pisos siguen idénticos a `main` (16 seeds x piso comparados).
+Para probar: que los mobs despierten y persigan, el orden de iniciativa y el movimiento por turno en combate, caer a 0
+PV y las salvaciones, subir de nivel, subir y bajar de piso (los pisos guardan sus mobs), el balance (el héroe muere
+seguido si no descansa).
+Pendientes de R3 que dependen de R4/R5: el dado animado (`pending` se resuelve en el acto), botones táctiles para
+esperar / buscar, apariencias de pociones al empezar (gasta rng en el prototipo), loot, trampas, hambre.
+
+**Siguiente: R4** (sprites animados, partículas, dados animados, UI) y después la parte de R5 que llega a la 0.7
+del prototipo (rasgos de clase, conjuros, salvaciones, estados, trampas, armas a distancia).
 
 **Pendiente del dueño** (al cerrar la sesión del 2026-11-03):
 - `git push origin main` (R1, R2 y la orientación vertical están sólo en local).
