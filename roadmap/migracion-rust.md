@@ -248,6 +248,16 @@ de "Estado R6").
    en el teléfono), el teléfono como host (MulticastLock para recibir los "discover"), escribir la IP a mano.
 5. **Idioma de los textos del código** (hoy en español, como el prototipo; el contenido ya se elige es / en).
 6. Pulido: partículas y proyectiles en vuelo, nubes de gas.
+7. **Publicar desde `main`** (pedido del dueño): GitHub Actions que, al llegar algo a `main`, compile Linux, Windows y
+   el APK y los publique como **Release** (tag `v<versión>` de `Cargo.toml`, los 3 archivos adjuntos). Hoy
+   `.github/workflows/build.yml` ya compila los 3 en cada push, pero sólo deja *artifacts* (vencen a los 90 días, no
+   son descargas públicas). Falta: un job o workflow para `push` a `main` que junte los 3 y use
+   `softprops/action-gh-release` (o `gh release create`), con `permissions: contents: write`; no repetir un tag que
+   ya existe (subir la versión antes del merge). El APK tiene que ir firmado con la clave del dueño: cargar los
+   secretos `PDRI_KEYSTORE_B64` y `PDRI_KEYSTORE_PASS` (ver "Pendiente del dueño"); sin ellos el CI firma con una
+   clave descartable y ese APK no sirve para actualizar el instalado. Al dueño le da igual si compila GitHub o si
+   compila su PC y sube los archivos (`gh release create v0.x.0 target/release/pdri target/android/pdri.apk ...`;
+   el `.exe` de Windows sale más fácil de GitHub). Preferir GitHub: no depende de la PC encendida.
 
 **Pendientes conocidos (pulido):** partículas de trampas y conjuros y proyectiles en vuelo (`screens/particles.py`),
 nubes de gas que se expanden (Blob), el indicador de ocupado gira en el original (acá titila: `Sprite` no rota),
@@ -269,8 +279,9 @@ no commitearlo. Lo que el dueño tiene que revisar queda anotado en el "Estado" 
 - Probar en la PC (`cargo run --release`) y en el teléfono (`android/build.sh` y
   `adb install -r target/android/pdri.apk`; si adb se corta: otro cable/puerto o `adb pair` / `adb connect`). Qué
   mirar: el "Estado" de cada paso, arriba.
-- Respaldar `~/.pddnd-signing/` (sin la clave no se pueden publicar actualizaciones del APK) y, si se quiere firmar
-  en CI, cargar los secretos `PDRI_KEYSTORE_B64` y `PDRI_KEYSTORE_PASS` en GitHub.
+- Respaldar `~/.pddnd-signing/` (sin la clave no se pueden publicar actualizaciones del APK) y, para publicar desde
+  `main` (punto 7 de "Siguiente"), cargar los secretos `PDRI_KEYSTORE_B64` (`base64 -w0 release.jks`) y
+  `PDRI_KEYSTORE_PASS` en GitHub.
 - Decidir si `Local.config` sigue versionado (cambia al probar opciones) o va al `.gitignore`.
 - Opcional: borrar `~/pddnd-android/` (prueba de buildozer; el SDK/NDK de `~/.buildozer` sí lo usa
   `android/build.sh`) y `~/pddnd-backup-20261103-1116/`.
