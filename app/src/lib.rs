@@ -6,6 +6,7 @@ mod dice_fx;
 mod font;
 mod gpu;
 mod map;
+mod net;
 mod sprites;
 mod ui;
 
@@ -130,13 +131,16 @@ impl World {
 
     /// Un frame de lógica, en el orden del prototipo: los sprites caminan (y sueltan al héroe al llegar), lo que el
     /// dado ya mostró se aplica, corren los turnos, y después los efectos y los dados avanzan.
-    fn update(&mut self, dt: f32) {
+    /// `remote` = cliente de una partida LAN: la partida la corre el host (acá sólo se anima lo que llega).
+    fn update(&mut self, dt: f32, remote: bool) {
         self.chars.animate(&mut self.d, dt);
         self.dice.feed(&mut self.d.dice_events);
-        if !self.d.pending.is_empty() && !self.dice.busy() {
+        if !remote && !self.d.pending.is_empty() && !self.dice.busy() {
             self.d.resolve_pending(); // recién cuando el dado mostró el resultado se aplica el daño
         }
-        self.d.process();
+        if !remote {
+            self.d.process();
+        }
         if self.d.depth != self.depth {
             self.depth = self.d.depth;
             self.chars.clear(); // otro piso: todos aparecen en su celda
@@ -208,6 +212,20 @@ struct App {
     fps_since: Instant,
     frames: u32,
     fps: u32,
+    /// Partida en red: host, cliente o ninguna.
+    net: Net,
+    /// Buscando partidas (ventana Unirse), lo encontrado y el último aviso de la red.
+    browser: Option<net::Browser>,
+    lan_games: Vec<net::Game>,
+    lan_status: String,
+    /// Cliente: mandó una acción y espera el estado que la incluya (no repetir el paso con la tecla mantenida).
+    awaiting: bool,
+}
+
+enum Net {
+    Off,
+    Host(net::HostGame),
+    Client(net::ClientGame),
 }
 
 /// Carpeta de datos del usuario (personajes y partidas), la misma que el prototipo: Windows %APPDATA%/PixelDND, Linux
@@ -274,6 +292,11 @@ impl App {
             fps_since: now,
             frames: 0,
             fps: 0,
+            net: Net::Off,
+            browser: None,
+            lan_games: Vec::new(),
+            lan_status: String::new(),
+            awaiting: false,
         }
     }
 
@@ -415,7 +438,59 @@ impl App {
                 self.autosave();
                 self.quit = true;
             }
-            UiAction::OpenRoster => self.open_roster(),
+            UiAction::OpenRoster => {
+                if !matches!(self.net, Net::Client(_)) {
+                    self.browser = None;
+                }
+                self.open_roster();
+            }
+            UiAction::HostLan => {
+                let Some(c) = self.ui.roster_sel.and_then(|i| self.roster.get(i)).cloned() else { return };
+                let name = c["name"].as_str().unwrap_or("?").to_string();
+                self.start(c);
+                if self.title {
+                    return; // no se pudo empezar (clase que no está cargada)
+                }
+                match net::HostGame::new(&name) {
+                    Ok(h) => {
+                        self.net = Net::Host(h);
+                        let ip = net::local_ip();
+                        self.world.d.log(&format!("Partida LAN abierta ({ip}): los demas entran con UNIRSE"));
+                    }
+                    Err(e) => self.world.d.log(&format!("No se pudo abrir la partida LAN: {e}")),
+                }
+            }
+            UiAction::OpenJoin => {
+                self.lan_status.clear();
+                match net::Browser::new() {
+                    Ok(b) => self.browser = Some(b),
+                    Err(e) => self.lan_status = format!("Sin red: {e}."),
+                }
+                self.ui.window = Some(UiWindow::Join);
+            }
+            UiAction::JoinGame(i) => {
+                let Some(g) = self.lan_games.get(i) else { return };
+                if g.info["version"] != game::VERSION {
+                    self.lan_status = format!("Esa partida es de la version {}.", g.info["version"].as_str().unwrap_or("?"));
+                    return;
+                }
+                if g.info["hash"] != game::registry::content_hash().as_str() {
+                    self.lan_status = "Esa partida tiene otro contenido (data/ o mods).".into();
+                    return;
+                }
+                let Some(c) = self.ui.roster_sel.and_then(|i| self.roster.get(i)).cloned() else {
+                    self.lan_status = "Elige un personaje en la lista.".into();
+                    return;
+                };
+                match net::ClientGame::connect(g.addr, &c) {
+                    Ok(cg) => {
+                        self.net = Net::Client(cg);
+                        self.character = Some(c);
+                        self.lan_status = "Conectando...".into();
+                    }
+                    Err(e) => self.lan_status = format!("No se pudo conectar: {e}."),
+                }
+            }
             UiAction::SelectChar(i) => {
                 self.ui.roster_sel = Some(i);
                 self.ui.confirm = false;
@@ -498,6 +573,7 @@ impl App {
             }
             UiAction::MainMenu => {
                 self.autosave();
+                self.net = Net::Off; // cierra la partida LAN (los clientes ven que se cortó)
                 self.ui = Ui::new();
                 self.ui.in_title = true;
                 self.title = true;
@@ -632,7 +708,7 @@ impl App {
         }
         let free = self.ui.window.is_none();
         match code {
-            KeyCode::KeyR => self.new_world(new_seed()),
+            KeyCode::KeyR if matches!(self.net, Net::Off) => self.new_world(new_seed()),
             // hotseat: Tab pasa al siguiente héroe vivo
             KeyCode::Tab if free && self.config.hotseat => {
                 let d = &mut self.world.d;
@@ -673,6 +749,64 @@ impl App {
         }
     }
 
+    /// La red, una vez por frame (en el hilo del juego): el host recibe acciones y manda el estado; el cliente manda
+    /// lo que eligió su héroe y aplica el último estado. Los héroes sin nadie que los maneje (un jugador que se fue, o
+    /// una partida guardada con otros héroes) esperan descansando.
+    fn net_pump(&mut self) {
+        if let Some(b) = &self.browser {
+            self.lan_games = b.games();
+        }
+        match &mut self.net {
+            Net::Off => {}
+            Net::Host(h) => h.pump(&mut self.world.d, &self.classes),
+            Net::Client(c) => {
+                let d = &mut self.world.d;
+                if !self.title
+                    && let Some(a) = d.heroes.get_mut(d.hero).and_then(|h| h.action.take())
+                {
+                    c.send_action(a);
+                    self.awaiting = true;
+                }
+                if let Some(nd) = c.pump() {
+                    self.world.d = nd;
+                    self.awaiting = false;
+                    if self.title {
+                        // primer estado: a jugar
+                        self.title = false;
+                        self.ui = Ui::new();
+                        self.pan = [0.0; 2];
+                        self.lan_status.clear();
+                        self.browser = None;
+                    }
+                }
+                if c.closed || c.refused.is_some() {
+                    let why = c.refused.clone().map_or("Se corto la conexion con el host.".to_string(), |w| format!("El host no te dejo entrar: {w}."));
+                    self.net = Net::Off;
+                    self.awaiting = false;
+                    self.lan_status = why;
+                    self.ui = Ui::new();
+                    self.ui.in_title = true;
+                    self.ui.window = Some(UiWindow::Join);
+                    self.title = true;
+                    if self.browser.is_none() {
+                        self.browser = net::Browser::new().ok();
+                    }
+                }
+            }
+        }
+        if matches!(self.net, Net::Client(_)) || self.config.hotseat || self.title {
+            return;
+        }
+        let d = &mut self.world.d;
+        for j in 0..d.heroes.len() {
+            let controlled = j == d.hero || matches!(&self.net, Net::Host(h) if h.controls(j));
+            let h = &mut d.heroes[j];
+            if !controlled && h.is_alive() && !h.is_downed() && h.action.is_none() {
+                h.action = Some(Action::Rest);
+            }
+        }
+    }
+
     /// Android: el teclado en pantalla aparece mientras la creación de personaje espera texto.
     fn sync_ime(&self) {
         if cfg!(target_os = "android")
@@ -694,6 +828,9 @@ impl App {
 
     /// Partida nueva del personaje en juego (R, o Nueva partida al morir).
     fn new_world(&mut self, seed: i64) {
+        if !matches!(self.net, Net::Off) {
+            return; // en red, la partida no se reemplaza (R, nueva partida)
+        }
         let c = self.character.clone().unwrap_or_default();
         let class = c["class"].as_str().unwrap_or(CLASSES[0]);
         let name = c["name"].as_str().unwrap_or("");
@@ -754,7 +891,8 @@ impl App {
 
     /// Guarda la partida del personaje en juego (si murió, se borra el guardado).
     fn autosave(&mut self) {
-        if self.title {
+        // el cliente no guarda: la partida es del host
+        if self.title || matches!(self.net, Net::Client(_)) {
             return;
         }
         let Some(c) = &self.character else { return };
@@ -772,7 +910,19 @@ impl App {
         let w = &self.world;
         let classes = &self.class_rows;
         let rows = &self.roster_rows;
-        self.ui.draw_title(&self.atlas, &self.font, &w.chars, &w.d, &self.config, &mut self.sprites, uw as f32, uh as f32, dt, classes, rows);
+        let lan: Vec<(String, bool)> = self
+            .lan_games
+            .iter()
+            .map(|g| {
+                let i = &g.info;
+                let ok = i["version"] == game::VERSION && i["hash"] == game::registry::content_hash().as_str();
+                let name = i["name"].as_str().unwrap_or("?");
+                let extra = if ok { String::new() } else { format!(" (v{})", i["version"].as_str().unwrap_or("?")) };
+                (format!("{name} - {} jugadores - {}{extra}", i["players"], g.addr.ip()), ok)
+            })
+            .collect();
+        let status = &self.lan_status;
+        self.ui.draw_title(&self.atlas, &self.font, &w.chars, &w.d, &self.config, &mut self.sprites, uw as f32, uh as f32, dt, classes, rows, &lan, status);
         let end = self.sprites.len() as u32;
         self.gpu.as_mut().unwrap().draw(&self.sprites, &[], 0..end);
     }
@@ -784,6 +934,7 @@ impl App {
         if let Some(gpu) = &self.gpu {
             self.config.ui_base = gpu.ui_zoom();
         }
+        self.net_pump();
         if self.title {
             self.frame_title(dt);
             return;
@@ -799,15 +950,15 @@ impl App {
         // --- lógica: teclas mantenidas, animaciones, dados y turnos ---
         self.world.d.verbose_rolls = self.config.dice_log; // [dev] dice_log
         let w = &mut self.world;
-        if w.ready() {
+        if w.ready() && !self.awaiting {
             let h = self.input.held;
             let (dx, dy) = ((h[3] as i32) - (h[2] as i32), (h[1] as i32) - (h[0] as i32));
             if (dx, dy) != (0, 0) {
                 w.step(dx, dy);
             }
         }
-        w.update(dt);
-        if self.config.hotseat {
+        w.update(dt, matches!(self.net, Net::Client(_)));
+        if self.config.hotseat && matches!(self.net, Net::Off) {
             w.auto_switch();
         }
         if w.d.depth != self.saved_depth {

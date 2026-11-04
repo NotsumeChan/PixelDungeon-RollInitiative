@@ -157,6 +157,23 @@ teclado en pantalla al tocar el nombre o una característica. Sin arrastrar (el 
 lo mismo. **Versión 0.5.0.** Para probar: tirar, asignar, mover una tirada de una característica a otra, escribir un
 número, LIMPIAR, empezar sin nombre (usa el de la clase), en el teléfono el teclado y la creación en vertical.
 
+**Estado R6** ✏️ escrito (2026-11-04), pendiente de prueba del dueño (PC + teléfono): red LAN en `app/src/net.rs`
+(`docs/app/net.md`), sólo std. Lista de personajes -> CREAR LAN (juegas con el elegido y la partida queda abierta; el
+log muestra la IP) o UNIRSE (lista de partidas de la red; tocar una entra con el personaje elegido). Host autoritativo
+que manda el estado completo; el cliente manda acciones validadas. Descubrimiento: el cliente pregunta por broadcast y
+el host contesta directo, así el teléfono encuentra la PC sin MulticastLock. Hash del contenido y versión: si no
+coinciden, no se entra. Tests de red: 4, por loopback incluida una partida real (`cargo test -p app --lib net`).
+Para probar (demo): en la PC abrir los puertos si ufw está activo (`sudo ufw allow 47810/udp` y
+`sudo ufw allow 47811/tcp`), instalar el APK nuevo en el teléfono (`android/build.sh` + `adb install -r ...`), PC:
+CREAR LAN; teléfono (misma Wi-Fi): UNIRSE, tocar la partida. Mirar: que aparezca la partida, entrar, moverse y pelear
+los dos (en combate cada uno en su turno), bajar de piso por separado, que el teléfono se vaya y vuelva (vuelve a su
+héroe), y que el host cierre (el teléfono vuelve a Unirse con el aviso).
+Pendientes de R6: personaje portátil (paso 5: el cliente entra con nivel 1 y equipo inicial y al irse no se guarda su
+progreso), sacar al héroe que se va, que el cliente vea dados y efectos, aplicar el estado sin rearmar la partida
+(hoy regenera los pisos en cada estado: puede trabar un poco en el teléfono), el teléfono como host (para recibir
+los "discover" por broadcast puede necesitar MulticastLock: por ahora la partida se crea en la PC), escribir la IP a
+mano si el router bloquea los broadcasts.
+
 **Hotseat (cierre de R5, 0.8)** ✏️ (2026-11-04), pendiente de prueba del dueño: `[dev] hotseat = true` en
 `Local.config` suma un segundo héroe igual al personaje ("<nombre> 2"). Tab cambia de héroe; la UI pasa sola al que
 le toca en combate (o al que sigue en pie si el local cae) y el log avisa "Turno de ..."; con los héroes en pisos
@@ -202,8 +219,9 @@ sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide 
 2. ~~R5d, armas a distancia~~ ✏️ y ~~arrastrar~~ ✏️ hechos: **0.7.0**, falta la prueba del dueño.
 3. **Idioma**: el del contenido ya se elige (Español / English); falta la estructura de traducción para los textos
    del código (hoy en español, como el prototipo). No bloquea ninguna versión.
-4. ~~Hotseat~~ ✏️ hecho: **0.8.0**, falta la prueba del dueño. Lo siguiente es **R6, la red** (0.9), y el pulido
-   pendiente (partículas, proyectiles, nubes de gas).
+4. ~~Hotseat~~ ✏️ hecho: **0.8.0**, falta la prueba del dueño.
+5. **R6** ✏️ primera versión jugable (ver "Estado R6"); la versión pasa a 0.9 cuando el dueño la valide con PC +
+   teléfono y esté el personaje portátil. Después, el pulido (partículas, proyectiles, nubes de gas).
 
 **Pendientes conocidos (pulido):** partículas de trampas y conjuros y proyectiles en vuelo (`screens/particles.py`),
 nubes de gas que se expanden (Blob), el indicador de ocupado gira en el original (acá titila: `Sprite` no rota),

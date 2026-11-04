@@ -17,6 +17,18 @@ const BASE: [(&str, &str); 6] = [
     ("spells", include_str!("../../data/spells.json")),
 ];
 
+/// Hash del contenido (los JSON de los registros, en orden): un cliente con otro contenido no entra a la partida.
+/// FNV-1a de 64 bits: estable entre plataformas y versiones de Rust (no es criptográfico: sólo detecta diferencias).
+pub fn content_hash() -> String {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for (n, text) in BASE {
+        for b in n.bytes().chain(text.bytes()) {
+            h = (h ^ b as u64).wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+    format!("{h:016x}")
+}
+
 pub fn load(name: &str) -> Result<Map<String, Value>, String> {
     let mut merged = Map::new();
     for (n, text) in BASE {

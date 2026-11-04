@@ -81,3 +81,7 @@ R5d: LANZAR en la ventana del ítem (o el acceso rápido de una arrojadiza) deja
 arriba pide la casilla ("Elige adonde lanzar", Esc cancela) y el próximo click en el mapa lanza.
 
 Configuración: Idioma = el del contenido (`game::registry::LANGS`: Español / English), se aplica al momento.
+
+Red LAN: la lista de personajes suma CREAR LAN / UNIRSE (con el personaje elegido). `Window::Join` (`draw_join`): las
+partidas encontradas ("nombre - N jugadores - IP"; gris si es de otra versión o contenido), el aviso de la red
+(conectando, rechazado, se cortó) y VOLVER.

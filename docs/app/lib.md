@@ -56,3 +56,12 @@ al personaje ("<nombre> 2"). Tab pasa al siguiente héroe vivo. `World::auto_swi
 cayó, la UI pasa al primero en pie; si el piso espera la acción de otro héroe (`Dungeon::blocking`), pasa a ese. Con los
 héroes en pisos distintos, cada piso espera a su héroe: se cambia con Tab. Con 2+ héroes, `sprites.rs` dibuja el
 nombre sobre cada uno (el local amarillo, otros blanco, caídos gris). La partida guarda los dos héroes.
+
+Red LAN (`net.rs`, `Net`: `Off` / `Host` / `Client`): CREAR LAN en la lista de personajes juega con el elegido y abre
+la partida (el log muestra la IP); UNIRSE busca partidas (`Browser`) y al tocar una se conecta con el personaje
+elegido; con el primer estado se entra a jugar. `net_pump` (cada frame, también en el título): el host aplica las
+acciones y manda el estado; el cliente manda lo que eligió su héroe (la UI arma la acción sobre su copia, como en
+local) y espera el estado (`awaiting`, para no repetir pasos con la tecla mantenida). El cliente no corre la partida
+(`World::update(dt, remote)`), no guarda, y R / nueva partida no hacen nada en red. Si la conexión se corta o el host
+lo rechaza, vuelve a la ventana Unirse con el motivo. Los héroes que nadie maneja (un jugador que se fue o una partida
+guardada con más héroes, fuera del hotseat) descansan solos. Menú principal cierra la partida LAN.

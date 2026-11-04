@@ -124,8 +124,10 @@ pub enum Window {
     Controls,
     /// Pantalla de texto del título (Mods, Acerca de): centrada sobre negro; click o Esc vuelve.
     Page(Vec<(String, [f32; 4])>),
-    /// Lista de personajes (Jugar): JUGAR / NUEVO / BORRAR.
+    /// Lista de personajes (Jugar): JUGAR / NUEVO / BORRAR, CREAR LAN / UNIRSE.
     Roster,
+    /// Partidas encontradas en la LAN (UNIRSE).
+    Join,
     /// Creación de personaje (NUEVO): nombre, clase y características con 4d6 (`Ui::create`).
     Create,
 }
@@ -168,6 +170,12 @@ pub enum UiAction {
     /// Borrar el personaje elegido: el primer click pide confirmación.
     DeleteChar,
     SetRule(&'static str, bool),
+    /// Jugar con el personaje elegido y abrir la partida en la LAN.
+    HostLan,
+    /// Buscar partidas en la LAN.
+    OpenJoin,
+    /// Unirse a la partida i de la lista, con el personaje elegido.
+    JoinGame(usize),
     SetUiScale(f32),
 }
 
@@ -319,7 +327,7 @@ impl Ui {
             Some(Window::Item(slot)) => self.draw_item(atlas, font, d, out, w, h, slot),
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             Some(Window::Spells) => self.draw_spells(atlas, font, d, out, w, h),
-            Some(Window::Create | Window::Page(_) | Window::Roster) => self.window = None, // sólo en el título
+            Some(Window::Create | Window::Page(_) | Window::Roster | Window::Join) => self.window = None, // sólo en el título
             Some(Window::Rules) => self.draw_rules(atlas, font, d, out, w, h),
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
             None => {
@@ -966,7 +974,7 @@ impl Ui {
     fn draw_roster(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, rows: &[RosterRow]) {
         const ROW_H: f32 = 30.0;
         const LIST_Y: f32 = 15.0;
-        let visible = (((h - LIST_Y - 24.0) / (ROW_H + 2.0)).floor() as usize).max(1);
+        let visible = (((h - LIST_Y - 42.0) / (ROW_H + 2.0)).floor() as usize).max(1);
         self.roster_scroll = self.roster_scroll.min(rows.len().saturating_sub(visible));
         out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
         self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
@@ -993,6 +1001,12 @@ impl Ui {
             ("NUEVO", Some(UiAction::Create(Cr::New))),
             (if self.confirm { "CONFIRMAR" } else { "BORRAR" }, has.then_some(UiAction::DeleteChar)),
         ];
+        // red LAN: con el personaje elegido
+        let lan = [("CREAR LAN", has.then_some(UiAction::HostLan)), ("UNIRSE", has.then_some(UiAction::OpenJoin))];
+        let bw2 = ((w - 16.0 - 2.0) / 2.0).floor();
+        for (k, (label, act)) in lan.into_iter().enumerate() {
+            self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw2 + 2.0), h - 38.0, bw2, 16.0], label, act);
+        }
         let bw = ((w - 16.0 - 4.0) / 3.0).floor();
         for (k, (label, act)) in buttons.into_iter().enumerate() {
             self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw + 2.0), h - 20.0, bw, 16.0], label, act);
@@ -1117,6 +1131,30 @@ impl Ui {
         }
     }
 
+    /// Unirse a una partida LAN: las partidas que contestaron (gris = otra versión o contenido) y el estado.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_join(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, games: &[(String, bool)], status: &str) {
+        out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
+        self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
+        font.text(out, "Unirse a una partida LAN", 8.0, 3.0, YELLOW);
+        if games.is_empty() {
+            font.text(out, "Buscando partidas en la red...", 8.0, 18.0, GREY);
+        }
+        for (i, (label, ok)) in games.iter().enumerate() {
+            let r = [8.0, 15.0 + i as f32 * 18.0, w - 16.0, 16.0];
+            out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], SLOT_BG));
+            font.text(out, label, r[0] + 4.0, r[1] + 4.0, if *ok { WHITE } else { GREY });
+            self.hot(r, UiAction::JoinGame(i), None);
+        }
+        let help = format!("{status} Juegas con el personaje elegido en la lista. La partida la abre otro con CREAR LAN (misma red Wi-Fi).");
+        let lines = wrap(font, help.trim(), w - 16.0);
+        for (k, l) in lines.iter().enumerate() {
+            let y = h - 24.0 - (lines.len() - k) as f32 * LINE_H;
+            font.text(out, l, 8.0, y, if k == 0 && !status.is_empty() { YELLOW } else { GREY });
+        }
+        self.draw_button(atlas, font, out, [8.0, h - 20.0, w - 16.0, 16.0], "VOLVER", Some(UiAction::OpenRoster));
+    }
+
     /// Pantalla de texto (Mods, Acerca de): párrafos centrados sobre negro; click en cualquier lado vuelve.
     fn draw_page(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, paras: &[(String, [f32; 4])]) {
         out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
@@ -1138,7 +1176,7 @@ impl Ui {
     /// los letreros que laten, el dashboard (Jugar, Acerca de), configuración arriba a la izquierda y la versión.
     /// ponytail: sin Mods (1.x); los letreros se suman con alfa, no con mezcla aditiva
     #[allow(clippy::too_many_arguments)]
-    pub fn draw_title(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, classes: &[RosterRow], roster: &[RosterRow]) {
+    pub fn draw_title(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, classes: &[RosterRow], roster: &[RosterRow], lan: &[(String, bool)], lan_status: &str) {
         self.t += dt;
         self.hot.clear();
         // Archs: textura repetida, desplazada en Y (SCROLL_SPEED = 20; la de adelante, 40)
@@ -1204,6 +1242,7 @@ impl Ui {
             Some(Window::Info { icon, title, text, hp }) => self.draw_info(atlas, font, chars, d, out, w, h, icon, &title, &text, hp),
             Some(Window::Create) => self.draw_create(atlas, font, out, w, h, classes),
             Some(Window::Roster) => self.draw_roster(atlas, font, out, w, h, roster),
+            Some(Window::Join) => self.draw_join(atlas, font, out, w, h, lan, lan_status),
             _ => self.draw_tooltip(atlas, font, out, w, h),
         }
     }
