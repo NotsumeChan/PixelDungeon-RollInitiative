@@ -800,6 +800,9 @@ impl App {
                     }
                     self.ui.waiting = wait;
                 }
+                // animaciones, números y dados del host (después del estado: si llegó uno nuevo, van sobre ese)
+                self.world.d.fx.append(&mut c.fx);
+                self.world.d.dice_events.append(&mut c.dice);
                 if c.closed || c.refused.is_some() {
                     let why = c.refused.clone().map_or("Se corto la conexion con el host.".to_string(), |w| format!("El host no te dejo entrar: {w}."));
                     self.net = Net::Off;
@@ -894,7 +897,15 @@ impl App {
         let run = save::load_run(&data_dir(), characters::id(&c)).filter(|d| d.heroes.iter().any(|h| h.is_alive()));
         self.character = Some(c);
         match run {
-            Some(d) => {
+            Some(mut d) => {
+                // los héroes de otra sesión LAN no siguen en la partida (salvo en el hotseat, que son de esta PC)
+                if !self.config.hotseat {
+                    for j in (0..d.heroes.len()).rev() {
+                        if j != d.hero {
+                            d.remove_hero(j);
+                        }
+                    }
+                }
                 self.world = World::from_dungeon(d);
                 self.saved_depth = self.world.d.depth;
             }

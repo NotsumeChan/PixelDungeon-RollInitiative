@@ -47,3 +47,8 @@ R5d: `Pending::Land` (el proyectil del héroe después de verse el dado). `advan
 Log: `messages` = (para quién, texto). `log` es para todos; `tell(i, ...)` es un aviso sólo para el héroe `i` (lo que
 intentó y no pudo, lo que encontró, comió, se equipó, subir de nivel...): en red y en el hotseat los demás no lo ven.
 El guardado escribe los privados como `[héroe, texto]`.
+
+Red: con `record_all` (lo prende el host LAN) los efectos y dados de todos los pisos se guardan también en `net_fx` /
+`net_dice` con su piso, para mandarlos a los clientes de ese piso. `remove_hero(i)`: saca un héroe y corrige los
+índices de los demás (planificadores de todos los pisos, mobs que lo cazaban, marcas; descarta lo pendiente). Se usa
+al cargar una partida para jugar solo: los héroes de otra sesión LAN no siguen (en el hotseat sí).

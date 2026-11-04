@@ -121,6 +121,11 @@ pub struct Dungeon {
     pub fx: Vec<Fx>,
     /// Opción de desarrollador: el log muestra el cálculo completo de cada tirada.
     pub verbose_rolls: bool,
+    /// Host LAN: guarda también los efectos y dados de todos los pisos, con su piso (`net_fx`, `net_dice`), para
+    /// mandárselos a los clientes que están en ese piso. No se guarda.
+    pub record_all: bool,
+    pub net_fx: Vec<(i32, Fx)>,
+    pub net_dice: Vec<(i32, DiceEvent)>,
     pub rules: Rules,
     /// Pisos visitados: al volver siguen sus mobs y lo explorado.
     pub floors: BTreeMap<i32, Floor>,
@@ -165,6 +170,9 @@ impl Dungeon {
             dice_events: Vec::new(),
             fx: Vec::new(),
             verbose_rolls: false,
+            record_all: false,
+            net_fx: Vec::new(),
+            net_dice: Vec::new(),
             rules: Rules::default(),
             floors: BTreeMap::new(),
             heroes: Vec::new(),
@@ -222,6 +230,60 @@ impl Dungeon {
         self.view_changed = true;
         let name = self.heroes[i].ch.name.clone();
         self.log(&format!("Turno de {name}"));
+    }
+
+    /// Saca al héroe `i` de la partida (los de otra sesión LAN al jugar solo). Los índices de los héroes de después
+    /// bajan uno: se corrigen en los planificadores de todos los pisos, en los mobs que lo cazaban y en las marcas.
+    /// Lo que esperaba al dado se descarta.
+    pub fn remove_hero(&mut self, i: usize) {
+        if i >= self.heroes.len() || self.heroes.len() == 1 {
+            return;
+        }
+        let gone: Vec<u32> = self.heroes[i].ch.buffs.iter().map(|b| b.uid).collect();
+        let fix = |j: usize| -> Option<usize> {
+            match j.cmp(&i) {
+                std::cmp::Ordering::Less => Some(j),
+                std::cmp::Ordering::Equal => None,
+                std::cmp::Ordering::Greater => Some(j - 1),
+            }
+        };
+        let shift = |a: ActorId| -> Option<ActorId> {
+            match a {
+                ActorId::Hero(j) => fix(j).map(ActorId::Hero),
+                ActorId::Regen(j) => fix(j).map(ActorId::Regen),
+                ActorId::Hunger(j) => fix(j).map(ActorId::Hunger),
+                ActorId::Buff(u) if gone.contains(&u) => None,
+                other => Some(other),
+            }
+        };
+        let left = self.heroes[i].depth;
+        for f in self.floors.values_mut() {
+            let s = &mut f.scheduler;
+            s.actors = s.actors.iter().filter_map(|&(a, t)| shift(a).map(|a| (a, t))).collect();
+            if let Some(o) = &mut s.order {
+                let before = o.iter().take(s.turn).filter(|&&a| shift(a).is_none()).count();
+                *o = o.iter().filter_map(|&a| shift(a)).collect();
+                s.turn -= before;
+            }
+            for m in &mut f.mobs {
+                m.enemy = m.enemy.and_then(fix);
+            }
+        }
+        self.heroes.remove(i);
+        for h in &mut self.heroes {
+            h.marked = h.marked.and_then(shift);
+            if matches!(h.action, Some(crate::hero::Action::Help(_))) {
+                h.action = None;
+            }
+        }
+        self.hero = fix(self.hero).unwrap_or(0);
+        self.pending.clear();
+        if self.floors.contains_key(&left) {
+            self.depth = left;
+            self.observe(); // el piso que dejó ya no ve lo que veía
+        }
+        self.depth = self.local().depth;
+        self.view_changed = true;
     }
 
     // --- acceso ---
@@ -306,6 +368,11 @@ impl Dungeon {
 
     /// Una tirada para la animación de dados (sólo la del piso local).
     pub(crate) fn roll_event(&mut self, label: &str, value: i32, lo: i32, hi: i32, ok: Option<bool>) {
+        if self.record_all {
+            self.net_dice.push((self.depth, DiceEvent { label: label.to_string(), value, lo, hi, ok }));
+            let extra = self.net_dice.len().saturating_sub(MAX_DICE_EVENTS * 4);
+            self.net_dice.drain(..extra);
+        }
         if self.depth != self.local().depth {
             return;
         }
@@ -316,6 +383,11 @@ impl Dungeon {
 
     /// Un efecto para el render (sólo se dibuja el piso del héroe local).
     pub(crate) fn effect(&mut self, fx: Fx) {
+        if self.record_all {
+            self.net_fx.push((self.depth, fx.clone()));
+            let extra = self.net_fx.len().saturating_sub(MAX_FX * 4);
+            self.net_fx.drain(..extra);
+        }
         if self.depth != self.local().depth {
             return;
         }

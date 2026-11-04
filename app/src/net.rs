@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use game::actor::ActorId;
-use game::dungeon::Dungeon;
+use game::dungeon::{DiceEvent, Dungeon, Fx, Tone};
 use game::geom::LENGTH;
 use game::hero::{Action, Hero, Slot, Verb};
 use game::{characters, save};
@@ -303,6 +303,52 @@ pub fn action_of(v: &Value) -> Option<Action> {
     })
 }
 
+// --- efectos y dados (el cliente los ve como el host: animaciones, números flotantes, dados) ---
+
+const ANIMS: [&str; 4] = ["attack", "operate", "read", "die"];
+const TONES: [Tone; 5] = [Tone::Default, Tone::Pos, Tone::Neg, Tone::Warn, Tone::Neutral];
+
+fn fx_v(f: &Fx) -> Value {
+    match f {
+        Fx::Anim { who, kind, cell } => json!(["anim", actor_v(*who), kind, cell]),
+        Fx::Status { who, text, tone } => json!(["status", actor_v(*who), text, TONES.iter().position(|t| t == tone)]),
+        Fx::Die { who, cell, stats } => json!(["die", actor_v(*who), cell, stats]),
+        Fx::Checked(c) => json!(["checked", c]),
+        Fx::Leaves(c) => json!(["leaves", c]),
+    }
+}
+
+fn fx_of(v: &Value) -> Option<Fx> {
+    let cell = |k: usize| v[k].as_i64().and_then(|c| i32::try_from(c).ok()).filter(|c| (0..LENGTH).contains(c));
+    Some(match v[0].as_str()? {
+        "anim" => {
+            let kind = ANIMS.iter().copied().find(|k| v[2] == *k)?;
+            Fx::Anim { who: actor_of(&v[1])?, kind, cell: cell(3)? }
+        }
+        "status" => {
+            let tone = *TONES.get(v[3].as_u64()? as usize)?;
+            Fx::Status { who: actor_of(&v[1])?, text: v[2].as_str()?.chars().take(40).collect(), tone }
+        }
+        "die" => Fx::Die { who: actor_of(&v[1])?, cell: cell(2)?, stats: v[3].clone() },
+        "checked" => Fx::Checked(cell(1)?),
+        "leaves" => Fx::Leaves(cell(1)?),
+        _ => return None,
+    })
+}
+
+fn dice_v(e: &DiceEvent) -> Value {
+    json!([e.label, e.value, e.lo, e.hi, e.ok])
+}
+
+fn dice_of(v: &Value) -> Option<DiceEvent> {
+    let int = |k: usize| v[k].as_i64().and_then(|x| i32::try_from(x).ok());
+    let (lo, hi) = (int(2)?, int(3)?);
+    if !(0..=1000).contains(&lo) || !(lo..=1000).contains(&hi) {
+        return None; // un dado de mentira no traba la animación
+    }
+    Some(DiceEvent { label: v[0].as_str()?.chars().take(24).collect(), value: int(1)?, lo, hi, ok: v[4].as_bool() })
+}
+
 /// ¿Puede el héroe `i` pedir esto? (el juego vuelve a validar al actuar, como con el input local)
 fn valid(d: &Dungeon, i: usize, a: Action) -> bool {
     let h = &d.heroes[i];
@@ -435,6 +481,19 @@ impl HostGame {
                 _ => {}
             }
         }
+        // los efectos y dados de cada piso, a los que están en ese piso (en el acto: no esperan al estado)
+        d.record_all = true;
+        let (fx, dice) = (std::mem::take(&mut d.net_fx), std::mem::take(&mut d.net_dice));
+        if self.started && (!fx.is_empty() || !dice.is_empty()) {
+            for (&cid, &i) in &self.players {
+                let depth = d.heroes[i].depth;
+                let f: Vec<Value> = fx.iter().filter(|e| e.0 == depth).map(|e| fx_v(&e.1)).collect();
+                let r: Vec<Value> = dice.iter().filter(|e| e.0 == depth).map(|e| dice_v(&e.1)).collect();
+                if !f.is_empty() || !r.is_empty() {
+                    self.host.send(cid, &json!({"t": "fx", "fx": f, "dice": r}));
+                }
+            }
+        }
         if !self.started {
             if self.lobby_dirty {
                 self.lobby_dirty = false;
@@ -480,6 +539,9 @@ pub struct ClientGame {
     pub closed: bool,
     /// Sala de espera: los nombres que mandó el host (se toma al mostrarlo).
     pub lobby: Option<Vec<String>>,
+    /// Efectos y dados del host para el piso de este jugador (la app los pasa a su partida).
+    pub fx: Vec<Fx>,
+    pub dice: Vec<DiceEvent>,
 }
 
 impl ClientGame {
@@ -489,7 +551,7 @@ impl ClientGame {
         stream.set_nodelay(true)?;
         let (tx, inbox) = channel();
         read_loop(stream.try_clone()?, tx, |m| m);
-        let mut g = Self { stream, inbox, refused: None, closed: false, lobby: None };
+        let mut g = Self { stream, inbox, refused: None, closed: false, lobby: None, fx: Vec::new(), dice: Vec::new() };
         g.send(&json!({"t": "hello", "version": game::VERSION, "hash": game::registry::content_hash(),
                        "name": c["name"], "char": characters::id(c), "class": c["class"],
                        "abilities": characters::abilities(c)}));
@@ -513,6 +575,11 @@ impl ClientGame {
             match m["t"].as_str().unwrap_or("") {
                 "state" => latest = Some(m),
                 "refused" => self.refused = Some(m["why"].as_str().unwrap_or("rechazado").to_string()),
+                "fx" => {
+                    let list = |k: &str| m[k].as_array().cloned().unwrap_or_default();
+                    self.fx.extend(list("fx").iter().filter_map(fx_of));
+                    self.dice.extend(list("dice").iter().filter_map(dice_of));
+                }
                 "lobby" => {
                     let names = m["players"].as_array().map(|a| a.iter().filter_map(|n| n.as_str().map(str::to_string)).collect());
                     self.lobby = names;
@@ -565,6 +632,25 @@ mod tests {
     }
 
     #[test]
+    fn efectos_ida_y_vuelta() {
+        let fx = [
+            Fx::Anim { who: ActorId::Mob(3), kind: "attack", cell: 40 },
+            Fx::Status { who: ActorId::Hero(1), text: "-5".into(), tone: Tone::Neg },
+            Fx::Die { who: ActorId::Mob(9), cell: 41, stats: json!({"name": "rata"}) },
+            Fx::Checked(42),
+            Fx::Leaves(43),
+        ];
+        for f in fx {
+            let back = fx_of(&fx_v(&f)).unwrap();
+            assert_eq!(fx_v(&back), fx_v(&f));
+        }
+        let e = DiceEvent { label: "d20".into(), value: 17, lo: 1, hi: 20, ok: Some(true) };
+        assert_eq!(dice_v(&dice_of(&dice_v(&e)).unwrap()), dice_v(&e));
+        assert!(dice_of(&json!(["d20", 1, 5, 2, null])).is_none());
+        assert!(fx_of(&json!(["anim", ["m", 1], "rm -rf", 3])).is_none());
+    }
+
+    #[test]
     fn acciones_invalidas() {
         for v in [json!(["move", -1]), json!(["move", LENGTH]), json!(["nada"]), json!(["use", "x", 0, null]),
                   json!(["use", 0, 99, null]), json!(["attack", ["h"]]), json!(null), json!("move")] {
@@ -609,6 +695,12 @@ mod tests {
             assert!(t0.elapsed() < Duration::from_secs(5), "no se fue");
             std::thread::sleep(Duration::from_millis(20));
         }
+        // al jugar solo después, su héroe sale de la partida sin dejar rastros en el planificador
+        d.remove_hero(1);
+        assert_eq!((d.heroes.len(), d.hero), (1, 0));
+        let s = &d.floor().scheduler;
+        assert!(s.actors.iter().all(|e| !matches!(e.0, ActorId::Hero(1) | ActorId::Regen(1) | ActorId::Hunger(1))));
+        assert!(s.contains(ActorId::Hero(0)));
     }
 
     #[test]

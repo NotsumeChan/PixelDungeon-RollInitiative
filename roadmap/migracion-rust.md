@@ -176,8 +176,12 @@ como opción y el botón Atrás de Android como Esc. Para probar: todo eso en el
 Pedido del dueño, después: **chat de texto** en la partida LAN (mensaje `chat` cliente -> host -> todos; en el
 teléfono, con el teclado en pantalla).
 
+Segunda tanda (2026-11-04): el teléfono ve animaciones, números de daño y dados (el host le manda los efectos y
+dados de su piso); al cargar una partida para jugar solo, los héroes que quedaron de una sesión LAN se sacan (eran
+las "copias" que aparecían sin hotseat).
+
 Pendientes de R6: personaje portátil (paso 5: el cliente entra con nivel 1 y equipo inicial y al irse no se guarda su
-progreso), sacar al héroe que se va, que el cliente vea dados y efectos, aplicar el estado sin rearmar la partida
+progreso), aplicar el estado sin rearmar la partida
 (hoy regenera los pisos en cada estado: puede trabar un poco en el teléfono), el teléfono como host (para recibir
 los "discover" por broadcast puede necesitar MulticastLock: por ahora la partida se crea en la PC), escribir la IP a
 mano si el router bloquea los broadcasts.

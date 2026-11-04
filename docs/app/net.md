@@ -30,3 +30,7 @@ los efectos del host (ve el resultado en el log), estado completo en vez de dife
 Sala de espera: `HostGame` empieza sin correr la partida (`started = false`): suma a los que se unen y les manda
 `{"t": "lobby", "players": [...]}` al cambiar la lista; `start` (EMPEZAR) manda la partida a todos. El estado lleva
 `wait` (por héroe, si la partida espera que elija: `needs_input`) para la lista de quién falta.
+
+Efectos y dados: el host manda `{"t": "fx", "fx": [...], "dice": [...]}` con lo que pasó en el piso de cada jugador
+(animaciones de ataque, números flotantes, muertes, casillas revisadas, dados), en el acto. El cliente los pasa a su
+partida y los ve igual que el host. Validados: animaciones conocidas, celdas en rango, dados con rangos razonables.
