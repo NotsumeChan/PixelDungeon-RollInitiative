@@ -151,17 +151,55 @@ al pasar al fondo; si el héroe muere se borra. Misma carpeta de datos que el pr
 2, salir, volver a entrar y seguir; borrar con confirmación; morir y ver que la partida no queda. Falta: la creación con
 dados (NUEVO hoy elige la clase con el array estándar).
 
-**Siguiente: creación de personaje con dados** (`screens/createScreen.py`), después **R5d** (armas a distancia: arrojadizas, bumerán, arco) = **0.7** junto con lo anterior; el idioma de
-R5e queda para después (estructura de traducción).
+## Para retomar (al cerrar la sesión del 2026-11-04)
 
-**Pendiente del dueño** (al cerrar la sesión del 2026-11-03):
-- `git push origin main` (R1, R2 y la orientación vertical están sólo en local).
-- Probar R2 en el teléfono y en la PC (`cargo run --release`): niebla en bordes de paredes, agua, zoom nítido.
-- Instalar el APK con la orientación vertical: quedó armado en `target/android/pdri.apk` pero el teléfono se
-  desconectó (`adb install -r target/android/pdri.apk`). Si adb sigue cortándose: otro cable/puerto o depuración
-  inalámbrica (`adb pair` / `adb connect`).
+**Dónde está todo.** Rama `dev` (17 commits por encima de `main`, sin pushear: `git push -u origin dev`). `main`
+sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide las fases. **Versión 0.4.0**
+(`Cargo.toml` del workspace y `android/AndroidManifest.xml`; regla e historial en `roadmap/versiones.md`).
+
+**Siguiente, en este orden:**
+1. **Creación de personaje con dados** (referencia `screens/createScreen.py`, 261 líneas, y `game/dice.py`:
+   `roll_ability_score` = 4d6 sin el menor, `roll_ability_pool` = 7 tiradas, se asignan 6 y sobra 1, `valid_scores`).
+   Nombre, clase, tirar y asignar; reemplaza el NUEVO provisorio (`UiAction::Play` en `app/src/lib.rs`, que hoy
+   crea el personaje con la clase y el array estándar). Los personajes ya se guardan (`game::characters`) y la
+   partida usa sus características (`Dungeon::new_with`). Al terminarla, revisar la tabla de `roadmap/versiones.md`
+   para subir la versión (0.5 = creación con dados + ficha; la 0.6 del prototipo pide además arrastrar ítems).
+2. **R5d, armas a distancia** (referencia `game/hero.py`: `_throw`, `_shoot`, `_ranged_attack`, `_after_shot`,
+   `_can_shoot`, `ranged_range`, `_ammo`, y el ataque con `self.ranged` / `self.cover` en `attack_bonus`,
+   `advantage`, `roll_damage`). Ya están `game/ballistica.rs` y `Dungeon::shot` (línea de tiro y cobertura).
+   Agregar el verbo LANZAR (primero en `Hero::verbs` para las arrojadizas: el acceso rápido pasa a lanzar), la
+   selección de la casilla en la UI (como `casting`), el arco con flechas (`ammo`) y el bumerán que vuelve. Con esto
+   y lo anterior se llega al contenido de la **0.7**.
+3. **Idioma**: estructura de traducción para los textos del código (hoy en español; los JSON ya traen `es` / `en`,
+   ver `registry::text`). La configuración ya muestra el selector (English deshabilitado).
+4. Resto de R5 para la **0.8**: hotseat (2 héroes en la misma PC, modo de prueba de la red), y lo que falte de
+   paridad con `python-prototipe`.
+
+**Pendientes conocidos (pulido):** partículas de trampas y conjuros y proyectiles en vuelo (`screens/particles.py`),
+nubes de gas que se expanden (Blob), el indicador de ocupado gira en el original (acá titila: `Sprite` no rota),
+mimic, habilidades especiales de los mobs (Swarm, Skeleton, Thief), FLEEING, descansos (hoy se recupera todo al
+llegar a un piso nuevo), arrastrar ítems en la mochila.
+
+**Lo que reportó el dueño en la sesión del 2026-11-04 (ya arreglado, falta que lo confirme):** gnoll que cruzaba
+paredes (era el sprite: ahora sigue cada paso), iniciativa al matar de un golpe (atacar inicia el combate con
+sorpresa), tope de FPS y controles configurables, mochila menos brillante, acceso rápido que soltaba el ítem,
+pantalla de título y menús como el prototipo, nombres de ítems sin sprite ilegibles. Pidió además la lista de
+personajes (hecha) y la creación con dados (punto 1).
+
+**Cómo se trabaja (acordado con el dueño):** el dueño prueba el juego a mano; no correr simulaciones, bots ni
+comparaciones de partidas, sólo compilar (`cargo clippy --workspace` y `cargo ndk -t arm64-v8a check -p app --lib`).
+Commits en `dev`, cortos, a nombre del dueño, sin coautoría, con `#R<n>`; el dueño pushea. Subir la versión al cerrar
+lo que la cambie. `Local.config` cambia cuando el dueño prueba opciones: no commitearlo. Lo que el dueño tiene que
+revisar queda anotado en el "Estado" de cada paso.
+
+**Pendiente del dueño** (actualizado al cerrar la sesión del 2026-11-04):
+- `git push -u origin dev`, probar y, cuando cierre cada fase, `merge: dev -> main`.
+- Probar R2 a R5 en la PC (`cargo run --release`) y en el teléfono (`android/build.sh` y
+  `adb install -r target/android/pdri.apk`; si adb se corta: otro cable/puerto o `adb pair` / `adb connect`). Qué
+  mirar: el "Estado" de cada paso, arriba.
 - Respaldar `~/.pddnd-signing/` (sin la clave no se pueden publicar actualizaciones del APK) y, si se quiere firmar
   en CI, cargar los secretos `PDRI_KEYSTORE_B64` y `PDRI_KEYSTORE_PASS` en GitHub.
+- Decidir si `Local.config` sigue versionado (cambia al probar opciones) o va al `.gitignore`.
 - Opcional: borrar `~/pddnd-android/` (prueba de buildozer; el SDK/NDK de `~/.buildozer` sí lo usa
   `android/build.sh`) y `~/pddnd-backup-20261103-1116/`.
 

@@ -37,7 +37,11 @@ cargo run -q -p game --example level -- <seed> <piso>   # volcado ASCII de un pi
 - Arte: sólo el del original o hecho por personas, anotado en `docs/assets.md`. Nunca generar sprites: sin sprite,
   se dibuja el nombre.
 - Audio al final: no agregarlo hasta que se pida.
-- Sin tests de juego: el dueño prueba a mano. Tests automáticos sólo de red. No ejecutar el juego.
+- Sin tests de juego: el dueño prueba a mano. Tests automáticos sólo de red. No ejecutar el juego, ni simulaciones,
+  bots o comparaciones de partidas (aunque sean descartables): sólo compilar (escritorio y `cargo ndk ... check`).
+- Trabajo diario en la rama `dev`; `merge: dev -> main` al cerrar cada fase, cuando el dueño la validó. El dueño pushea.
+- Al cerrar lo que cambie la versión, subirla en `Cargo.toml` y `android/AndroidManifest.xml` (regla en
+  `roadmap/versiones.md`). `Local.config` cambia al probar opciones: no commitearlo.
 - Commits cortos, a nombre del dueño, sin líneas de coautoría: `feat: …`, `fix: …`, `merge: …`, terminando con
   `#` y el paso del roadmap al que pertenecen (`feat: atlas de sprites #R0`, `fix: niebla #R2`).
 - La clave de firma nunca entra al repo (`~/.pddnd-signing/`).
