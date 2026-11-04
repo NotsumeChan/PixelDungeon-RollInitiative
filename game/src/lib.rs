@@ -2,6 +2,7 @@
 //! Port de `game/` del prototipo (rama `python-prototipe`).
 
 pub mod actor;
+pub mod buffs;
 pub mod char;
 pub mod dice;
 pub mod dungeon;
@@ -18,5 +19,6 @@ pub mod registry;
 pub mod rng;
 pub mod room;
 pub mod terrain;
+pub mod traps;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

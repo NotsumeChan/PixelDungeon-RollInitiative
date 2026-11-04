@@ -13,6 +13,10 @@ pub enum ActorId {
     Regen(usize),
     /// Hambre del héroe (buffs/Hunger.java): viaja con él entre pisos.
     Hunger(usize),
+    /// Un estado alterado (data/buffs.json) sobre un personaje, por su uid.
+    Buff(u32),
+    /// Una trampa como origen de daño (no actúa; para el log y "Has muerto (...)").
+    Trap,
     /// Level.respawner: uno por piso.
     Respawner,
 }

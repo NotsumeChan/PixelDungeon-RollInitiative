@@ -291,11 +291,13 @@ impl Hero {
     /// Del original: armadura muy pesada = más lento fuera de combate.
     pub fn speed(&self) -> f64 {
         let enc = self.armor.as_ref().map_or(0, |a| a.int("STR") - self.score("STR"));
-        if enc > 0 { self.ch.base_speed / 1.3f64.powi(enc) } else { self.ch.base_speed }
+        let base = if enc > 0 { self.ch.base_speed / 1.3f64.powi(enc) } else { self.ch.base_speed };
+        base * self.ch.buffs.iter().map(|b| b.speed()).product::<f64>()
     }
 
     /// 5e: armadura pesada sin la FUE que pide = -10 ft.
-    pub fn speed_ft(&self) -> i32 {
+    /// Sin estados (los suma `Dungeon::start_turn`).
+    pub fn speed_ft_base(&self) -> i32 {
         let heavy = self.armor.as_ref().is_some_and(|a| a.str("kind") == "heavy" && a.int("STR") > self.score("STR"));
         (self.ch.base_speed_ft - if heavy { 10 } else { 0 }).max(5)
     }
@@ -332,7 +334,8 @@ impl Hero {
         if !self.is_alive() || self.animating {
             return true;
         }
-        self.action.is_none() && !self.is_downed() // caído: los turnos pasan solos
+        // paralizado o caído: los turnos pasan solos
+        self.action.is_none() && !self.is_downed() && !self.ch.buffs.iter().any(|b| b.has_flag("paralysed"))
     }
 }
 
@@ -370,6 +373,11 @@ impl Dungeon {
             if !self.heroes[i].stable {
                 self.death_save(i);
             }
+            self.spend(me, TIME_TO_REST);
+            return;
+        }
+        if self.has_flag(me, "paralysed") {
+            self.heroes[i].action = None;
             self.spend(me, TIME_TO_REST);
             return;
         }
@@ -547,10 +555,12 @@ impl Dungeon {
             return;
         }
         let src_pos = src.and_then(|s| self.ch(s)).map(|c| c.pos);
-        let src_name = src.and_then(|s| self.ch(s)).map_or("daño".to_string(), |c| c.name.clone());
+        let src_name = src.and_then(|s| self.source_name(s)).unwrap_or_else(|| "daño".to_string());
+        // daño por turno (un estado) a un caído: según la regla de la partida `dot_death_saves`
+        let counts = self.rules.dot_death_saves || !matches!(src, Some(ActorId::Buff(_)));
         let h = &mut self.heroes[i];
         if h.ch.hp <= 0 {
-            if dmg > 0 {
+            if dmg > 0 && counts {
                 let n = if src_pos.is_some_and(|p| adjacent(p, h.ch.pos)) { 2 } else { 1 };
                 h.stable = false;
                 h.saves[1] += n;
@@ -592,13 +602,17 @@ impl Dungeon {
     /// Sale del planificador con lo suyo: el piso sigue para los demás héroes; sin héroes vivos, nada avanza.
     /// ponytail: el muerto queda de espectador; volver con un personaje nuevo llega con la red (R6)
     pub(crate) fn hero_die(&mut self, i: usize, src: Option<ActorId>) {
-        let cause = src.and_then(|s| self.ch(s)).map_or(String::new(), |c| format!(" ({})", c.name));
+        let cause = src.and_then(|s| self.source_name(s)).map_or(String::new(), |n| format!(" ({n})"));
         let h = &mut self.heroes[i];
         h.dead = true;
         h.ch.hp = 0;
-        let s = &mut self.floor_mut().scheduler;
+        let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
         s.remove(ActorId::Hero(i));
         s.remove(ActorId::Regen(i));
+        s.remove(ActorId::Hunger(i));
+        for b in &self.heroes[i].ch.buffs {
+            s.remove(ActorId::Buff(b.uid));
+        }
         let msg = if self.heroes.len() == 1 {
             format!("Has muerto{cause}. R = nueva partida")
         } else {
@@ -685,7 +699,7 @@ impl Dungeon {
         if h.is_alive() {
             if h.is_starving() {
                 if self.rng.float() < 0.3 {
-                    self.hero_damage(i, 1, None); // se puede morir de hambre (como en Java, sin parálisis)
+                    self.hero_damage(i, 1, Some(ActorId::Hunger(i))); // se puede morir de hambre (como en Java)
                 }
             } else {
                 let new = h.hunger + HUNGER_STEP;

@@ -115,7 +115,13 @@ del ítem y el ícono de hambre. Verificado: misma seed = mismas apariencias, mo
 Para probar: recoger y abrir cofres, identificar una poción bebiéndola, leer identificar / mejorar eligiendo el
 objetivo, equipar algo maldito, los accesos rápidos, pasar hambre.
 
-**Siguiente: R5b** (estados como datos `data/buffs.json`, salvaciones, trampas), **R5c** (rasgos de clase y
+**Estado R5b** ✏️ escrito (2026-11-04), pendiente de prueba del dueño: estados como datos (`game/buffs.rs`:
+veneno, sangrado, quemadura, parálisis con salvación cada turno, lisiado), salvaciones de 5e con el dado grande,
+las 8 trampas con sus salvaciones (`game/traps.rs`), reglas de la partida (`dot_death_saves`, `save_half`, por
+ahora fijas), íconos de estados en el panel. Para probar: pisar trampas (ocultas y vistas), paralizarse, apagar el
+fuego en el agua, que un mob paralizado no se mueva. Faltan las nubes de gas (Blob) y las partículas.
+
+**Siguiente: R5c** (rasgos de clase y
 conjuros), **R5d** (armas a distancia: arrojadizas, bumerán, arco), **R5e** (configuración: idioma, FPS, pantalla
 completa) = **0.7**. Después el resto de R5 para la 0.8 (guardado, creación y lista de personajes, reglas de la
 partida, hotseat).

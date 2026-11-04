@@ -384,7 +384,11 @@ impl Chars {
             let stats = lk.stats.as_ref();
             let drawn = self.drawn(a);
             let lying = !d.alive(a) || matches!(a, ActorId::Hero(i) if d.heroes[i].is_downed());
+            let frozen = d.alive(a) && d.has_flag(a, "paralysed"); // CharSprite.paralyse: la animación se congela
             let an = self.anim_mut(a);
+            if frozen {
+                continue;
+            }
             an.t += dt;
             if lying {
                 if an.name != "die" {

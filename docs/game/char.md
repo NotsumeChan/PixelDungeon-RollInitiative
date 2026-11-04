@@ -9,3 +9,5 @@ toca a atacante y objetivo.
 
 `trail`: las celdas por las que pasó desde que el render miró (tope `TRAIL_MAX` = 16); el render las consume para
 que el sprite siga el camino real. `move_char` verifica en debug que cada paso sea a una celda vecina y transitable.
+
+`buffs`: los estados alterados del personaje (buffs.rs).

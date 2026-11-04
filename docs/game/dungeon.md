@@ -27,3 +27,7 @@ salvaciones y Medicina, iniciativa del héroe, buscar, muerte de un mob y pasto 
 garantizada, cuotas de poción de fuerza y pergamino de mejora, 3+ montones / cofres / restos, tumbas del cementerio),
 y el loot de los mobs. `place_char`: lleva a alguien a una celda lejana sin rastro de pasos (teletransporte).
 Verificado: misma seed = mismas apariencias, mobs y montones (con nivel y maldición) que el prototipo.
+
+R5b: `rules` (reglas de la partida, por defecto 5e: `dot_death_saves` = el daño por turno a un caído suma fallos,
+`save_half` = superar el gas tóxico / la descarga = la mitad). `press` también activa trampas. La paralización da
+ventaja contra el paralizado; los estados multiplican la velocidad (`start_turn`).

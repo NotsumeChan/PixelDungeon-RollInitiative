@@ -33,3 +33,5 @@ R5a (Belongings.java, Hunger.java):
 - Hambre (`hunger_act`, viaja con el héroe): +10 cada 10 de tiempo (Pícaro cada 12); hambriento a 260, famélico a
   360: no regenera y pierde 1 PV con 30% cada vez (se puede morir de hambre).
 - El nivel del arma suma al ataque y a los dados; el de la armadura, a la CA.
+
+R5b: paralizado no actúa (sus turnos pasan solos); con hambre o un estado como origen, el log y "Has muerto (...)" lo nombran. Al morir sale del planificador con regeneración, hambre y estados.

@@ -73,6 +73,24 @@ pub enum Pending {
     Attack { attacker: ActorId, target: ActorId, hit: bool, dmg: i32, detail: String, simple: String },
     DeathSave { hero: usize, nat: i32 },
     Stabilize { hero: usize, ally: usize, ok: bool },
+    /// Salvación contra una trampa: el efecto según si la superó.
+    TrapSave { who: ActorId, ability: &'static str, ok: bool, detail: String, seen: bool, effect: crate::traps::TrapEffect },
+}
+
+/// Reglas de la partida (ventana "Reglas de la partida", estilo configuración de mundo). Por defecto = 5e.
+/// ponytail: la ventana para cambiarlas y guardarlas con la partida llegan con el guardado (R5)
+#[derive(Clone, Copy, Debug)]
+pub struct Rules {
+    /// El daño por turno (veneno, sangrado, quemadura) a un caído suma fallos de salvación.
+    pub dot_death_saves: bool,
+    /// Superar la salvación de gas tóxico / descarga = la mitad del efecto (false = nada).
+    pub save_half: bool,
+}
+
+impl Default for Rules {
+    fn default() -> Self {
+        Self { dot_death_saves: true, save_half: true }
+    }
 }
 
 pub struct Floor {
@@ -94,6 +112,7 @@ pub struct Dungeon {
     pub fx: Vec<Fx>,
     /// Opción de desarrollador: el log muestra el cálculo completo de cada tirada.
     pub verbose_rolls: bool,
+    pub rules: Rules,
     /// Pisos visitados: al volver siguen sus mobs y lo explorado.
     pub floors: BTreeMap<i32, Floor>,
     pub heroes: Vec<Hero>,
@@ -108,10 +127,12 @@ pub struct Dungeon {
     potions_of_strength: i32,
     scrolls_of_upgrade: i32,
     next_mob: u32,
+    pub(crate) next_buff: u32,
+    pub(crate) buffs: Map<String, Value>,
     classes: Map<String, Value>,
     pub(crate) items: Map<String, Value>,
     mobs_data: Map<String, Value>,
-    bestiary: Map<String, Value>,
+    pub(crate) bestiary: Map<String, Value>,
 }
 
 fn load(name: &str) -> Map<String, Value> {
@@ -129,6 +150,7 @@ impl Dungeon {
             dice_events: Vec::new(),
             fx: Vec::new(),
             verbose_rolls: false,
+            rules: Rules::default(),
             floors: BTreeMap::new(),
             heroes: Vec::new(),
             hero: 0,
@@ -139,6 +161,8 @@ impl Dungeon {
             potions_of_strength: 0,
             scrolls_of_upgrade: 0,
             next_mob: 0,
+            next_buff: 0,
+            buffs: load("buffs"),
             classes: load("classes"),
             items: load("items"),
             mobs_data: load("mobs"),
@@ -309,10 +333,13 @@ impl Dungeon {
         self.heroes[i].depth = depth;
         if old != 0 {
             self.depth = old;
-            let s = &mut self.floor_mut().scheduler;
+            let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
             s.remove(ActorId::Hero(i));
             s.remove(ActorId::Regen(i));
             s.remove(ActorId::Hunger(i));
+            for b in &self.heroes[i].ch.buffs {
+                s.remove(ActorId::Buff(b.uid));
+            }
             self.observe(); // el piso que deja ya no ve lo que veía este héroe
         }
         let h = &mut self.heroes[i];
@@ -337,9 +364,12 @@ impl Dungeon {
             self.create_items();
             self.floor_mut().scheduler.add(ActorId::Respawner, 0.0);
         }
-        let s = &mut self.floor_mut().scheduler;
+        let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
         s.add(ActorId::Regen(i), 0.0);
         s.add(ActorId::Hunger(i), 0.0);
+        for b in &self.heroes[i].ch.buffs {
+            s.add(ActorId::Buff(b.uid), 0.0); // sus estados viajan con él
+        }
         self.observe();
         let msg =
             if self.heroes.len() == 1 { format!("Piso {depth}") } else { format!("{}: piso {depth}", self.heroes[i].ch.name) };
@@ -446,12 +476,16 @@ impl Dungeon {
     }
 
     fn add_mob(&mut self, key: &str, pos: i32, state: State) {
+        self.add_mob_delayed(key, pos, state, 0.0);
+    }
+
+    pub(crate) fn add_mob_delayed(&mut self, key: &str, pos: i32, state: State, delay: f64) {
         let stats = self.mobs_data.get(key).unwrap_or_else(|| panic!("mob desconocido: {key}")).clone();
         let id = self.next_mob;
         self.next_mob += 1;
         let f = self.floor_mut();
         f.mobs.push(Mob::new(id, key, stats, pos, state));
-        f.scheduler.add(ActorId::Mob(id), 0.0);
+        f.scheduler.add(ActorId::Mob(id), delay);
     }
 
     /// Level.respawner: cada 50 de tiempo, si faltan mobs, aparece uno (despierto) fuera de la vista.
@@ -517,7 +551,7 @@ impl Dungeon {
             self.observe(); // se abrió o cerró una puerta: la vista cambia
         }
         if !flying {
-            self.press(step);
+            self.press(step, a);
         }
     }
 
@@ -533,12 +567,12 @@ impl Dungeon {
         let flying = c.flying;
         self.observe();
         if !flying {
-            self.press(cell);
+            self.press(cell, a);
         }
     }
 
-    /// Level.press: el pasto alto se pisa. ponytail: sin trampas todavía (R5)
-    fn press(&mut self, cell: i32) {
+    /// Level.press: el pasto alto se pisa y las trampas saltan (traps.rs).
+    fn press(&mut self, cell: i32, who: ActorId) {
         if self.level().map[cell as usize] == t::HIGH_GRASS {
             self.floor_mut().level.set(cell, t::GRASS);
             if self.level().visible[cell as usize] {
@@ -546,6 +580,7 @@ impl Dungeon {
             }
             self.observe(); // el pasto alto tapaba la vista
         }
+        self.press_trap(cell, who);
     }
 
     // --- tiempo ---
@@ -642,6 +677,8 @@ impl Dungeon {
             ActorId::Mob(id) => self.mob_act(id),
             ActorId::Regen(i) => self.regen_act(i),
             ActorId::Hunger(i) => self.hunger_act(i),
+            ActorId::Buff(uid) => self.buff_act(uid),
+            ActorId::Trap => {}
             ActorId::Respawner => self.respawn_act(),
         }
     }
@@ -677,10 +714,12 @@ impl Dungeon {
     }
 
     fn start_turn(&mut self, a: ActorId) {
+        // los estados la multiplican (Lisiado = la mitad)
         let ft = match a {
-            ActorId::Hero(i) => self.heroes[i].speed_ft(),
-            _ => self.ch(a).map_or(30, |c| c.base_speed_ft),
+            ActorId::Hero(i) => (self.heroes[i].speed_ft_base() as f64 * self.buff_speed(a)) as i32,
+            _ => self.ch(a).map_or(30, |c| (c.base_speed_ft as f64 * self.buff_speed(a)) as i32),
         };
+        let ft = if matches!(a, ActorId::Hero(_)) { ft.max(5) } else { ft };
         if let Some(c) = self.ch_mut(a) {
             c.start_turn(ft);
         }
@@ -707,7 +746,7 @@ impl Dungeon {
             .collect();
         self.log(&format!("¡Combate! Iniciativa: {}", seen.join(", ")));
         let first = order[0];
-        let s = &mut self.floor_mut().scheduler;
+        let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
         (s.turn, s.round, s.calm) = (0, 1, 0);
         s.order = Some(order);
         self.start_turn(first);
@@ -729,7 +768,7 @@ impl Dungeon {
             self.act(c);
             return true;
         }
-        let s = &mut self.floor_mut().scheduler;
+        let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
         s.turn += 1;
         if let Some(&next) = s.order.as_ref().unwrap().get(s.turn) {
             self.start_turn(next);
@@ -750,7 +789,7 @@ impl Dungeon {
                 }
             }
             let Some((a, t)) = due else { break };
-            let s = &mut self.floor_mut().scheduler;
+            let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
             s.now = s.now.max(t);
             self.act(a);
         }
@@ -764,7 +803,7 @@ impl Dungeon {
         // ponytail: el que entra a mitad de combate actúa desde la ronda siguiente (5e: desde su iniciativa)
         let order = self.by_initiative([old, new].concat());
         let fighting = self.any_fighting();
-        let s = &mut self.floor_mut().scheduler;
+        let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
         s.now = end;
         s.calm = if fighting { 0 } else { s.calm + 1 };
         if s.calm >= CALM_ROUNDS || order.is_empty() {
@@ -803,7 +842,7 @@ impl Dungeon {
     /// 1 = ventaja, -1 = desventaja, 0 = normal. Ventaja contra quien no lo vio venir o está caído.
     fn advantage(&self, att: ActorId, target: ActorId) -> i32 {
         let unaware = matches!(target, ActorId::Mob(id) if self.mob(id).is_some_and(|m| !m.enemy_seen));
-        let mut adv = if unaware || self.downed(target) { 1 } else { 0 };
+        let mut adv = if unaware || self.downed(target) || self.has_flag(target, "paralysed") { 1 } else { 0 };
         if matches!(att, ActorId::Hero(i) if self.heroes[i].disadvantaged()) {
             adv -= 1; // ventaja y desventaja juntas se anulan
         }
@@ -917,6 +956,7 @@ impl Dungeon {
                 }
                 Pending::DeathSave { hero, nat } => self.apply_death_save(hero, nat),
                 Pending::Stabilize { hero, ally, ok } => self.apply_stabilize(hero, ally, ok),
+                p @ Pending::TrapSave { .. } => self.apply_trap_save(p),
             }
         }
     }

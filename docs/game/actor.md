@@ -11,3 +11,5 @@ vive en `Dungeon` (dungeon.rs).
   vista terminan el combate y todos vuelven al tiempo de PD parejos.
 
 `Hunger(i)`: el hambre del héroe i; como `Regen`, viaja con él entre pisos y avanza 1 TICK por ronda en combate.
+
+`Buff(uid)`: un estado alterado (buffs.rs). `Trap`: una trampa como origen de daño; no actúa.

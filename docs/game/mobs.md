@@ -11,3 +11,5 @@
 - Al morir: XP repartida entre los héroes vivos del piso (redondeo hacia arriba) +1 al del último golpe. El rng del
   loot se gasta igual que el prototipo, pero no cae nada hasta que haya ítems (R5).
 - Faltan (R5): habilidades especiales, FLEEING, loot.
+
+R5b: paralizado no actúa ni ve; los estados multiplican su velocidad; la alarma los manda a la trampa (Mob.beckon).

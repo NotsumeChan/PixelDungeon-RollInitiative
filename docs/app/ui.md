@@ -30,3 +30,5 @@ R5a:
 - `item_icon`: recorte de items.png o, sin sprite, el nombre achicado a 16x16. `draw_heaps`: los montones del piso
   donde ya se vio (bajo la niebla).
 - Ícono de hambre (buffs.png) en el panel de estado.
+
+R5b: íconos de los estados del héroe en el panel (con su nombre de tooltip); "Estados:" en la ficha y al examinar un mob.

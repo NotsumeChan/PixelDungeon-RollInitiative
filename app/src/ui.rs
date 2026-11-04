@@ -7,7 +7,7 @@ use game::actor::ActorId;
 use game::dice::{ABILITIES, ABILITY_NAMES};
 use game::dungeon::Dungeon;
 use game::geom::LENGTH;
-use game::hero::{Action, Slot, Verb, BACKPACK_SIZE, HUNGRY, STARVING};
+use game::hero::{Action, Slot, Verb, BACKPACK_SIZE, HUNGRY};
 use game::items::{weapon_dice, Image, Item, SLOT_ARMOR, SLOT_RING, SLOT_WEAPON};
 use game::registry::text;
 use game::terrain;
@@ -74,6 +74,7 @@ const HP_GREEN: [f32; 4] = rgba(0, 0xEE, 0, 0xFF);
 const TIP_BG: [f32; 4] = rgba(0, 0, 0, 200);
 const PROMPT_BG: [f32; 4] = rgba(0, 0, 0, 170);
 const BUTTON_OFF: [f32; 4] = rgba(110, 110, 110, 0xFF);
+const STATES: [f32; 4] = rgba(0xFF, 0x88, 0x88, 0xFF);
 const SLOT_BG: [f32; 4] = rgba(0x53, 0x56, 0x4D, 0x99);
 const LEVEL_UP: [f32; 4] = rgba(80, 255, 80, 0xFF);
 const LEVEL_DOWN: [f32; 4] = rgba(255, 80, 80, 0xFF);
@@ -228,7 +229,11 @@ impl Ui {
             if let Some(ActorId::Mob(id)) = d.find_char(cell) {
                 let m = d.mob(id).unwrap();
                 let desc = m.stats.get("desc").map_or(String::new(), text);
-                let text = format!("{desc}\n\n{}. CA {}, PV {}/{}.", m.state.name(), m.armor_class(), m.ch.hp, m.ch.ht);
+                let mut text = format!("{desc}\n\n{}. CA {}, PV {}/{}.", m.state.name(), m.armor_class(), m.ch.hp, m.ch.ht);
+                if !m.ch.buffs.is_empty() {
+                    let names: Vec<String> = m.ch.buffs.iter().map(|b| b.name()).collect();
+                    text += &format!("\nEstados: {}", names.join(", "));
+                }
                 let hp = Some(m.ch.hp as f32 / m.ch.ht.max(1) as f32);
                 let title = capitalize(&m.ch.name);
                 self.window = Some(Window::Info { icon: Some(Icon::Char(ActorId::Mob(id))), title, text, hp });
@@ -316,14 +321,20 @@ impl Ui {
         font.text(out, &lvl, 28.0 - (font.width(&lvl) / 2.0).floor(), 25.0, GOLDEN);
         let depth = h.depth.to_string();
         font.text(out, &depth, w - 24.0 - font.width(&depth) - 18.0, 6.0, DEPTH_COLOR);
-        // BuffIndicator en (32, 11): hambre. ponytail: los estados del héroe llegan en R5b
-        let icon = if h.is_starving() { Some(BUFF_STARVATION) } else if h.hunger >= HUNGRY { Some(BUFF_HUNGER) } else { None };
-        if let Some(icon) = icon {
-            let cols = atlas.rects[BUFFS][2] / BUFF_SIZE;
+        // BuffIndicator en (32, 11): hambre y los estados del héroe (los que tienen ícono)
+        let mut icons: Vec<(u32, String)> = Vec::new();
+        if h.is_starving() {
+            icons.push((BUFF_STARVATION, "Famélico".into()));
+        } else if h.hunger >= HUNGRY {
+            icons.push((BUFF_HUNGER, "Hambriento".into()));
+        }
+        icons.extend(h.ch.buffs.iter().filter_map(|b| b.icon().map(|i| (i, b.name()))));
+        let cols = atlas.rects[BUFFS][2] / BUFF_SIZE;
+        for (k, (icon, tip)) in icons.iter().enumerate() {
+            let x = 32.0 + k as f32 * (BUFF_SIZE as f32 + 2.0);
             let region = [(icon % cols) * BUFF_SIZE, (icon / cols) * BUFF_SIZE, BUFF_SIZE, BUFF_SIZE];
-            out.push(piece(atlas, BUFFS, region, [32.0, 11.0], [7.0, 7.0], WHITE));
-            let tip = if h.hunger >= STARVING { "Famélico" } else { "Hambriento" };
-            self.hot([32.0, 11.0, 7.0, 7.0], UiAction::Nothing, Some(tip));
+            out.push(piece(atlas, BUFFS, region, [x, 11.0], [7.0, 7.0], WHITE));
+            self.hot([x, 11.0, 7.0, 7.0], UiAction::Nothing, Some(tip));
         }
         self.draw_initiative(atlas, font, chars, d, out, w, dt);
         // botón de menú: recorte (114, 3, 12, 11) de status_pane.png -> WndGame
@@ -623,7 +634,7 @@ impl Ui {
         };
         let dmg = me.weapon.as_ref().map_or("1".to_string(), |w| weapon_dice(w).to_string());
         let saves: Vec<String> = (0..6).map(|i| format!("{}{:+}", ABILITY_NAMES[i], me.save_bonus(ABILITIES[i]))).collect();
-        let lines = [
+        let mut lines = vec![
             (format!("{} ({}) nivel {}", me.ch.name, text(&me.cls["dnd_class"]), me.lvl), YELLOW),
             (abil(0..3), WHITE),
             (abil(3..6), WHITE),
@@ -633,8 +644,12 @@ impl Ui {
                 WHITE,
             ),
             (format!("Salvaciones {}", saves.join(" ")), WHITE),
-            (format!("XP {}/{}", me.exp, me.max_exp()), WHITE),
+            (format!("XP {}/{}   Oro {}", me.exp, me.max_exp(), me.gold), WHITE),
         ];
+        if !me.ch.buffs.is_empty() {
+            let names: Vec<String> = me.ch.buffs.iter().map(|b| b.name()).collect();
+            lines.push((format!("Estados: {}", names.join(", ")), STATES));
+        }
         let cw = lines.iter().map(|l| font.width(&l.0)).fold(0.0, f32::max);
         let ch = lines.len() as f32 * LINE_H;
         let c = [((w - cw) / 2.0).floor(), ((h - TOOLBAR_H - ch) / 2.0).floor(), cw, ch];

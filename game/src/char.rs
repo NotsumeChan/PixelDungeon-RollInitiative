@@ -35,6 +35,8 @@ pub struct Char {
     /// Celdas por las que pasó desde que el render miró: el sprite las recorre una por una (sin cortar esquinas
     /// cuando hizo varios pasos de una vez). Las consume el render; tope TRAIL_MAX.
     pub trail: Vec<i32>,
+    /// Estados alterados (buffs.rs).
+    pub buffs: Vec<crate::buffs::Buff>,
 }
 
 impl Char {
@@ -53,6 +55,7 @@ impl Char {
             no_moves: false,
             flying: false,
             trail: Vec::new(),
+            buffs: Vec::new(),
         }
     }
 

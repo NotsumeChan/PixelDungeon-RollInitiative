@@ -21,3 +21,5 @@
 - `portrait`: el primer frame achicado para entrar en un cuadrado (carrusel de iniciativa, examinar).
 - Zzz sobre los mobs dormidos y ! durante 1,5 s cuando uno se despierta o pasa a cazar (CharSprite.showSleep /
   showAlert), con el pulso de EmoIcon; en `draw_over`.
+
+R5b: paralizado, la animación se congela (CharSprite.paralyse).

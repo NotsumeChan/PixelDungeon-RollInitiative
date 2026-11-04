@@ -124,6 +124,11 @@ impl Dungeon {
         m.enemy = enemy;
         let just_alerted = std::mem::take(&mut m.alerted);
         let state = m.state;
+        if self.has_flag(ActorId::Mob(id), "paralysed") {
+            self.mob_mut(id).unwrap().enemy_seen = false;
+            self.spend(ActorId::Mob(id), TICK);
+            return;
+        }
         match state {
             State::Sleeping => self.mob_sleeping(id, in_fov),
             State::Wandering => self.mob_wandering(id, in_fov, just_alerted),
@@ -171,6 +176,7 @@ impl Dungeon {
         let m = self.mob_mut(id).unwrap();
         m.enemy_seen = false;
         let (target, speed) = (m.target, m.ch.base_speed);
+        let speed = speed * self.buff_speed(ActorId::Mob(id));
         if target != -1 && self.mob_get_closer(id, target) {
             self.spend(ActorId::Mob(id), 1.0 / speed);
         } else {
@@ -195,6 +201,7 @@ impl Dungeon {
             m.target = epos.unwrap();
         }
         let (target, speed) = (m.target, m.ch.base_speed);
+        let speed = speed * self.buff_speed(ActorId::Mob(id));
         if target != -1 && self.mob_get_closer(id, target) {
             self.spend(ActorId::Mob(id), 1.0 / speed);
         } else {
