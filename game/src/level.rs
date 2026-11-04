@@ -579,13 +579,44 @@ impl Level {
     // --- utilidades ---
 
     pub fn random_room(&mut self, kind: RoomType, tries: u32) -> Option<usize> {
+        let mut rng = self.rng.clone();
+        let r = self.pick_room(&mut rng, kind, tries);
+        self.rng = rng;
+        r
+    }
+
+    /// random_room con otro rng (el de la partida o una copia del del nivel).
+    pub fn pick_room(&self, rng: &mut Rng, kind: RoomType, tries: u32) -> Option<usize> {
         for _ in 0..tries {
-            let r = self.rng.pick(self.rooms.len())?;
+            let r = rng.pick(self.rooms.len())?;
             if self.rooms[r].kind == kind {
                 return Some(r);
             }
         }
         None
+    }
+
+    /// Celda libre de una sala STANDARD, fuera de la vista; -1 tras 10 intentos. occupied(celda) = hay alguien.
+    pub fn random_respawn_cell(&self, rng: &mut Rng, occupied: impl Fn(i32) -> bool) -> i32 {
+        for _ in 0..10 {
+            let Some(r) = self.pick_room(rng, RoomType::Standard, 10) else { continue };
+            let cell = self.rooms[r].random(rng, 0);
+            if !self.visible[cell as usize] && !occupied(cell) && self.passable[cell as usize] {
+                return cell;
+            }
+        }
+        -1
+    }
+
+    /// Celda transitable de cualquier sala: destino de los mobs que deambulan.
+    pub fn random_destination(&self, rng: &mut Rng) -> i32 {
+        loop {
+            let Some(r) = rng.pick(self.rooms.len()) else { return self.entrance };
+            let cell = self.rooms[r].random(rng, 0);
+            if self.passable[cell as usize] {
+                return cell;
+            }
+        }
     }
 }
 

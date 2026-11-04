@@ -43,3 +43,13 @@ fn resolve(entries: &Map<String, Value>, key: &str, seen: &mut Vec<String>) -> R
     }
     Ok(out)
 }
+
+/// Texto de contenido: `str` o `{"es": ..., "en": ...}`.
+/// ponytail: idioma fijo en español hasta la configuración (R5); si falta "es", el primero que haya
+pub fn text(v: &Value) -> String {
+    match v {
+        Value::String(s) => s.clone(),
+        Value::Object(o) => o.get("es").or_else(|| o.values().next()).and_then(Value::as_str).unwrap_or("?").to_string(),
+        _ => "?".to_string(),
+    }
+}
