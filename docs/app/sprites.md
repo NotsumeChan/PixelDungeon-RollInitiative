@@ -16,3 +16,7 @@
 - `draw_world` va debajo de la niebla (casillas revisadas, cadáveres, personajes); `draw_over` encima (hojas, textos
   y el nombre de los personajes sin hoja, en la capa del mundo).
 - El azar es sólo visual: un `Rng` propio, no el de la partida.
+
+- `portrait`: el primer frame achicado para entrar en un cuadrado (carrusel de iniciativa, examinar).
+- Zzz sobre los mobs dormidos y ! durante 1,5 s cuando uno se despierta o pasa a cazar (CharSprite.showSleep /
+  showAlert), con el pulso de EmoIcon; en `draw_over`.

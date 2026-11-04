@@ -11,14 +11,15 @@ R3: **jugar un piso** con el héroe (`World`: la partida `game::dungeon::Dungeon
 - Cada frame (`World::update`, en el orden del prototipo): teclas mantenidas, los sprites caminan (`sprites.rs`; el
   héroe se suelta al llegar), lo que el dado ya mostró se aplica (`resolve_pending` sólo si `DiceFx` no está
   ocupado), `process`, y después efectos y dados avanzan.
-- Input: click / toque = `Dungeon::handle` (caminar con pathfinder, atacar, ayudar a un caído, cambiar de piso en la
-  escalera); tocar al propio héroe = buscar. WASD / flechas = un paso (diagonal si se puede, si no por un eje; atacar
-  si hay alguien). Espacio = esperar, Q = buscar, R = otra partida, C = otra clase (sin creación de personaje hasta
-  R5).
+- Input: un click / toque va primero a la UI (`ui.rs`); si no la toca, al mapa: examinar la casilla (si se eligió
+  examinar) o `Dungeon::handle` (caminar con pathfinder, atacar, ayudar a un caído, cambiar de piso en la escalera);
+  tocar al propio héroe = buscar. WASD / flechas = un paso (diagonal si se puede, si no por un eje; atacar si hay
+  alguien). Espacio = esperar, Q = buscar, Esc = cerrar ventana / cancelar examinar / menú, R = otra partida, C = otra
+  clase (sin creación de personaje hasta R5).
 - Personajes animados (`sprites.rs`, hojas `CHAR_SHEETS` por el `sprite` de los JSON; sin hoja, el nombre). Lotes del
   mundo: atlas (mapa, cadáveres, personajes) | niebla | atlas otra vez (hojas, textos flotantes, nombres). Los dados
   (`dice_fx.rs`) van en la capa de UI.
-- HUD: nombre, nivel, PV (rojo a 1/3), CA, XP y piso; en combate, ronda y de quién es el turno (y las casillas que
-  te quedan); las últimas 4 líneas del log.
+- UI (`ui.rs`): panel de estado, carrusel de iniciativa, barra de herramientas, log, ventanas y tooltips; los dados
+  van encima. FPS bajo el avatar (se apaga con la configuración, R5).
 - Cámara: centrada en el sprite del héroe; arrastrar la desplaza, al caminar vuelve. Zoom con la rueda o pellizcando:
   factor entero de la UI -2 a +2 (siempre nítido).

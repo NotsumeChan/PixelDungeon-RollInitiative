@@ -19,3 +19,6 @@ Tres pasadas por frame:
 - `CurrentSurfaceTexture::Outdated/Lost` reconfigura la superficie y salta el frame.
 - wgpu 30: `Instance::new` por valor y con display handle, vertex buffers como `Option`, `present` está en `Queue`,
   `PipelineLayoutDescriptor` lleva `immediate_size`, `RenderPipelineDescriptor` lleva `multiview_mask`.
+
+`ui_view()`: dónde empieza la capa de UI en la ventana y su factor, para pasar el mouse / toque a pixeles de la
+UI.

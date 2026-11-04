@@ -6,11 +6,11 @@ mod font;
 mod gpu;
 mod map;
 mod sprites;
+mod ui;
 
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use game::actor::ActorId;
 use game::dungeon::Dungeon;
 use game::geom::{HEIGHT, LENGTH, WIDTH};
 use game::hero::Action;
@@ -27,27 +27,35 @@ use font::Font;
 use gpu::{Gpu, Sprite, Tex};
 use map::TILE;
 use sprites::{Chars, CHAR_SHEETS, HERO_H, HERO_W};
+use ui::{Ui, UiAction, Window as UiWindow};
 
 pub const TITLE: &str = "PixelDungeon-RollInitiative";
-const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
-const YELLOW: [f32; 4] = [1.0, 1.0, 0.27, 1.0];
-const GREY: [f32; 4] = [0.53, 0.53, 0.53, 1.0];
 const DRAG_MIN_PX: f64 = 8.0; // arrastrar más que esto (pixeles de pantalla) mueve la cámara; menos es un click
 const PINCH_STEP: f64 = 1.25; // cuánto tiene que cambiar la distancia entre dedos para un paso de zoom
-const RED: [f32; 4] = [1.0, 0.4, 0.4, 1.0];
-const LOG_LINES: usize = 4;
 /// Clases jugables (C cambia de clase y empieza otra partida). ponytail: hasta la creación de personaje (R5)
 const CLASSES: [&str; 4] = ["pdri:warrior", "pdri:mage", "pdri:rogue", "pdri:huntress"];
 
 /// Hojas del atlas, en orden: los índices de `Atlas::rects`. Van dentro del binario (Android sin AssetManager).
-const SHEETS: [&[u8]; 3] = [
+const SHEETS: [&[u8]; 9] = [
     include_bytes!("../../Assets/Fonts/font1x.png"),
     include_bytes!("../../Assets/Tiles/tiles0.png"),
     include_bytes!("../../Assets/Tiles/water0.png"),
+    include_bytes!("../../Assets/chrome.png"),
+    include_bytes!("../../Assets/status_pane.png"),
+    include_bytes!("../../Assets/toolbar.png"),
+    include_bytes!("../../Assets/hp_bar.png"),
+    include_bytes!("../../Assets/exp_bar.png"),
+    include_bytes!("../../Assets/icons.png"),
 ];
 const FONT: usize = 0;
-const TILES: usize = 1;
-const WATER: usize = 2;
+pub(crate) const TILES: usize = 1;
+pub(crate) const WATER: usize = 2;
+pub(crate) const CHROME: usize = 3;
+pub(crate) const STATUS: usize = 4;
+pub(crate) const TOOLBAR: usize = 5;
+pub(crate) const HP_BAR: usize = 6;
+pub(crate) const EXP_BAR: usize = 7;
+pub(crate) const ICONS: usize = 8;
 
 /// La partida, sus personajes en pantalla y la animación de dados.
 struct World {
@@ -63,7 +71,8 @@ impl World {
         let d = Dungeon::new(seed, CLASSES[class]);
         let depth = d.depth;
         // el azar visual va aparte del rng de la partida
-        Self { d, class, chars: Chars::new(SHEETS.len(), seed ^ 0x5EED), dice: DiceFx::new(seed ^ 0xD1CE), depth }
+        let chars = Chars::new(SHEETS.len(), ICONS, seed ^ 0x5EED);
+        Self { d, class, chars, dice: DiceFx::new(seed ^ 0xD1CE), depth }
     }
 
     /// Un frame de lógica, en el orden del prototipo: los sprites caminan (y sueltan al héroe al llegar), lo que el
@@ -123,6 +132,8 @@ struct App {
     gpu: Option<Gpu>,
     sprites: Vec<Sprite>,
     world: World,
+    ui: Ui,
+    quit: bool,
     input: Input,
     pan: [f32; 2],      // desplazamiento de la cámara al arrastrar (pixeles del mundo)
     zoom: Option<u32>,  // pixeles de pantalla por pixel del mundo (None = el de la UI)
@@ -149,6 +160,8 @@ impl App {
             gpu: None,
             sprites: Vec::new(),
             world: World::new(new_seed(), 0),
+            ui: Ui::new(),
+            quit: false,
             input: Input::default(),
             pan: [0.0; 2],
             zoom: None,
@@ -209,13 +222,28 @@ impl App {
         }
     }
 
-    /// Soltar sin arrastrar = click / toque (Hero.handle): caminar, atacar, ayudar o cambiar de piso. Sobre el propio
-    /// héroe = buscar (hasta que haya botones en R4).
+    /// Un punto de la ventana en pixeles de la capa de UI.
+    fn ui_point(&self, p: PhysicalPosition<f64>) -> Option<[f32; 2]> {
+        let ((offx, offy), scale) = self.gpu.as_ref()?.ui_view();
+        Some([(p.x as f32 - offx as f32) / scale as f32, (p.y as f32 - offy as f32) / scale as f32])
+    }
+
+    /// Soltar sin arrastrar = click / toque. Primero la UI (de arriba hacia abajo); si no la toca, el mapa: examinar
+    /// la casilla o Hero.handle (caminar, atacar, ayudar o cambiar de piso). Sobre el propio héroe = buscar.
     fn release(&mut self, p: PhysicalPosition<f64>) {
         if self.input.press.take().is_none() || self.input.dragging {
             return;
         }
+        if let Some(act) = self.ui_point(p).and_then(|q| self.ui.click(q)) {
+            self.ui_action(act);
+            return;
+        }
         let Some(cell) = self.cell_at(p) else { return };
+        if self.ui.examining {
+            self.ui.examining = false;
+            self.ui.examine(&self.world.d, cell);
+            return;
+        }
         let d = &mut self.world.d;
         if !d.local().is_alive() {
             return;
@@ -225,6 +253,24 @@ impl App {
             d.heroes[me].action = Some(Action::Search);
         } else {
             d.handle(me, cell, true);
+        }
+    }
+
+    fn ui_action(&mut self, act: UiAction) {
+        match act {
+            UiAction::Nothing => {}
+            UiAction::Close => self.ui.window = None,
+            UiAction::Open(w) => self.ui.window = Some(w),
+            UiAction::Act(a) => {
+                let d = &mut self.world.d;
+                if d.local().is_alive() {
+                    let me = d.hero;
+                    d.heroes[me].action = Some(a);
+                }
+            }
+            UiAction::Examine => self.ui.examining = !self.ui.examining,
+            UiAction::NewGame => self.new_world(new_seed(), self.world.class),
+            UiAction::Quit => self.quit = true,
         }
     }
 
@@ -292,19 +338,23 @@ impl App {
         if !down {
             return;
         }
-        let d = &mut self.world.d;
-        let (me, alive) = (d.hero, d.local().is_alive());
+        let free = self.ui.window.is_none();
         match code {
             KeyCode::KeyR => self.new_world(new_seed(), self.world.class),
             KeyCode::KeyC => self.new_world(new_seed(), (self.world.class + 1) % CLASSES.len()),
-            KeyCode::Space if alive => d.heroes[me].action = Some(Action::Rest),
-            KeyCode::KeyQ if alive => d.heroes[me].action = Some(Action::Search),
+            // Esc: cierra la ventana abierta, cancela examinar o abre el menú
+            KeyCode::Escape if !free => self.ui.window = None,
+            KeyCode::Escape if self.ui.examining => self.ui.examining = false,
+            KeyCode::Escape => self.ui.window = Some(UiWindow::Menu),
+            KeyCode::Space if free => self.ui_action(UiAction::Act(Action::Rest)),
+            KeyCode::KeyQ if free => self.ui_action(UiAction::Act(Action::Search)),
             _ => {}
         }
     }
 
     fn new_world(&mut self, seed: i64, class: usize) {
         self.world = World::new(seed, class);
+        self.ui = Ui::new();
         self.pan = [0.0; 2];
     }
 
@@ -358,38 +408,11 @@ impl App {
         w.chars.draw_over(&w.d, &self.atlas, &self.font, s, ox, oy);
         let world_end = s.len() as u32;
 
-        // --- UI: estado del héroe, ronda y turno, últimas líneas del log, dados ---
+        // --- UI: log, panel de estado, carrusel, barra de herramientas, ventanas, tooltips | dados ---
         let (uw, uh) = gpu.ui_size();
-        let d = &w.d;
-        let h = d.local();
-        self.font.text(s, &format!("FPS {}", self.fps), 4.0, 4.0, YELLOW);
-        let stats = format!(
-            "{} nv{}  PV {}/{}  CA {}  XP {}/{}  piso {}",
-            h.ch.name,
-            h.lvl,
-            h.ch.hp,
-            h.ch.ht,
-            h.armor_class(),
-            h.exp,
-            h.max_exp(),
-            h.depth
-        );
-        self.font.text(s, &stats, 4.0, 14.0, if h.ch.hp * 3 <= h.ch.ht { RED } else { WHITE });
-        let sched = &d.floor().scheduler;
-        if let Some(order) = &sched.order {
-            let who = order.get(sched.turn).and_then(|&a| d.ch(a)).map_or(String::new(), |c| c.name.clone());
-            let mine = order.get(sched.turn) == Some(&ActorId::Hero(d.hero));
-            let extra = if mine { format!("  (te quedan {} casillas)", h.ch.moves.max(0)) } else { String::new() };
-            self.font.text(s, &format!("Ronda {}: turno de {who}{extra}", sched.round), 4.0, 24.0, YELLOW);
-        }
-        let first = d.messages.len().saturating_sub(LOG_LINES);
-        for (k, msg) in d.messages[first..].iter().enumerate() {
-            let y = uh as f32 - 12.0 - (d.messages.len() - first - k) as f32 * 10.0;
-            self.font.text(s, msg, 4.0, y, WHITE);
-        }
-        let help = "toque: mover/atacar  espacio: esperar  Q/tocarte: buscar  R/C: partida/clase";
-        self.font.text(s, help, 4.0, uh as f32 - 12.0, GREY);
-        self.world.dice.draw(&self.atlas, &self.font, &mut self.sprites, uw as f32, uh as f32);
+        let (uw, uh) = (uw as f32, uh as f32);
+        self.ui.draw(&self.atlas, &self.font, &w.chars, &w.d, s, uw, uh, dt, self.fps);
+        self.world.dice.draw(&self.atlas, &self.font, &mut self.sprites, uw, uh);
         let ui_end = self.sprites.len() as u32;
 
         let batches = [(Tex::Atlas, 0..atlas_end), (Tex::Fog, atlas_end..fog_end), (Tex::Atlas, fog_end..world_end)];
@@ -425,8 +448,10 @@ impl ApplicationHandler for App {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 self.input.cursor = position;
+                self.ui.mouse = self.ui_point(position); // tooltips
                 self.drag(position);
             }
+            WindowEvent::CursorLeft { .. } => self.ui.mouse = None,
             WindowEvent::MouseInput { state, button: MouseButton::Left, .. } => {
                 let p = self.input.cursor;
                 if state == ElementState::Pressed { self.press(p) } else { self.release(p) }
@@ -445,7 +470,11 @@ impl ApplicationHandler for App {
         }
     }
 
-    fn about_to_wait(&mut self, _: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, el: &ActiveEventLoop) {
+        if self.quit {
+            el.exit();
+            return;
+        }
         if let Some(gpu) = &self.gpu {
             gpu.window.request_redraw(); // sin tope: se dibuja tan rápido como presente la superficie
         }

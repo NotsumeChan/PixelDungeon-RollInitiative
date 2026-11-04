@@ -105,6 +105,11 @@ impl Hero {
         dice::proficiency(self.lvl)
     }
 
+    /// Salvación: mod de la característica + competencia si la clase la tiene (`save_prof`).
+    pub fn save_bonus(&self, ability: &str) -> i32 {
+        self.ability_mod(ability) + if self.class_has("save_prof", ability) { self.proficiency() } else { 0 }
+    }
+
     pub fn proficient_weapon(&self) -> bool {
         self.weapon.as_ref().is_none_or(|w| self.class_has("weapon_prof", &w.id) || self.class_has("weapon_prof", w.str("kind")))
     }

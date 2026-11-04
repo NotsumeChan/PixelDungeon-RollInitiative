@@ -3,6 +3,8 @@
 use crate::rng::Rng;
 
 pub const ABILITIES: [&str; 6] = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
+/// Abreviaturas en español, en el orden de `ABILITIES`.
+pub const ABILITY_NAMES: [&str; 6] = ["FUE", "DES", "CON", "INT", "SAB", "CAR"];
 /// Array estándar de 5e, en el orden de `ABILITIES`. ponytail: hasta la creación de personaje (R5)
 pub const DEFAULT_SCORES: [i32; 6] = [15, 14, 13, 12, 10, 8];
 

@@ -324,6 +324,11 @@ impl Gpu {
         (self.ui.w, self.ui.h)
     }
 
+    /// Dónde empieza la capa de UI en la ventana y su factor (pasar del mouse / toque a pixeles de la UI).
+    pub fn ui_view(&self) -> ((u32, u32), u32) {
+        (self.ui.offset, self.ui.scale)
+    }
+
     /// Tamaño del mundo visible (pixeles del mundo), dónde empieza en la ventana y su factor.
     pub fn world_view(&self) -> (u32, u32, (u32, u32), u32) {
         (self.world.w, self.world.h, self.world.offset, self.world.scale)

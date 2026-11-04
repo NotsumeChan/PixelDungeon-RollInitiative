@@ -17,3 +17,6 @@
   3 fallos = muere. La salvación y la Medicina (`stabilize`, d20 + SAB vs 10) van por `pending`.
 - `regen_act`: +1 PV cada 10 de tiempo (caído, sólo si está estable).
 - Faltan (R5): hambre, inventario, rasgos de clase, conjuros, armas a distancia, creación de personaje.
+
+`save_bonus(característica)`: mod + competencia si la clase la tiene (`save_prof`); la usa la ficha y las salvaciones
+de R5.

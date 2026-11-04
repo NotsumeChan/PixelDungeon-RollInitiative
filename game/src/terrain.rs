@@ -156,3 +156,94 @@ impl Feeling {
         }
     }
 }
+
+// --- examinar (WndInfoCell): nombre y descripción como [es, en] ---
+const FLOOR: [&str; 2] = ["Suelo", "Floor"];
+const WALL_NAME: [&str; 2] = ["Pared", "Wall"];
+const STATUE_NAME: [&str; 2] = ["Estatua", "Statue"];
+const TRAP_DESC: [&str; 2] =
+    ["Pisar la placa de presión activa la trampa.", "Stepping onto a hidden pressure plate will activate the trap."];
+const DOWN_DESC: [&str; 2] = ["La escalera baja al piso de abajo.", "Stairs lead down to the lower depth."];
+const STATUE_DESC: [&str; 2] = [
+    "Alguien quiso adornar este lugar, pero es obvio que no lo logró.",
+    "Someone wanted to adorn this place, but failed, obviously.",
+];
+
+/// WndInfoCell: (tile a mostrar, nombre, descripción) como [es, en]. El agua y el abismo se nombran por su flag.
+/// Una trampa oculta se ve como suelo.
+pub fn info(terr: u8, water: bool, pit: bool) -> (u8, [&'static str; 2], [&'static str; 2]) {
+    let tile = if water { WATER } else if pit { CHASM } else { terr };
+    let name = match tile {
+        CHASM => ["Abismo", "Chasm"],
+        EMPTY | EMPTY_SP | EMPTY_DECO => FLOOR,
+        GRASS => ["Pasto", "Grass"],
+        WATER => ["Agua turbia", "Murky water"],
+        WALL | WALL_DECO | SECRET_DOOR => WALL_NAME,
+        DOOR => ["Puerta cerrada", "Closed door"],
+        OPEN_DOOR => ["Puerta abierta", "Open door"],
+        ENTRANCE => ["Entrada del piso", "Depth entrance"],
+        EXIT => ["Salida del piso", "Depth exit"],
+        EMBERS => ["Brasas", "Embers"],
+        LOCKED_DOOR => ["Puerta cerrada con llave", "Locked door"],
+        PEDESTAL => ["Pedestal", "Pedestal"],
+        BARRICADE => ["Barricada", "Barricade"],
+        HIGH_GRASS => ["Pasto alto", "High grass"],
+        LOCKED_EXIT => ["Salida bloqueada", "Locked depth exit"],
+        UNLOCKED_EXIT => ["Salida desbloqueada", "Unlocked depth exit"],
+        SIGN => ["Cartel", "Sign"],
+        WELL => ["Pozo", "Well"],
+        EMPTY_WELL => ["Pozo seco", "Empty well"],
+        STATUE | STATUE_SP => STATUE_NAME,
+        TOXIC_TRAP => ["Trampa de gas tóxico", "Toxic gas trap"],
+        FIRE_TRAP => ["Trampa de fuego", "Fire trap"],
+        PARALYTIC_TRAP => ["Trampa de gas paralizante", "Paralytic gas trap"],
+        POISON_TRAP => ["Trampa de dardo envenenado", "Poison dart trap"],
+        ALARM_TRAP => ["Trampa de alarma", "Alarm trap"],
+        LIGHTNING_TRAP => ["Trampa eléctrica", "Lightning trap"],
+        GRIPPING_TRAP => ["Trampa de garras", "Gripping trap"],
+        SUMMONING_TRAP => ["Trampa de invocación", "Summoning trap"],
+        INACTIVE_TRAP => ["Trampa activada", "Triggered trap"],
+        BOOKSHELF => ["Estantería", "Bookshelf"],
+        ALCHEMY => ["Caldero de alquimia", "Alchemy pot"],
+        SECRET_TOXIC_TRAP | SECRET_FIRE_TRAP | SECRET_PARALYTIC_TRAP | SECRET_POISON_TRAP | SECRET_ALARM_TRAP
+        | SECRET_LIGHTNING_TRAP | SECRET_GRIPPING_TRAP | SECRET_SUMMONING_TRAP => FLOOR,
+        _ => ["???", "???"],
+    };
+    let desc = match tile {
+        CHASM => ["No se ve el fondo.", "You can't see the bottom."],
+        WATER => [
+            "Si te prendes fuego, métete en el agua para apagarlo.",
+            "In case of burning step into the water to extinguish the fire.",
+        ],
+        ENTRANCE => ["La escalera sube al piso de arriba.", "Stairs lead up to the upper depth."],
+        EXIT | UNLOCKED_EXIT => DOWN_DESC,
+        EMBERS => ["Brasas cubren el suelo.", "Embers cover the floor."],
+        HIGH_GRASS => ["La vegetación densa tapa la vista.", "Dense vegetation blocks the view."],
+        LOCKED_DOOR => [
+            "Esta puerta está cerrada con llave: necesitas la llave que le corresponde.",
+            "This door is locked, you need a matching key to unlock it.",
+        ],
+        LOCKED_EXIT => ["Unas rejas pesadas bloquean la escalera que baja.", "Heavy bars block the stairs leading down."],
+        BARRICADE => [
+            "La barricada de madera está firme, pero se secó con los años. ¿Arderá?",
+            "The wooden barricade is firmly set but has dried over the years. Might it burn?",
+        ],
+        SIGN => ["Desde aquí no se puede leer.", "You can't read the text from here."],
+        INACTIVE_TRAP => [
+            "La trampa ya se activó y no es peligrosa.",
+            "The trap has been triggered before and it's not dangerous anymore.",
+        ],
+        STATUE | STATUE_SP => STATUE_DESC,
+        ALCHEMY => ["Deja unas semillas aquí para preparar una poción.", "Drop some seeds here to cook a potion."],
+        EMPTY_WELL => ["El pozo se secó.", "The well has run dry."],
+        EMPTY_DECO => ["Un musgo húmedo y amarillento cubre el suelo.", "Wet yellowish moss covers the floor."],
+        BOOKSHELF => [
+            "La estantería está llena de libros baratos e inútiles. ¿Arderá?",
+            "The bookshelf is packed with cheap useless books. Might it burn?",
+        ],
+        TOXIC_TRAP | FIRE_TRAP | PARALYTIC_TRAP | POISON_TRAP | ALARM_TRAP | LIGHTNING_TRAP | GRIPPING_TRAP
+        | SUMMONING_TRAP => TRAP_DESC,
+        _ => ["", ""],
+    };
+    (tile, name, desc)
+}

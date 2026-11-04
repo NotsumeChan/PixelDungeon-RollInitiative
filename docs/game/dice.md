@@ -7,3 +7,5 @@
 - `d20(rng, adv)`: 1 = ventaja (mejor de 2), -1 = desventaja (peor de 2). El texto muestra los dos dados (`15[15/3 V]`).
 - `modifier` redondea hacia abajo (`div_euclid`, como `//` de Python); `proficiency` = +2 en niveles 1-4, +3 en 5-8...
 - `DEFAULT_SCORES`: array estándar (15, 14, 13, 12, 10, 8) hasta que exista la creación de personaje (R5).
+
+`ABILITY_NAMES`: FUE, DES, CON, INT, SAB, CAR (en el orden de `ABILITIES`).

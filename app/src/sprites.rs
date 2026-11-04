@@ -4,6 +4,7 @@
 use game::actor::ActorId;
 use game::dungeon::{Dungeon, Fx, Tone};
 use game::geom::WIDTH;
+use game::mobs::State;
 use game::rng::Rng;
 use serde_json::Value;
 
@@ -37,6 +38,14 @@ const HERO_ANIMS: [(&str, f32, &[u32], bool); 6] = [
     ("operate", 8.0, &[16, 17, 16, 17], false),
     ("read", 20.0, &[19, 20, 20, 20, 20, 20, 20, 20, 20, 19], false),
 ];
+/// Icons.java: Zzz sobre los mobs dormidos y ! cuando te notan (CharSprite.showSleep / showAlert), con su pulso
+/// (EmoIcon: tamaño máximo, velocidad).
+const ICON_SLEEP: [u32; 4] = [13, 45, 9, 8];
+const ICON_ALERT: [u32; 4] = [22, 45, 8, 8];
+const EMO_SLEEP: (f32, f32) = (1.2, 0.5);
+const EMO_ALERT: (f32, f32) = (1.3, 2.0);
+/// Segundos que se ve el ! cuando un mob te nota (en Java, hasta su próximo turno).
+const ALERT_TIME: f32 = 1.5;
 /// Se reproducen enteras antes de volver a quieto / correr.
 const ONESHOT: [&str; 3] = ["attack", "operate", "read"];
 
@@ -199,11 +208,17 @@ pub struct Chars {
     floats: Vec<Float>,
     checked: Vec<(i32, f32)>,
     leaves: Vec<Leaf>,
+    /// Hoja de icons.png en el atlas.
+    icons: usize,
+    /// Estado de cada mob en el frame anterior y los ! que se están viendo.
+    emo_states: Vec<(u32, State)>,
+    alerts: Vec<(u32, f32)>,
+    emo_t: f32,
     rng: Rng,
 }
 
 impl Chars {
-    pub fn new(first: usize, seed: i64) -> Self {
+    pub fn new(first: usize, icons: usize, seed: i64) -> Self {
         Self {
             first,
             draw: Vec::new(),
@@ -212,6 +227,10 @@ impl Chars {
             floats: Vec::new(),
             checked: Vec::new(),
             leaves: Vec::new(),
+            icons,
+            emo_states: Vec::new(),
+            alerts: Vec::new(),
+            emo_t: 0.0,
             rng: Rng::new(seed),
         }
     }
@@ -224,6 +243,8 @@ impl Chars {
         self.floats.clear();
         self.checked.clear();
         self.leaves.clear();
+        self.emo_states.clear();
+        self.alerts.clear();
     }
 
     pub fn look(&self, d: &Dungeon, a: ActorId) -> Option<Look> {
@@ -378,6 +399,38 @@ impl Chars {
             c.anim.t += dt;
         }
         self.corpses.retain(|c| corpse_alpha(c) > 0.0);
+        // un mob que se despierta o pasa a cazarte muestra el ! durante ALERT_TIME
+        self.emo_t += dt;
+        let mobs = &d.floor().mobs;
+        for m in mobs {
+            let prev = self.emo_states.iter().find(|e| e.0 == m.id).map(|e| e.1);
+            if let Some(prev) = prev
+                && prev != m.state
+                && m.state != State::Sleeping
+                && (prev == State::Sleeping || m.state == State::Hunting)
+            {
+                self.alerts.retain(|a| a.0 != m.id);
+                self.alerts.push((m.id, ALERT_TIME));
+            }
+        }
+        self.emo_states = mobs.iter().map(|m| (m.id, m.state)).collect();
+        for a in &mut self.alerts {
+            a.1 -= dt;
+        }
+        self.alerts.retain(|a| a.1 > 0.0);
+    }
+
+    /// El primer frame del personaje achicado para entrar en `max` x `max`, centrado en `center` (carrusel de
+    /// iniciativa, ventana de examinar).
+    pub fn portrait(&self, d: &Dungeon, atlas: &Atlas, a: ActorId, center: [f32; 2], max: f32) -> Option<Sprite> {
+        let lk = self.look(d, a)?;
+        let [sx, sy, _, _] = atlas.rects[lk.sheet?];
+        let y = lk.row.unwrap_or(0) * lk.h;
+        let f = (max / lk.w.max(lk.h) as f32).min(1.0);
+        let (w, h) = ((lk.w as f32 * f).floor().max(1.0), (lk.h as f32 * f).floor().max(1.0));
+        let mut s = atlas.sprite(sx, sy + y, lk.w, lk.h, [(center[0] - w / 2.0).floor(), (center[1] - h / 2.0).floor()], [1.0; 4]);
+        s.size = [w, h];
+        Some(s)
     }
 
     /// Casillas revisadas, cadáveres y personajes (debajo de la niebla). Los que no tienen hoja se dibujan en
@@ -420,6 +473,28 @@ impl Chars {
                 font.text(out, &lk.name, x, (oy + p[1]).floor(), [1.0, 1.0, 1.0, 1.0]);
             }
         }
+        let [ix, iy, _, _] = atlas.rects[self.icons];
+        for m in &d.floor().mobs {
+            if !d.level().visible[m.ch.pos as usize] {
+                continue;
+            }
+            let (region, (max, rate)) = if m.state == State::Sleeping {
+                (ICON_SLEEP, EMO_SLEEP)
+            } else if self.alerts.iter().any(|a| a.0 == m.id) {
+                (ICON_ALERT, EMO_ALERT)
+            } else {
+                continue;
+            };
+            let phase = (m.id % 7) as f32 * 0.57; // cada mob en su fase: que no pulsen todos juntos
+            let s = pulse(self.emo_t + phase, max, rate);
+            let (w, h) = ((region[2] as f32 * s).round(), (region[3] as f32 * s).round());
+            let Some(p) = self.drawn(ActorId::Mob(m.id)) else { continue };
+            let fw = self.look(d, ActorId::Mob(m.id)).map_or(16, |l| l.w) as f32;
+            let pos = [(ox + p[0] + fw - w / 2.0).floor(), (oy + p[1] - h).floor()];
+            let mut sp = atlas.sprite(ix + region[0], iy + region[1], region[2], region[3], pos, [1.0; 4]);
+            sp.size = [w, h];
+            out.push(sp);
+        }
         for f in &self.floats {
             let mut color = f.color;
             color[3] = 1.0 - f.t / FLOAT_TIME;
@@ -429,6 +504,13 @@ impl Chars {
             font.text(out, &f.text, x, y, color);
         }
     }
+}
+
+/// Escala que va y viene entre 1 y `max` (EmoIcon.update).
+fn pulse(t: f32, max: f32, rate: f32) -> f32 {
+    let span = max - 1.0;
+    let p = (t * rate) % (2.0 * span);
+    1.0 + if p < span { p } else { 2.0 * span - p }
 }
 
 /// 1 mientras se ve la animación de muerte; después baja a 0 en FADE_TIME.
