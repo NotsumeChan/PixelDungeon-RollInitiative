@@ -71,3 +71,6 @@ Sala de espera: CREAR LAN carga la partida del personaje y abre `Window::Lobby` 
 `ui.waiting` (por héroe, ¿la partida espera que elija?): el host lo calcula cada frame y el cliente lo recibe con el
 estado. `UiAction::Trait` = F o el botón de la barra. Atrás de Android = Esc. Sin IME: el teclado del sistema no le
 pasa letras a una NativeActivity; la creación de personaje tiene teclado en pantalla.
+
+Android: al terminar el bucle (Salir) `android_main` cierra el proceso (`process::exit`): si no, Android lo deja vivo y
+al volver a abrir la app queda trabada esperando un bucle que ya terminó.

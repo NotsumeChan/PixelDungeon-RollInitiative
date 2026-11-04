@@ -1152,4 +1152,7 @@ fn android_main(app: winit::platform::android::activity::AndroidApp) {
         let _ = config::DIR.set(dir); // Local.config en la carpeta de datos de la app
     }
     run(EventLoop::builder().with_android_app(app).build().expect("bucle de eventos"));
+    // Salir: Android deja vivo el proceso y al volver a abrir la app la actividad espera un bucle que ya terminó
+    // (pantalla trabada). Se cierra el proceso entero; la partida ya se guardó al salir
+    std::process::exit(0);
 }
