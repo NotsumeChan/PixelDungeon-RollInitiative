@@ -7,6 +7,8 @@ pub struct Atlas {
     pub rgba: Vec<u8>,
     /// Dónde quedó cada hoja: [x, y, ancho, alto], en el orden en que se pasaron.
     pub rects: Vec<[u32; 4]>,
+    /// Un pixel blanco (debajo de las hojas): rectángulos de color liso con el mismo lote.
+    white: (u32, u32),
 }
 
 /// PNG -> RGBA8 (paleta, gris, 16 bits y sin alfa se normalizan).
@@ -31,7 +33,7 @@ impl Atlas {
     pub fn build(sheets: &[&[u8]]) -> Self {
         let images: Vec<_> = sheets.iter().map(|b| decode(b)).collect();
         let w = images.iter().map(|i| i.0).max().unwrap_or(1);
-        let h = images.iter().map(|i| i.1).sum::<u32>().max(1);
+        let h = images.iter().map(|i| i.1).sum::<u32>() + 1; // + la fila del pixel blanco
         let mut rgba = vec![0u8; (w * h * 4) as usize];
         let mut rects = Vec::new();
         let mut y = 0;
@@ -44,12 +46,20 @@ impl Atlas {
             rects.push([0, y, *iw, *ih]);
             y += ih;
         }
-        Self { w, h, rgba, rects }
+        let white = (0, y);
+        rgba[((y * w) * 4) as usize..((y * w) * 4 + 4) as usize].copy_from_slice(&[255; 4]);
+        Self { w, h, rgba, rects, white }
     }
 
     /// Alfa del pixel (x, y) del atlas.
     pub fn alpha(&self, x: u32, y: u32) -> u8 {
         self.rgba[((y * self.w + x) * 4 + 3) as usize]
+    }
+
+    /// Un rectángulo de color liso (el pixel blanco teñido).
+    pub fn rect(&self, pos: [f32; 2], size: [f32; 2], color: [f32; 4]) -> Sprite {
+        let (u, v) = ((self.white.0 as f32 + 0.5) / self.w as f32, (self.white.1 as f32 + 0.5) / self.h as f32);
+        Sprite { pos, size, uv: [u, v, u, v], color }
     }
 
     /// Un recorte del atlas dibujado en `pos` (pixeles del juego), del mismo tamaño que el recorte.

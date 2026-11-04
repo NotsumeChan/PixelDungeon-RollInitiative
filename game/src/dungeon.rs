@@ -24,6 +24,43 @@ pub const MAX_DEPTH: i32 = 4;
 /// Level.TIME_TO_RESPAWN.
 pub const TIME_TO_RESPAWN: f64 = 50.0;
 const MAX_MESSAGES: usize = 50;
+const MAX_DICE_EVENTS: usize = 20;
+const MAX_FX: usize = 40;
+
+/// Una tirada que el héroe local ve (la UI la anima). ok = salvación superada / fallada; None en ataques y daño.
+#[derive(Clone, Debug)]
+pub struct DiceEvent {
+    pub label: String,
+    pub value: i32,
+    pub lo: i32,
+    pub hi: i32,
+    pub ok: Option<bool>,
+}
+
+/// Color del texto flotante (CharSprite.DEFAULT / POSITIVE / NEGATIVE / WARNING / NEUTRAL).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Tone {
+    Default,
+    Pos,
+    Neg,
+    Warn,
+    Neutral,
+}
+
+/// Efectos para el render del piso local, que los consume.
+#[derive(Clone, Debug)]
+pub enum Fx {
+    /// Ataque / operar / leer: el sprite se gira hacia la celda y reproduce la animación.
+    Anim { who: ActorId, kind: &'static str, cell: i32 },
+    /// Texto flotante sobre el personaje (CharSprite.showStatus).
+    Status { who: ActorId, text: String, tone: Tone },
+    /// Un mob murió: ya salió de la partida, por eso viaja con sus datos (queda el cadáver).
+    Die { who: ActorId, cell: i32, stats: Value },
+    /// Casilla revisada al buscar (CheckedCell).
+    Checked(i32),
+    /// Pasto alto pisado.
+    Leaves(i32),
+}
 
 /// Lo que espera a que la UI muestre el dado. Sin rng nuevo al resolver: el orden de tiradas no cambia.
 #[derive(Clone, Debug)]
@@ -46,6 +83,10 @@ pub struct Dungeon {
     pub depth: i32,
     pub messages: Vec<String>,
     pub pending: Vec<Pending>,
+    /// Tiradas que el héroe local ve; la UI las consume.
+    pub dice_events: Vec<DiceEvent>,
+    /// Efectos del piso local; el render los consume.
+    pub fx: Vec<Fx>,
     /// Opción de desarrollador: el log muestra el cálculo completo de cada tirada.
     pub verbose_rolls: bool,
     /// Pisos visitados: al volver siguen sus mobs y lo explorado.
@@ -76,6 +117,8 @@ impl Dungeon {
             depth: 0,
             messages: Vec::new(),
             pending: Vec::new(),
+            dice_events: Vec::new(),
+            fx: Vec::new(),
             verbose_rolls: false,
             floors: BTreeMap::new(),
             heroes: Vec::new(),
@@ -177,6 +220,33 @@ impl Dungeon {
     /// Lo que pasa en `cell` se muestra (piso del héroe local y a la vista): espera al dado (pending).
     pub fn sees(&self, cell: i32) -> bool {
         self.depth == self.local().depth && self.level().visible[cell as usize]
+    }
+
+    /// Una tirada para la animación de dados (sólo la del piso local).
+    pub(crate) fn roll_event(&mut self, label: &str, value: i32, lo: i32, hi: i32, ok: Option<bool>) {
+        if self.depth != self.local().depth {
+            return;
+        }
+        self.dice_events.push(DiceEvent { label: label.to_string(), value, lo, hi, ok });
+        let extra = self.dice_events.len().saturating_sub(MAX_DICE_EVENTS);
+        self.dice_events.drain(..extra);
+    }
+
+    /// Un efecto para el render (sólo se dibuja el piso del héroe local).
+    pub(crate) fn effect(&mut self, fx: Fx) {
+        if self.depth != self.local().depth {
+            return;
+        }
+        self.fx.push(fx);
+        let extra = self.fx.len().saturating_sub(MAX_FX);
+        self.fx.drain(..extra);
+    }
+
+    /// Texto flotante sobre el personaje, si se ve.
+    pub(crate) fn status(&mut self, who: ActorId, text: &str, tone: Tone) {
+        if self.ch(who).is_some_and(|c| c.pos >= 0 && self.level().visible[c.pos as usize]) {
+            self.effect(Fx::Status { who, text: text.to_string(), tone });
+        }
     }
 
     pub fn log(&mut self, msg: &str) {
@@ -364,6 +434,9 @@ impl Dungeon {
     fn press(&mut self, cell: i32) {
         if self.level().map[cell as usize] == t::HIGH_GRASS {
             self.floor_mut().level.set(cell, t::GRASS);
+            if self.level().visible[cell as usize] {
+                self.effect(Fx::Leaves(cell));
+            }
             self.observe(); // el pasto alto tapaba la vista
         }
     }
@@ -485,8 +558,14 @@ impl Dungeon {
     /// d20 + bono (DES). Queda en `init` para ordenar a los que se suman después.
     fn roll_initiative(&mut self, a: ActorId) {
         let (nat, _) = dice::d20(&mut self.rng, 0);
-        let init = nat + self.initiative_bonus(a);
-        self.ch_mut(a).unwrap().init = init;
+        let b = self.initiative_bonus(a);
+        let init = nat + b;
+        let c = self.ch_mut(a).unwrap();
+        c.init = init;
+        if let ActorId::Hero(_) = a {
+            let label = format!("Iniciativa {}", c.name);
+            self.roll_event(&label, init, 1 + b, 20 + b, None);
+        }
     }
 
     fn start_turn(&mut self, a: ActorId) {
@@ -623,21 +702,28 @@ impl Dungeon {
         adv.clamp(-1, 1)
     }
 
-    /// (daño, texto para el log). crit = dados dobles.
-    fn roll_damage(&mut self, a: ActorId, crit: bool) -> (i32, String) {
+    /// (daño, texto para el log, evento de dado para la animación). crit = dados dobles.
+    fn roll_damage(&mut self, a: ActorId, crit: bool) -> (i32, String, Option<DiceEvent>) {
         match a {
             ActorId::Hero(i) => {
                 let h = &self.heroes[i];
                 let m = h.attack_mod();
-                let Some(w) = &h.weapon else { return (1 + m, format!("1{m:+}")) }; // sin armas: 1 + FUE
-                let (total, text, _, _) = dice::roll(&mut self.rng, crate::items::weapon_dice(w), crit);
-                (total + m, format!("{text}{m:+}"))
+                let Some(w) = &h.weapon else { return (1 + m, format!("1{m:+}"), None) }; // sin armas: 1 + FUE
+                let (total, text, rolled, sides) = dice::roll(&mut self.rng, crate::items::weapon_dice(w), crit);
+                let n = rolled.len() as i32;
+                let value = rolled.iter().sum();
+                let ev = DiceEvent { label: format!("{n}d{sides}"), value, lo: n, hi: n * sides, ok: None };
+                (total + m, format!("{text}{m:+}"), Some(ev))
             }
             ActorId::Mob(id) => {
                 let m = self.floors.get(&self.depth).and_then(|f| f.mobs.iter().find(|m| m.id == id));
-                m.map_or((0, String::new()), |m| m.roll_damage(&mut self.rng, crit))
+                let Some(m) = m else { return (0, String::new(), None) };
+                let (dmg, text, (lo, hi)) = m.roll_damage(&mut self.rng, crit);
+                let k = if crit { 2 } else { 1 };
+                let ev = DiceEvent { label: format!("{lo}-{hi}"), value: dmg, lo: lo * k, hi: hi * k, ok: None };
+                (dmg, text, Some(ev))
             }
-            _ => (0, String::new()),
+            _ => (0, String::new(), None),
         }
     }
 
@@ -651,6 +737,10 @@ impl Dungeon {
         let (apos, epos, aname, ename) = (a.pos, e.pos, a.name.clone(), e.name.clone());
         let line = format!("{aname}: d20 {roll_text}{bonus:+}={} vs CA {ac}", nat + bonus);
         let seen = self.sees(apos) || self.sees(epos);
+        self.effect(Fx::Anim { who: att, kind: "attack", cell: epos });
+        if seen {
+            self.roll_event("d20", nat, 1, 20, None);
+        }
         if !hit {
             if seen {
                 let p = Pending::Attack {
@@ -666,11 +756,14 @@ impl Dungeon {
             return false;
         }
         let crit = nat == 20 || (self.downed(enemy) && adjacent(apos, epos)); // 5e: caído y al lado = crítico
-        let (dmg, dmg_text) = self.roll_damage(att, crit);
+        let (dmg, dmg_text, event) = self.roll_damage(att, crit);
         let dmg = dmg.max(0);
         if !seen {
             self.damage(enemy, dmg, Some(att));
             return true;
+        }
+        if let Some(e) = event {
+            self.roll_event(&e.label, e.value, e.lo, e.hi, None);
         }
         let tag = if crit { "CRITICO " } else { "" };
         let p = Pending::Attack {
@@ -710,6 +803,8 @@ impl Dungeon {
                     self.log(if self.verbose_rolls { &detail } else { &simple });
                     if hit {
                         self.damage(target, dmg, Some(attacker));
+                    } else {
+                        self.status(target, "esquiva", Tone::Neutral);
                     }
                 }
                 Pending::DeathSave { hero, nat } => self.apply_death_save(hero, nat),

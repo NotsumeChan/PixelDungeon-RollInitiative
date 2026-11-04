@@ -8,3 +8,6 @@ necesita AssetManager (son ~2,8 MB).
 - `sprite(x, y, w, h, pos, color)`: un recorte del atlas como `Sprite`, del tamaño del recorte.
 - ponytail: apilado vertical; con muchas hojas puede pasar el alto máximo de textura de alguna GPU vieja
   (`max_texture_dimension_2d`): entonces, empaquetar en estantes.
+
+Debajo de las hojas va un pixel blanco: `rect(pos, tamaño, color)` dibuja un rectángulo de color liso con el
+mismo lote (fondos, bordes, partículas).

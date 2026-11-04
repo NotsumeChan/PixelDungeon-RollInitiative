@@ -57,22 +57,44 @@ impl Font {
 
     /// Agrega el texto como sprites (uno por glifo) en (x, y), pixeles del juego. Devuelve el ancho.
     pub fn text(&self, out: &mut Vec<Sprite>, text: &str, x: f32, y: f32, color: [f32; 4]) -> f32 {
+        self.text_scaled(out, text, x, y, color, 1.0)
+    }
+
+    /// `text` con cada pixel de la fuente de `scale` x `scale` (entero: nítido).
+    pub fn text_scaled(&self, out: &mut Vec<Sprite>, text: &str, x: f32, y: f32, color: [f32; 4], scale: f32) -> f32 {
         let mut cx = x;
         for c in text.chars().map(ascii) {
             if c == ' ' {
-                cx += self.space as f32 + TRACKING;
+                cx += (self.space as f32 + TRACKING) * scale;
                 continue;
             }
             let Some((gx, gw)) = self.glyphs.get(c as usize).copied().flatten() else { continue };
             let (u, v) = ((self.x0 + gx) as f32 / self.aw, self.y0 as f32 / self.ah);
             out.push(Sprite {
                 pos: [cx, y],
-                size: [gw as f32, self.h as f32],
+                size: [gw as f32 * scale, self.h as f32 * scale],
                 uv: [u, v, u + gw as f32 / self.aw, v + self.h as f32 / self.ah],
                 color,
             });
-            cx += gw as f32 + TRACKING;
+            cx += (gw as f32 + TRACKING) * scale;
         }
-        cx - x - TRACKING
+        cx - x - TRACKING * scale
+    }
+
+    /// Ancho del texto en pixeles del juego (sin dibujarlo).
+    pub fn width(&self, text: &str) -> f32 {
+        let mut w = 0.0;
+        for c in text.chars().map(ascii) {
+            if c == ' ' {
+                w += self.space as f32 + TRACKING;
+            } else if let Some((_, gw)) = self.glyphs.get(c as usize).copied().flatten() {
+                w += gw as f32 + TRACKING;
+            }
+        }
+        (w - TRACKING).max(0.0)
+    }
+
+    pub fn height(&self) -> f32 {
+        self.h as f32
     }
 }

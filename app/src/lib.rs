@@ -1,9 +1,11 @@
 //! Ventana (winit), bucle del juego y render (wgpu). Lee el estado de `game`, nunca al revés.
-//! R3: el héroe juega un piso con turnos, mobs y combate 5e (como la fase 3 del prototipo).
+//! R3: el héroe juega un piso con turnos, mobs y combate 5e. R4: personajes animados, dados y efectos.
 mod atlas;
+mod dice_fx;
 mod font;
 mod gpu;
 mod map;
+mod sprites;
 
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -20,20 +22,19 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 use atlas::Atlas;
+use dice_fx::DiceFx;
 use font::Font;
 use gpu::{Gpu, Sprite, Tex};
 use map::TILE;
+use sprites::{Chars, CHAR_SHEETS, HERO_H, HERO_W};
 
 pub const TITLE: &str = "PixelDungeon-RollInitiative";
 const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const YELLOW: [f32; 4] = [1.0, 1.0, 0.27, 1.0];
 const GREY: [f32; 4] = [0.53, 0.53, 0.53, 1.0];
-const MOVE_TIME: f32 = 0.1; // segundos por casilla (CharSprite.MOVE_INTERVAL)
 const DRAG_MIN_PX: f64 = 8.0; // arrastrar más que esto (pixeles de pantalla) mueve la cámara; menos es un click
 const PINCH_STEP: f64 = 1.25; // cuánto tiene que cambiar la distancia entre dedos para un paso de zoom
 const RED: [f32; 4] = [1.0, 0.4, 0.4, 1.0];
-const HERO_W: u32 = 12; // HeroSprite: frames de 12x15
-const HERO_H: u32 = 15;
 const LOG_LINES: usize = 4;
 /// Clases jugables (C cambia de clase y empieza otra partida). ponytail: hasta la creación de personaje (R5)
 const CLASSES: [&str; 4] = ["pdri:warrior", "pdri:mage", "pdri:rogue", "pdri:huntress"];
@@ -47,31 +48,13 @@ const SHEETS: [&[u8]; 3] = [
 const FONT: usize = 0;
 const TILES: usize = 1;
 const WATER: usize = 2;
-/// Hojas de personajes por nombre de archivo (el `sprite` de data/classes.json y data/mobs.json), desde el índice
-/// `SHEETS.len()`. Sin hoja = se dibuja el nombre.
-const CHAR_SHEETS: [(&str, &[u8]); 10] = [
-    ("warrior.png", include_bytes!("../../Assets/Characters/warrior.png")),
-    ("mage.png", include_bytes!("../../Assets/Characters/mage.png")),
-    ("rogue.png", include_bytes!("../../Assets/Characters/rogue.png")),
-    ("ranger.png", include_bytes!("../../Assets/Characters/ranger.png")),
-    ("rat.png", include_bytes!("../../Assets/Characters/rat.png")),
-    ("gnoll.png", include_bytes!("../../Assets/Characters/gnoll.png")),
-    ("crab.png", include_bytes!("../../Assets/Characters/crab.png")),
-    ("swarm.png", include_bytes!("../../Assets/Characters/swarm.png")),
-    ("skeleton.png", include_bytes!("../../Assets/Characters/skeleton.png")),
-    ("thief.png", include_bytes!("../../Assets/Characters/thief.png")),
-];
 
-/// Esquina del sprite parado en su celda: centrado en x, apoyado abajo (CharSprite.worldToCamera).
-fn sprite_pos(pos: i32, w: u32, h: u32) -> [f32; 2] {
-    [(pos % WIDTH) as f32 * TILE + (TILE - w as f32) / 2.0, (pos / WIDTH + 1) as f32 * TILE - h as f32]
-}
-
-/// La partida y dónde se dibuja cada personaje (viaja hacia su celda).
+/// La partida, sus personajes en pantalla y la animación de dados.
 struct World {
     d: Dungeon,
     class: usize,
-    draw: Vec<(ActorId, [f32; 2])>,
+    chars: Chars,
+    dice: DiceFx,
     depth: i32,
 }
 
@@ -79,75 +62,31 @@ impl World {
     fn new(seed: i64, class: usize) -> Self {
         let d = Dungeon::new(seed, CLASSES[class]);
         let depth = d.depth;
-        Self { d, class, draw: Vec::new(), depth }
+        // el azar visual va aparte del rng de la partida
+        Self { d, class, chars: Chars::new(SHEETS.len(), seed ^ 0x5EED), dice: DiceFx::new(seed ^ 0xD1CE), depth }
     }
 
-    /// Hoja del atlas, tamaño del frame y nombre del personaje.
-    fn look(&self, a: ActorId) -> (Option<usize>, u32, u32, String) {
-        let (sprite, w, h, name) = match a {
-            ActorId::Hero(i) => {
-                let h = &self.d.heroes[i];
-                (h.cls["sprite"].as_str(), HERO_W, HERO_H, h.ch.name.clone())
-            }
-            ActorId::Mob(id) => {
-                let Some(m) = self.d.mob(id) else { return (None, 0, 0, String::new()) };
-                let f = |k: usize| m.stats["frame"][k].as_u64().unwrap_or(16) as u32;
-                (m.stats["sprite"].as_str(), f(0), f(1), m.ch.name.clone())
-            }
-            _ => (None, 0, 0, String::new()),
-        };
-        let sheet = sprite.and_then(|s| CHAR_SHEETS.iter().position(|c| c.0 == s)).map(|i| i + SHEETS.len());
-        (sheet, w, h, name)
-    }
-
-    /// Turnos hasta que el héroe local tenga que decidir. ponytail: lo visto se resuelve en el acto; con la
-    /// animación de dados (R4) se resuelve cuando el dado se muestra
-    fn run(&mut self) {
-        for _ in 0..1000 {
-            self.d.process();
-            if self.d.pending.is_empty() {
-                break;
-            }
-            self.d.resolve_pending();
-        }
-    }
-
-    /// Los sprites viajan a su celda a 1 casilla cada MOVE_TIME; el héroe local se suelta (`animating`) al llegar.
+    /// Un frame de lógica, en el orden del prototipo: los sprites caminan (y sueltan al héroe al llegar), lo que el
+    /// dado ya mostró se aplica, corren los turnos, y después los efectos y los dados avanzan.
     fn update(&mut self, dt: f32) {
+        self.chars.animate(&mut self.d, dt);
+        self.dice.feed(&mut self.d.dice_events);
+        if !self.d.pending.is_empty() && !self.dice.busy() {
+            self.d.resolve_pending(); // recién cuando el dado mostró el resultado se aplica el daño
+        }
+        self.d.process();
         if self.d.depth != self.depth {
             self.depth = self.d.depth;
-            self.draw.clear(); // otro piso: todos aparecen en su celda
+            self.chars.clear(); // otro piso: todos aparecen en su celda
         }
-        let max = TILE / MOVE_TIME * dt;
-        let mut next = Vec::new();
-        for (a, pos) in self.d.chars() {
-            if !self.d.alive(a) || pos < 0 {
-                continue;
-            }
-            let (_, w, h, _) = self.look(a);
-            let goal = sprite_pos(pos, w, h);
-            let p = match self.draw.iter().find(|e| e.0 == a) {
-                Some(&(_, cur)) if self.d.level().visible[pos as usize] => {
-                    [cur[0] + (goal[0] - cur[0]).clamp(-max, max), cur[1] + (goal[1] - cur[1]).clamp(-max, max)]
-                }
-                _ => goal,
-            };
-            next.push((a, p));
-        }
-        self.draw = next;
-        let me = self.d.hero;
-        let (_, w, h, _) = self.look(ActorId::Hero(me));
-        if self.hero_sprite() == sprite_pos(self.d.heroes[me].ch.pos, w, h) {
-            self.d.heroes[me].animating = false;
-        }
+        self.chars.consume(&mut self.d);
+        self.chars.update(&self.d, dt);
+        self.dice.feed(&mut self.d.dice_events);
+        self.dice.update(dt);
     }
 
     fn hero_sprite(&self) -> [f32; 2] {
-        let me = self.d.hero;
-        self.draw.iter().find(|e| e.0 == ActorId::Hero(me)).map_or_else(
-            || sprite_pos(self.d.heroes[me].ch.pos.max(0), HERO_W, HERO_H),
-            |e| e.1,
-        )
+        self.chars.hero_sprite(&self.d)
     }
 
     /// Paso con las teclas: diagonal si se puede, si no por un eje (atacar si hay alguien).
@@ -381,9 +320,8 @@ impl App {
             log::info!("FPS {}", self.fps);
         }
 
-        // --- lógica: animación de los pasos, teclas mantenidas y turnos ---
+        // --- lógica: teclas mantenidas, animaciones, dados y turnos ---
         let w = &mut self.world;
-        w.update(dt);
         if w.ready() {
             let h = self.input.held;
             let (dx, dy) = ((h[3] as i32) - (h[2] as i32), (h[1] as i32) - (h[0] as i32));
@@ -391,7 +329,7 @@ impl App {
                 w.step(dx, dy);
             }
         }
-        w.run();
+        w.update(dt);
         if w.d.local().animating && self.input.press.is_none() {
             self.pan = [0.0; 2]; // el héroe camina: la cámara vuelve a seguirlo
         }
@@ -407,42 +345,21 @@ impl App {
         let gpu = self.gpu.as_ref().unwrap();
         let (ox, oy) = self.map_origin(gpu);
 
-        // --- mundo: agua, tiles, personajes (primer frame de su hoja; sin hoja, el nombre) | niebla ---
+        // --- mundo: agua, tiles, casillas revisadas, cadáveres, personajes | niebla | hojas, textos, nombres ---
         let s = &mut self.sprites;
         s.clear();
         let w = &self.world;
-        let level = w.d.level();
         map::water(s, &self.atlas, self.atlas.rects[WATER], ox, oy, self.water_off);
-        map::tiles(s, &self.atlas, self.atlas.rects[TILES], level, ox, oy);
-        let mut names = Vec::new();
-        for &(a, p) in &w.draw {
-            let pos = w.d.ch(a).map_or(-1, |c| c.pos);
-            if pos < 0 || !level.visible[pos as usize] {
-                continue;
-            }
-            let (sheet, fw, fh, name) = w.look(a);
-            let color = if matches!(a, ActorId::Hero(i) if w.d.heroes[i].is_downed()) { GREY } else { WHITE };
-            match sheet {
-                Some(i) => {
-                    let r = self.atlas.rects[i];
-                    s.push(self.atlas.sprite(r[0], r[1], fw, fh, [ox + p[0], oy + p[1]], color));
-                }
-                None => names.push((name, [ox + p[0], oy + p[1]])),
-            }
-        }
+        map::tiles(s, &self.atlas, self.atlas.rects[TILES], w.d.level(), ox, oy);
+        w.chars.draw_world(&w.d, &self.atlas, s, ox, oy);
         let atlas_end = s.len() as u32;
         s.push(map::fog_quad(ox, oy));
+        let fog_end = s.len() as u32;
+        w.chars.draw_over(&w.d, &self.atlas, &self.font, s, ox, oy);
         let world_end = s.len() as u32;
 
-        // --- UI: estado del héroe, ronda y turno, últimas líneas del log ---
-        // ponytail: los nombres sin sprite van en la capa de UI sin seguir el zoom del mundo; se arregla con la UI (R4)
-        let (_, _, (offx, offy), scale) = gpu.world_view();
-        let uz = gpu.ui_zoom() as f32;
-        for (name, p) in names {
-            let (x, y) = ((offx as f32 + p[0] * scale as f32) / uz, (offy as f32 + p[1] * scale as f32) / uz);
-            self.font.text(s, &name, x, y, YELLOW);
-        }
-        let (_, uh) = gpu.ui_size();
+        // --- UI: estado del héroe, ronda y turno, últimas líneas del log, dados ---
+        let (uw, uh) = gpu.ui_size();
         let d = &w.d;
         let h = d.local();
         self.font.text(s, &format!("FPS {}", self.fps), 4.0, 4.0, YELLOW);
@@ -472,9 +389,10 @@ impl App {
         }
         let help = "toque: mover/atacar  espacio: esperar  Q/tocarte: buscar  R/C: partida/clase";
         self.font.text(s, help, 4.0, uh as f32 - 12.0, GREY);
-        let ui_end = s.len() as u32;
+        self.world.dice.draw(&self.atlas, &self.font, &mut self.sprites, uw as f32, uh as f32);
+        let ui_end = self.sprites.len() as u32;
 
-        let batches = [(Tex::Atlas, 0..atlas_end), (Tex::Fog, atlas_end..world_end)];
+        let batches = [(Tex::Atlas, 0..atlas_end), (Tex::Fog, atlas_end..fog_end), (Tex::Atlas, fog_end..world_end)];
         self.gpu.as_mut().unwrap().draw(&self.sprites, &batches, world_end..ui_end);
     }
 }

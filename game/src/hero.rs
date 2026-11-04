@@ -7,7 +7,7 @@ use serde_json::{Map, Value};
 use crate::actor::ActorId;
 use crate::char::{adjacent, Char};
 use crate::dice;
-use crate::dungeon::{Dungeon, Pending};
+use crate::dungeon::{Dungeon, Fx, Pending, Tone};
 use crate::geom::{LENGTH, NEIGHBOURS9};
 use crate::items::{armor_ac, Item};
 use crate::registry::text;
@@ -324,10 +324,17 @@ impl Dungeon {
             if !self.heroes[i].fov[p as usize] {
                 continue;
             }
+            if intentional {
+                self.effect(Fx::Checked(p)); // destello azul en cada casilla revisada
+            }
             if self.level().secret[p as usize] && (intentional || self.rng.float() < self.heroes[i].awareness) {
                 self.floor_mut().level.discover(p);
                 found = true;
             }
+        }
+        if intentional {
+            self.status(ActorId::Hero(i), "buscando", Tone::Default);
+            self.effect(Fx::Anim { who: ActorId::Hero(i), kind: "operate", cell: pos });
         }
         if found {
             self.log("Encuentras algo oculto");
@@ -354,6 +361,7 @@ impl Dungeon {
             }
             let msg = format!("Subes a nivel {}: +{gain} PV, competencia +{}", h.lvl, h.proficiency());
             self.log(&msg);
+            self.status(ActorId::Hero(i), "sube de nivel", Tone::Pos);
         }
     }
 
@@ -366,6 +374,7 @@ impl Dungeon {
         if was_down && h.ch.hp > 0 {
             let msg = format!("{} recupera la conciencia", h.ch.name);
             self.log(&msg);
+            self.status(ActorId::Hero(i), "se levanta", Tone::Pos);
         }
         amount
     }
@@ -393,12 +402,17 @@ impl Dungeon {
                 );
                 let dies = h.saves[1] >= 3;
                 self.log(&msg);
+                self.status(ActorId::Hero(i), "fallo", Tone::Neg);
                 if dies {
                     self.hero_die(i, src);
                 }
             }
             return;
         }
+        if dmg > 0 {
+            self.status(ActorId::Hero(i), &dmg.to_string(), Tone::Neg);
+        }
+        let h = &mut self.heroes[i];
         h.ch.hp -= dmg;
         if h.ch.hp <= 0 {
             let massive = -h.ch.hp >= h.ch.ht;
@@ -411,6 +425,7 @@ impl Dungeon {
             h.stable = false;
             let msg = format!("{} cae inconsciente", h.ch.name);
             self.log(&msg);
+            self.status(ActorId::Hero(i), "inconsciente", Tone::Neg);
         }
     }
 
@@ -436,6 +451,7 @@ impl Dungeon {
     /// fallos. Se aplica cuando el dado se muestra (pending).
     fn death_save(&mut self, i: usize) {
         let (nat, _) = dice::d20(&mut self.rng, 0);
+        self.roll_event("Muerte CD10", nat, 1, 20, Some(nat >= 10));
         self.defer(Pending::DeathSave { hero: i, nat });
     }
 
@@ -462,6 +478,7 @@ impl Dungeon {
             self.heroes[i].stable = true;
             let msg = format!("{} está estable", self.heroes[i].ch.name);
             self.log(&msg);
+            self.status(ActorId::Hero(i), "estable", Tone::Pos);
         }
     }
 
@@ -472,7 +489,11 @@ impl Dungeon {
             return;
         }
         let (nat, _) = dice::d20(&mut self.rng, 0);
-        let ok = nat + self.heroes[i].ability_mod("WIS") >= 10;
+        let b = self.heroes[i].ability_mod("WIS");
+        let ok = nat + b >= 10;
+        self.roll_event("Medicina CD10", nat + b, 1 + b, 20 + b, Some(ok));
+        let cell = self.heroes[ally].ch.pos;
+        self.effect(Fx::Anim { who: ActorId::Hero(i), kind: "operate", cell });
         self.defer(Pending::Stabilize { hero: i, ally, ok });
         self.spend(ActorId::Hero(i), TIME_TO_REST);
     }
@@ -482,6 +503,7 @@ impl Dungeon {
         if ok && self.heroes[ally].is_downed() {
             self.heroes[ally].stable = true;
             self.log(&format!("{me} estabiliza a {other}"));
+            self.status(ActorId::Hero(ally), "estable", Tone::Pos);
         } else if !ok {
             self.log(&format!("{me} no logra estabilizar a {other}"));
         }

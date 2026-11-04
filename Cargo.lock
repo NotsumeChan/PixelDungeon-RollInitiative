@@ -164,6 +164,7 @@ dependencies = [
  "log",
  "png",
  "pollster",
+ "serde_json",
  "wgpu",
  "winit",
 ]

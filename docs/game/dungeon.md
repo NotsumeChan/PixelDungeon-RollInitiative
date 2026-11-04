@@ -16,3 +16,9 @@ piso en contexto. Varios héroes, cada uno en su piso; `hero` es el local (el de
 - `view_changed`: la vista del piso local cambió (la app sube la niebla).
 - Falta: mezclar las apariencias de pociones y pergaminos al empezar (gasta rng en el prototipo; va primero de todo
   con los ítems, R5), ítems del piso, trampas.
+
+Para el render (R4): `dice_events` (las tiradas que el héroe local ve: etiqueta, valor, mínimo, máximo y, en las
+salvaciones, si se superó) y `fx` (`Fx::Anim`, `Status`, `Die`, `Checked`, `Leaves`). Sólo se emiten en el piso local
+(`roll_event`, `effect`; `status` además pide que el personaje se vea). Los emite el juego en los mismos puntos que
+el prototipo: ataque (animación, d20 y dado de daño), daño (número), esquiva, caer, levantarse, subir de nivel,
+salvaciones y Medicina, iniciativa del héroe, buscar, muerte de un mob y pasto pisado.

@@ -5,7 +5,7 @@ use serde_json::{Map, Value};
 
 use crate::actor::{ActorId, TICK};
 use crate::char::{adjacent, distance, Char};
-use crate::dungeon::Dungeon;
+use crate::dungeon::{Dungeon, Fx, Tone};
 use crate::fov::{self, MAX_DISTANCE};
 use crate::geom::WIDTH;
 use crate::registry::text;
@@ -100,12 +100,13 @@ impl Mob {
     }
 
     /// El daño conserva el rango del original (NormalIntRange); con crítico se tira dos veces.
-    pub fn roll_damage(&self, rng: &mut Rng, crit: bool) -> (i32, String) {
+    /// (daño, texto para el log, rango del original).
+    pub fn roll_damage(&self, rng: &mut Rng, crit: bool) -> (i32, String, (i32, i32)) {
         let d = &self.stats["damage"];
         let (lo, hi) = (d[0].as_i64().unwrap_or(1) as i32, d[1].as_i64().unwrap_or(1) as i32);
         let rolls: Vec<i32> = (0..if crit { 2 } else { 1 }).map(|_| rng.normal_int_range(lo, hi)).collect();
         let list: Vec<String> = rolls.iter().map(i32::to_string).collect();
-        (rolls.iter().sum(), format!("{lo}-{hi}({})", list.join("+")))
+        (rolls.iter().sum(), format!("{lo}-{hi}({})", list.join("+")), (lo, hi))
     }
 }
 
@@ -227,6 +228,10 @@ impl Dungeon {
         if m.ch.hp <= 0 {
             return;
         }
+        if dmg > 0 {
+            self.status(ActorId::Mob(id), &dmg.to_string(), Tone::Neg); // número de daño
+        }
+        let m = self.mob_mut(id).unwrap();
         m.ch.hp -= dmg;
         if m.ch.hp <= 0 {
             self.mob_die(id, src);
@@ -236,6 +241,7 @@ impl Dungeon {
     /// XP repartida entre los héroes vivos del piso (redondeo hacia arriba) y +1 al que dio el último golpe.
     fn mob_die(&mut self, id: u32, src: Option<ActorId>) {
         let Some(m) = self.remove_mob(id) else { return };
+        self.effect(Fx::Die { who: ActorId::Mob(id), cell: m.ch.pos, stats: m.stats.clone() }); // el render deja el cadáver
         if self.level().visible[m.ch.pos as usize] {
             self.log(&format!("{} muere", m.ch.name));
         }
