@@ -78,6 +78,38 @@ mundo y UI con zoom entero cada una; agua animada, tiles y niebla con LINEAR en 
 arrastre, zoom con rueda / pellizco; observador con WASD o toque. Orientación vertical (pedido del dueño, sobre todo
 para Android): la app gira con el teléfono y en vertical la UI usa la referencia 180x320.
 
+**Siguiente: R3** (sin empezar a escribir; sólo leídas las referencias). Notas para retomar:
+- Referencias en `python-prototipe`: `game/dice.py`, `pathfinder.py`, `actor.py` (planificador por tiempo + rondas 5e
+  del paso 3 de la fase 5), `char.py`, `hero.py`, `mobs.py`, `dungeon.py`, y de `items.py` sólo `weapon_dice` /
+  `armor_ac`. Copia de lectura rápida: `git archive python-prototipe game data | tar -x -C /tmp/pdri-py` (`/tmp` se
+  borra al reiniciar).
+- Alcance propuesto de R3 (como la fase 3 del prototipo + el combate 5e): `dice.rs`, `pathfinder.rs`, `actor.rs`
+  (tiempo de PD fuera de combate; en combate iniciativa d20 + DES, movimiento `speed_ft / 5` casillas + 1 acción,
+  estados y timers 1 TICK por ronda, fin tras 2 rondas calmas), `char.rs` (PV, CA, ataque d20 vs CA, crítico,
+  daño, muerte, paso con puertas), `hero.rs` (clase de `data/classes.json`, características, competencia, PV de
+  nivel, moverse con pathfinder, atacar cuerpo a cuerpo, esperar, buscar, escaleras, estabilizar aliado caído,
+  salvaciones contra la muerte, regeneración, XP y niveles), `mobs.rs` (IA SLEEPING / WANDERING / HUNTING, stats de
+  `data/mobs.json` convertidos a 5e con `mob_ac` / `mob_attack_bonus`, bestiario, respawner, XP repartida +1 al
+  último golpe), `dungeon.rs` (pisos visitados, varios héroes, `pending` de los dados).
+- Equipo mínimo en R3: sólo el arma y la armadura iniciales de la clase (leídas de `data/items.json` por
+  `registry`) para la tirada de ataque, el daño y la CA. Inventario, hambre, estados, conjuros, trampas y armas a
+  distancia van en R5.
+- Render en R3: personajes con el primer frame de su hoja (las animaciones son R4), HUD mínimo (PV, CA, ronda y
+  turno, últimas líneas del log). Sin la animación de dados todavía: `pending` se resuelve en el acto.
+- Determinismo: las tiradas del rng de la partida en el mismo orden que el prototipo (no hay comparación automática
+  en R3 porque depende del input; se prueba a mano).
+
+**Pendiente del dueño** (al cerrar la sesión del 2026-11-03):
+- `git push origin main` (R1, R2 y la orientación vertical están sólo en local).
+- Probar R2 en el teléfono y en la PC (`cargo run --release`): niebla en bordes de paredes, agua, zoom nítido.
+- Instalar el APK con la orientación vertical: quedó armado en `target/android/pdri.apk` pero el teléfono se
+  desconectó (`adb install -r target/android/pdri.apk`). Si adb sigue cortándose: otro cable/puerto o depuración
+  inalámbrica (`adb pair` / `adb connect`).
+- Respaldar `~/.pddnd-signing/` (sin la clave no se pueden publicar actualizaciones del APK) y, si se quiere firmar
+  en CI, cargar los secretos `PDRI_KEYSTORE_B64` y `PDRI_KEYSTORE_PASS` en GitHub.
+- Opcional: borrar `~/pddnd-android/` (prueba de buildozer; el SDK/NDK de `~/.buildozer` sí lo usa
+  `android/build.sh`) y `~/pddnd-backup-20261103-1116/`.
+
 R0 va primero a propósito: Android fue lo que rompió Python. Si `wgpu` + `winit` no levanta en el teléfono, se sabe
 antes de portar una sola línea de lógica.
 

@@ -4,7 +4,8 @@ Roguelike basado en Pixel Dungeon (pisos 1–4, Alcantarillas) con reglas de D&D
 En **Rust** (rama `main`). Referencias para portar:
 - Prototipo en Python (0.8): rama `python-prototipe` — la referencia directa del port.
 - Java original: `~/Documents/programacion/personal/java/pixel-dungeon/src/com/watabou/`.
-Plan y fases: `roadmap/migracion-rust.md` (leer primero).
+Plan y fases: `roadmap/migracion-rust.md` (leer primero: tiene el estado de cada fase, lo siguiente y lo
+pendiente del dueño).
 
 ## Arranque
 ```bash
