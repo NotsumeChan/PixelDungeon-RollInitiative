@@ -945,15 +945,26 @@ pub fn item_icon(out: &mut Vec<Sprite>, atlas: &Atlas, font: &Font, image: &Imag
             out.push(piece(atlas, ITEMS, [(i % 8) * 16, (i / 8) * 16, 16, 16], pos, [16.0, 16.0], [1.0, 1.0, 1.0, alpha]));
         }
         Image::Text(name) => {
-            let words: Vec<&str> = name.split_whitespace().collect();
-            let tw = words.iter().map(|w| font.width(w)).fold(1.0, f32::max);
-            let th = words.len().max(1) as f32 * font.height();
-            let f = (16.0 / tw).min(16.0 / th).min(1.0);
-            let mut y = pos[1] + (16.0 - th * f) / 2.0;
-            for word in words {
-                let x = pos[0] + (16.0 - font.width(word) * f) / 2.0;
-                font.text_scaled(out, word, x, y, [1.0, 1.0, 1.0, alpha], f);
-                y += font.height() * f;
+            // a tamaño real (achicar una fuente pixel la vuelve ilegible): hasta 2 palabras, recortadas para entrar en
+            // 16 px; el nombre completo está en el tooltip y en la ventana del ítem
+            let lines: Vec<String> = name
+                .split_whitespace()
+                .filter(|w| w.chars().count() > 2 || name.split_whitespace().count() == 1) // sin "de", "la"
+                .take(2)
+                .map(|w| {
+                    let mut cut: String = w.to_string();
+                    while font.width(&cut) > 16.0 && cut.chars().count() > 1 {
+                        cut.pop();
+                    }
+                    cut
+                })
+                .collect();
+            let th = lines.len().max(1) as f32 * font.height();
+            let mut y = (pos[1] + (16.0 - th) / 2.0).floor();
+            for line in lines {
+                let x = (pos[0] + (16.0 - font.width(&line)) / 2.0).floor();
+                font.text(out, &line, x, y, [1.0, 1.0, 1.0, alpha]);
+                y += font.height();
             }
         }
     }

@@ -27,7 +27,7 @@ R5a:
   nivel conocido. Modos: ver (abre la ventana del ítem), elegir el objetivo de un pergamino (lo que no sirve sale
   tenue), elegir el acceso rápido.
 - Ventana del ítem (WndItem): ícono, nombre, descripción con los números de 5e y un botón por acción.
-- `item_icon`: recorte de items.png o, sin sprite, el nombre achicado a 16x16. `draw_heaps`: los montones del piso
+- `item_icon`: recorte de items.png o, sin sprite, el nombre a tamaño real (nítido): hasta 2 palabras recortadas para entrar en 16x16. `draw_heaps`: los montones del piso
   donde ya se vio (bajo la niebla).
 - Ícono de hambre (buffs.png) en el panel de estado.
 
