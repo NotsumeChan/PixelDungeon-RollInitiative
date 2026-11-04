@@ -31,3 +31,8 @@ Verificado: misma seed = mismas apariencias, mobs y montones (con nivel y maldic
 R5b: `rules` (reglas de la partida, por defecto 5e: `dot_death_saves` = el daño por turno a un caído suma fallos,
 `save_half` = superar el gas tóxico / la descarga = la mitad). `press` también activa trampas. La paralización da
 ventaja contra el paralizado; los estados multiplican la velocidad (`start_turn`).
+
+Emboscada (5e): si un héroe va a atacar fuera de combate, primero empieza el combate (`start_combat(true)`): todos tiran
+iniciativa y su ataque va en su turno; los mobs que no lo habían visto quedan sorprendidos (`Char::surprised`: pierden
+su primer turno). Así un enemigo que muere de un golpe igual tuvo su tirada de iniciativa. El combate que empieza
+porque un mob caza (`start_combat(false)`) no sorprende a nadie, como el prototipo.

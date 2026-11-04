@@ -11,3 +11,5 @@ toca a atacante y objetivo.
 que el sprite siga el camino real. `move_char` verifica en debug que cada paso sea a una celda vecina y transitable.
 
 `buffs`: los estados alterados del personaje (buffs.rs).
+
+`surprised`: sorprendido al empezar el combate; `start_turn` le termina el primer turno sin acción ni movimiento.

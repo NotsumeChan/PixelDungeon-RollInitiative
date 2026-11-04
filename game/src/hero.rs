@@ -396,6 +396,11 @@ impl Dungeon {
             Action::Attack(e) => {
                 let target = if self.alive(e) { self.ch(e).map(|c| c.pos) } else { None };
                 match target {
+                    Some(tp) if adjacent(pos, tp) && !self.floor().scheduler.in_combat(me) => {
+                        // 5e: atacar inicia el combate. Todos tiran iniciativa y el ataque va en su turno; los que no
+                        // lo vieron venir quedan sorprendidos (pierden su primer turno)
+                        self.start_combat(true);
+                    }
                     Some(tp) if adjacent(pos, tp) => {
                         self.heroes[i].action = None;
                         self.attack(me, e);

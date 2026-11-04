@@ -37,6 +37,8 @@ pub struct Char {
     pub trail: Vec<i32>,
     /// Estados alterados (buffs.rs).
     pub buffs: Vec<crate::buffs::Buff>,
+    /// Sorprendido (5e): no lo vio venir cuando empezó el combate; pierde su primer turno.
+    pub surprised: bool,
 }
 
 impl Char {
@@ -56,15 +58,16 @@ impl Char {
             flying: false,
             trail: Vec::new(),
             buffs: Vec::new(),
+            surprised: false,
         }
     }
 
     /// Turno de combate 5e: movimiento (speed_ft / 5 casillas) + 1 acción.
     pub fn start_turn(&mut self, speed_ft: i32) {
         self.moves = speed_ft / 5;
-        self.has_action = true;
+        self.has_action = !self.surprised; // sorprendido: su primer turno termina sin hacer nada
         self.stepped = false;
-        self.no_moves = false;
+        self.no_moves = std::mem::take(&mut self.surprised);
     }
 
     pub fn turn_over(&self) -> bool {

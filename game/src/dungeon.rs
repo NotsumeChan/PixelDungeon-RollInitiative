@@ -656,8 +656,8 @@ impl Dungeon {
             self.act(cur);
             // si el héroe cambió de piso, el combate se decide igual en el piso que dejó (como el prototipo)
             let ctx = std::mem::replace(&mut self.depth, depth);
-            if self.any_fighting() {
-                self.start_combat();
+            if self.floor().scheduler.order.is_none() && self.any_fighting() {
+                self.start_combat(false);
             }
             self.depth = ctx;
         }
@@ -730,12 +730,24 @@ impl Dungeon {
         chars
     }
 
-    /// Todos los personajes del piso tiran iniciativa y se ordenan.
-    fn start_combat(&mut self) {
+    /// Todos los personajes del piso tiran iniciativa y se ordenan. `ambush` = lo empieza un héroe atacando: los mobs
+    /// que no lo vieron venir quedan sorprendidos (5e).
+    pub(crate) fn start_combat(&mut self, ambush: bool) {
         let chars: Vec<ActorId> =
             self.floor().scheduler.actors.iter().map(|e| e.0).filter(|&a| a.in_rounds() && self.alive(a)).collect();
         for &a in &chars {
             self.roll_initiative(a);
+        }
+        if ambush {
+            for &a in &chars {
+                if let ActorId::Mob(id) = a
+                    && let Some(m) = self.mob_mut(id)
+                    && !m.enemy_seen
+                {
+                    m.ch.surprised = true;
+                    self.status(a, "sorprendido", Tone::Warn);
+                }
+            }
         }
         let order = self.by_initiative(chars);
         let seen: Vec<String> = order
