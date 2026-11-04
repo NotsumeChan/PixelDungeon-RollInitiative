@@ -114,6 +114,8 @@ pub struct Config {
     pub language: &'static str,
     /// `[dev] dice_log`: el log muestra el cálculo de cada tirada (opción de desarrollador, sólo en el archivo).
     pub dice_log: bool,
+    /// `[dev] hotseat`: modo de prueba de la red, 2 héroes en la misma PC (Tab cambia). Sólo en el archivo.
+    pub hotseat: bool,
     /// Clave de `RESOLUTIONS` (sin archivo o desconocida: "Hd", como el prototipo).
     pub resolution: &'static str,
     /// Escala de la interfaz respecto del zoom que entra (1 = 100%; `ui_scale` en Local.config, como el prototipo).
@@ -132,7 +134,7 @@ fn path() -> PathBuf {
 impl Config {
     pub fn load() -> Self {
         let lines: Vec<String> = std::fs::read_to_string(path()).unwrap_or_default().lines().map(str::to_string).collect();
-        let mut c = Self { max_fps: DEFAULT_FPS, fullscreen: false, language: "es", dice_log: false, resolution: "Hd", ui_scale: 1.0, ui_base: 1, keys: Vec::new(), lines };
+        let mut c = Self { max_fps: DEFAULT_FPS, fullscreen: false, language: "es", dice_log: false, hotseat: false, resolution: "Hd", ui_scale: 1.0, ui_base: 1, keys: Vec::new(), lines };
         if let Some(s) = c.get("general", "ui_scale").and_then(|v| v.parse().ok()) {
             c.ui_scale = s;
         }
@@ -143,6 +145,7 @@ impl Config {
             c.language = l.0;
         }
         c.dice_log = c.get("dev", "dice_log").is_some_and(|v| v.eq_ignore_ascii_case("true"));
+        c.hotseat = c.get("dev", "hotseat").is_some_and(|v| v.eq_ignore_ascii_case("true"));
         if let Some(r) = c.get("general", "resolution").and_then(|v| RESOLUTIONS.iter().find(|r| r.0 == v)) {
             c.resolution = r.0;
         }

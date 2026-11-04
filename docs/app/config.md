@@ -12,5 +12,6 @@ donde se corre; en Android, en la carpeta de datos de la app (`DIR`, lo pone `an
 - `language` (es / en): el idioma del contenido (`game::registry::set_lang`). Los textos del código siguen en
   español, como en el prototipo; falta la estructura para traducirlos.
 - `[dev] dice_log = true`: el log muestra el cálculo de cada tirada (`Dungeon::verbose_rolls`). Sólo en el archivo.
+- `[dev] hotseat = true`: modo de prueba de la red, 2 héroes en la misma PC (ver `docs/app/lib.md`).
 
 `ui_scale` (escala de la interfaz, como el prototipo): la app la pasa a `Gpu::set_ui_scale`; `ui_base` es el zoom que entra, para armar las opciones.

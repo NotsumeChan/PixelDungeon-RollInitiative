@@ -50,3 +50,9 @@ Arrastrar en la creación de personaje: `press` / `drag` / `release` pasan prime
 una tirada o una característica con valor), antes que el arrastre de la cámara. El idioma se aplica antes de crear la
 partida de fondo (`App::new`) y al cambiarlo se rehacen las filas de clases. `[dev] dice_log` se copia a
 `verbose_rolls` cada frame.
+
+Hotseat (`[dev] hotseat = true`, el modo de prueba de la red del prototipo): `World::new` suma un segundo héroe igual
+al personaje ("<nombre> 2"). Tab pasa al siguiente héroe vivo. `World::auto_switch` (cada frame): si el local murió o
+cayó, la UI pasa al primero en pie; si el piso espera la acción de otro héroe (`Dungeon::blocking`), pasa a ese. Con los
+héroes en pisos distintos, cada piso espera a su héroe: se cambia con Tab. Con 2+ héroes, `sprites.rs` dibuja el
+nombre sobre cada uno (el local amarillo, otros blanco, caídos gris). La partida guarda los dos héroes.

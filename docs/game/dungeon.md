@@ -41,3 +41,5 @@ R5c: `roll_damage` recibe la ventaja y el objetivo (Ataque Furtivo, Marca del ca
 
 R5d: `Pending::Land` (el proyectil del héroe después de verse el dado). `advantage` suma la desventaja a distancia y
 `roll_damage` usa el arma en curso del héroe (`Hero::wep`): el arco cuerpo a cuerpo tira 1d4.
+
+`set_local(i)`: el héroe que maneja la UI pasa a ser `i` (hotseat) y su piso queda en contexto; loguea "Turno de ...".

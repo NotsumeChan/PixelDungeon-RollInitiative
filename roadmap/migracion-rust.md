@@ -157,6 +157,14 @@ teclado en pantalla al tocar el nombre o una característica. Sin arrastrar (el 
 lo mismo. **Versión 0.5.0.** Para probar: tirar, asignar, mover una tirada de una característica a otra, escribir un
 número, LIMPIAR, empezar sin nombre (usa el de la clase), en el teléfono el teclado y la creación en vertical.
 
+**Hotseat (cierre de R5, 0.8)** ✏️ (2026-11-04), pendiente de prueba del dueño: `[dev] hotseat = true` en
+`Local.config` suma un segundo héroe igual al personaje ("<nombre> 2"). Tab cambia de héroe; la UI pasa sola al que
+le toca en combate (o al que sigue en pie si el local cae) y el log avisa "Turno de ..."; con los héroes en pisos
+distintos se cambia con Tab. Con 2+ héroes se ve el nombre sobre cada uno. **Versión 0.8.0** (paridad con el
+prototipo, con la excepción de partículas y proyectil en vuelo). Para probar: crear un personaje nuevo con hotseat
+(una partida guardada de antes sigue con un héroe), combate con los dos y el cambio automático, Tab, un héroe en otro
+piso, un héroe caído (el otro lo estabiliza), guardar y volver a entrar.
+
 **Cierre de la 0.7** ✏️ (2026-11-04), pendiente de prueba del dueño: arrastrar en la creación de personaje como el
 prototipo (tirada -> característica, característica -> característica las cambia, afuera la quita; con mouse o dedo),
 idioma del contenido en la configuración (Español / English: nombres y descripciones de los JSON; los textos del
@@ -185,7 +193,7 @@ doble). Para probar: cambiar la resolución en ventana y en pantalla completa, y
 ## Para retomar (al cerrar la sesión del 2026-11-04)
 
 **Dónde está todo.** Rama `dev` (por encima de `main`, sin pushear: `git push -u origin dev`). `main`
-sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide las fases. **Versión 0.7.0**
+sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide las fases. **Versión 0.8.0**
 (`Cargo.toml` del workspace y `android/AndroidManifest.xml`; regla e historial en `roadmap/versiones.md`).
 
 **Siguiente, en este orden:**
@@ -194,8 +202,8 @@ sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide 
 2. ~~R5d, armas a distancia~~ ✏️ y ~~arrastrar~~ ✏️ hechos: **0.7.0**, falta la prueba del dueño.
 3. **Idioma**: el del contenido ya se elige (Español / English); falta la estructura de traducción para los textos
    del código (hoy en español, como el prototipo). No bloquea ninguna versión.
-4. Resto de R5 para la **0.8**: hotseat (2 héroes en la misma PC, modo de prueba de la red), y lo que falte de
-   paridad con `python-prototipe`.
+4. ~~Hotseat~~ ✏️ hecho: **0.8.0**, falta la prueba del dueño. Lo siguiente es **R6, la red** (0.9), y el pulido
+   pendiente (partículas, proyectiles, nubes de gas).
 
 **Pendientes conocidos (pulido):** partículas de trampas y conjuros y proyectiles en vuelo (`screens/particles.py`),
 nubes de gas que se expanden (Blob), el indicador de ocupado gira en el original (acá titila: `Sprite` no rota),

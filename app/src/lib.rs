@@ -83,13 +83,40 @@ struct World {
 }
 
 impl World {
-    /// Partida nueva de un personaje (clase, características y nombre).
-    fn new(seed: i64, class: &str, abilities: [i32; 6], name: &str) -> Self {
+    /// Partida nueva de un personaje (clase, características y nombre). `hotseat`: suma un segundo héroe igual
+    /// ("<nombre> 2"), el modo de prueba de la red.
+    fn new(seed: i64, class: &str, abilities: [i32; 6], name: &str, hotseat: bool) -> Self {
         let mut d = Dungeon::new_with(seed, class, abilities);
         if !name.is_empty() {
             d.heroes[0].ch.name = name.to_string();
         }
+        if hotseat {
+            let j = d.add_hero(class, abilities);
+            d.heroes[j].ch.name = format!("{} 2", d.heroes[0].ch.name);
+        }
         Self::from_dungeon(d)
+    }
+
+    /// Hotseat (`AutoSwitch` del prototipo): si el local murió o cayó, la UI pasa al primero en pie; si el piso espera
+    /// la acción de otro héroe, pasa a ese. Con los héroes en pisos distintos se cambia con Tab.
+    fn auto_switch(&mut self) {
+        let d = &mut self.d;
+        let up = |h: &game::hero::Hero| h.is_alive() && !h.is_downed();
+        if !up(d.local()) {
+            if let Some(j) = (0..d.heroes.len()).find(|&j| up(&d.heroes[j])) {
+                d.set_local(j);
+            }
+            return;
+        }
+        if let Some(b) = d.blocking()
+            && b != d.hero
+            && up(&d.heroes[b])
+            && d.heroes[b].action.is_none()
+            && !d.heroes[b].animating
+            && !d.local().animating
+        {
+            d.set_local(b);
+        }
     }
 
     /// Una partida cargada (o recién creada).
@@ -228,7 +255,7 @@ impl App {
             font,
             gpu: None,
             sprites: Vec::new(),
-            world: World::new(new_seed(), CLASSES[0], game::dice::DEFAULT_SCORES, ""),
+            world: World::new(new_seed(), CLASSES[0], game::dice::DEFAULT_SCORES, "", false),
             ui: Ui::new(),
             config,
             title: true,
@@ -606,6 +633,18 @@ impl App {
         let free = self.ui.window.is_none();
         match code {
             KeyCode::KeyR => self.new_world(new_seed()),
+            // hotseat: Tab pasa al siguiente héroe vivo
+            KeyCode::Tab if free && self.config.hotseat => {
+                let d = &mut self.world.d;
+                let alive: Vec<usize> = (0..d.heroes.len()).filter(|&j| d.heroes[j].is_alive()).collect();
+                if let Some(k) = alive.iter().position(|&j| j == d.hero)
+                    && alive.len() > 1
+                {
+                    d.set_local(alive[(k + 1) % alive.len()]);
+                    (self.ui.casting, self.ui.throwing, self.ui.examining) = (None, None, false);
+                    self.pan = [0.0; 2];
+                }
+            }
             // Esc: cierra la ventana abierta, cancela examinar o abre el menú
             KeyCode::Escape if !free => self.ui.window = None,
             KeyCode::Escape if self.ui.examining => self.ui.examining = false,
@@ -657,7 +696,8 @@ impl App {
     fn new_world(&mut self, seed: i64) {
         let c = self.character.clone().unwrap_or_default();
         let class = c["class"].as_str().unwrap_or(CLASSES[0]);
-        self.world = World::new(seed, class, characters::abilities(&c), c["name"].as_str().unwrap_or(""));
+        let name = c["name"].as_str().unwrap_or("");
+        self.world = World::new(seed, class, characters::abilities(&c), name, self.config.hotseat);
         self.saved_depth = self.world.d.depth;
         self.ui = Ui::new();
         self.pan = [0.0; 2];
@@ -767,6 +807,9 @@ impl App {
             }
         }
         w.update(dt);
+        if self.config.hotseat {
+            w.auto_switch();
+        }
         if w.d.depth != self.saved_depth {
             self.saved_depth = w.d.depth;
             self.autosave(); // como el prototipo: al cambiar de piso

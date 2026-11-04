@@ -511,6 +511,22 @@ impl Chars {
                 let x = (ox + p[0] + lk.w as f32 / 2.0 - w / 2.0).floor();
                 font.text(out, &lk.name, x, (oy + p[1]).floor(), [1.0, 1.0, 1.0, 1.0]);
             }
+            // con 2+ héroes, el nombre sobre cada uno: el tuyo amarillo, otros blanco, caídos gris
+            if let ActorId::Hero(i) = a
+                && d.heroes.len() > 1
+            {
+                let h = &d.heroes[i];
+                let color = if h.is_downed() || !h.is_alive() {
+                    [0.53, 0.53, 0.53, 1.0]
+                } else if i == d.hero {
+                    [1.0, 1.0, 0.27, 1.0]
+                } else {
+                    [1.0, 1.0, 1.0, 1.0]
+                };
+                let w = font.width(&h.ch.name);
+                let x = (ox + p[0] + lk.w as f32 / 2.0 - w / 2.0).floor();
+                font.text(out, &h.ch.name, x, (oy + p[1]).floor() - font.height() - 1.0, color);
+            }
         }
         let [ix, iy, _, _] = atlas.rects[self.icons];
         for m in &d.floor().mobs {

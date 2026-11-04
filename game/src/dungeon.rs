@@ -210,6 +210,19 @@ impl Dungeon {
         i
     }
 
+    /// Cambia el héroe que maneja la UI (modo de prueba de 2 héroes, `set_local` del prototipo) y pone su piso en
+    /// contexto. La vista del piso es la unión de sus héroes: alcanza con volver a subir la niebla.
+    pub fn set_local(&mut self, i: usize) {
+        if i == self.hero || i >= self.heroes.len() {
+            return;
+        }
+        self.hero = i;
+        self.depth = self.heroes[i].depth;
+        self.view_changed = true;
+        let name = self.heroes[i].ch.name.clone();
+        self.log(&format!("Turno de {name}"));
+    }
+
     // --- acceso ---
     pub fn floor(&self) -> &Floor {
         &self.floors[&self.depth]
