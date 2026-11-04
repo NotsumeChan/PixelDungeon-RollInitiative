@@ -311,6 +311,20 @@ impl App {
                 self.apply_fullscreen();
             }
             UiAction::Rebind(b) => self.ui.rebinding = Some(b),
+            UiAction::SetRule(key, v) => {
+                let r = &mut self.world.d.rules;
+                match key {
+                    "dot_death_saves" => r.dot_death_saves = v,
+                    "save_half" => r.save_half = v,
+                    _ => {}
+                }
+            }
+            UiAction::SetUiScale(s) => {
+                self.config.set_ui_scale(s);
+                if let Some(gpu) = self.gpu.as_mut() {
+                    gpu.set_ui_scale(s);
+                }
+            }
             UiAction::Play(k) => {
                 self.new_world(new_seed(), k);
                 self.ui.in_title = false;
@@ -505,6 +519,9 @@ impl App {
         let now = Instant::now();
         let dt = (now - self.last).as_secs_f32().min(0.1);
         self.last = now;
+        if let Some(gpu) = &self.gpu {
+            self.config.ui_base = gpu.ui_zoom();
+        }
         if self.title {
             self.frame_title(dt);
             return;
@@ -572,7 +589,9 @@ impl ApplicationHandler for App {
     fn resumed(&mut self, el: &ActiveEventLoop) {
         // Android destruye la superficie al irse al fondo: se recrea ventana y GPU en cada resumed
         let window = Arc::new(el.create_window(Window::default_attributes().with_title(TITLE)).expect("ventana"));
-        self.gpu = Some(pollster::block_on(Gpu::new(window, &self.atlas)));
+        let mut gpu = pollster::block_on(Gpu::new(window, &self.atlas));
+        gpu.set_ui_scale(self.config.ui_scale);
+        self.gpu = Some(gpu);
         self.world.d.view_changed = true; // la textura de niebla es nueva
         self.apply_fullscreen();
     }

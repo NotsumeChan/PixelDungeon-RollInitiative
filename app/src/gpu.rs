@@ -64,6 +64,8 @@ pub struct Gpu {
     fog: wgpu::Texture,
     world: Target,
     ui: Target,
+    /// Escala de la interfaz elegida (1 = el zoom entero que entra; 0,5 = la mitad, mínimo 1).
+    ui_pref: f32,
 }
 
 fn entry(binding: u32, ty: wgpu::BindingType) -> wgpu::BindGroupLayoutEntry {
@@ -276,6 +278,7 @@ impl Gpu {
             fog,
             world,
             ui,
+            ui_pref: 1.0,
         }
     }
 
@@ -314,9 +317,23 @@ impl Gpu {
         Target { w: tw, h: th, scale, offset, view, blit_group }
     }
 
-    /// Zoom entero de la UI (pantalla / resolución virtual): base para los zooms de la cámara.
+    /// Zoom entero que entra en la ventana (pantalla / resolución virtual): base de la cámara y de la escala de la UI.
     pub fn ui_zoom(&self) -> u32 {
-        self.ui.scale
+        ui_zoom(self.config.width, self.config.height)
+    }
+
+    /// Factor de la capa de UI con la escala elegida.
+    fn ui_scale(&self, w: u32, h: u32) -> u32 {
+        ((ui_zoom(w, h) as f32 * self.ui_pref).round() as u32).max(1)
+    }
+
+    /// Escala de la interfaz (configuración): rehace la capa de UI.
+    pub fn set_ui_scale(&mut self, pref: f32) {
+        if pref != self.ui_pref {
+            self.ui_pref = pref;
+            let (w, h) = (self.config.width, self.config.height);
+            self.ui = Self::target(&self.device, &self.blit_layout, &self.nearest, w, h, self.ui_scale(w, h));
+        }
     }
 
     /// Tamaño de la UI en pixeles virtuales.
@@ -353,7 +370,7 @@ impl Gpu {
         self.config.width = w;
         self.config.height = h;
         self.surface.configure(&self.device, &self.config);
-        self.ui = Self::target(&self.device, &self.blit_layout, &self.nearest, w, h, ui_zoom(w, h));
+        self.ui = Self::target(&self.device, &self.blit_layout, &self.nearest, w, h, self.ui_scale(w, h));
         self.world = Self::target(&self.device, &self.blit_layout, &self.nearest, w, h, self.world.scale);
     }
 

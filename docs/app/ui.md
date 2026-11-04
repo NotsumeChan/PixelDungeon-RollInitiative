@@ -46,3 +46,13 @@ principal" (vuelve al título; la partida se pierde hasta que haya guardado).
 
 Acceso rápido: usa la acción principal del ítem; si sólo se puede soltar (las arrojadizas hasta R5d), abre la ventana
 del ítem en vez de soltarlo.
+
+Menús como el prototipo (2026-11-04):
+- Título: Jugar, Mods y Acerca de (dashboard.png 0 / 2 / 1); Mods y Acerca de son pantallas de texto centrado sobre
+  negro (`Window::Page`), click o Esc vuelve.
+- Menú de pausa (WndGame): Nueva partida (si moriste), Configuración, Reglas de la partida, Menú principal | Salir,
+  Volver al juego.
+- Reglas de la partida (`Window::Rules`): `dot_death_saves` y `save_half`, se aplican al momento (la primera opción es
+  la de 5e).
+- Configuración: Idioma (sólo Español; English deshabilitado hasta la traducción), Pantalla completa, FPS y Escala de
+  la interfaz (del zoom que entra hacia abajo, entero: 100% / 75% / 50% en HD); Controles en su propia ventana.

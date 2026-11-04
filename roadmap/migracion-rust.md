@@ -139,6 +139,11 @@ Arreglos tras la prueba del dueño (2026-11-04, 2a tanda): el acceso rápido de 
 (abre su ventana hasta que exista lanzar); pantalla de título (Jugar con elección de clase, Acerca de, configuración)
 y "Menú principal" en el menú de la partida.
 
+Menús como el prototipo (3a tanda): título con Jugar / Mods / Acerca de, menú de pausa con Reglas de la partida y
+Menú principal | Salir, configuración con idioma (sólo español por ahora), FPS, pantalla completa, escala de la
+interfaz y controles aparte; nombres nítidos en los ítems sin sprite. Pendiente que pidió el dueño: Jugar -> lista de
+personajes y creación con dados (necesita el guardado de personajes, R5).
+
 **Siguiente: R5d** (armas a distancia: arrojadizas, bumerán, arco) = **0.7** junto con lo anterior; el idioma de
 R5e queda para después (estructura de traducción).
 

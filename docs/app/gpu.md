@@ -22,3 +22,5 @@ Tres pasadas por frame:
 
 `ui_view()`: dónde empieza la capa de UI en la ventana y su factor, para pasar el mouse / toque a pixeles de la
 UI.
+
+`ui_zoom()` = el zoom entero que entra en la ventana (base de la cámara); `set_ui_scale(pref)` rehace la capa de UI con `max(1, round(zoom * pref))`.

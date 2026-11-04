@@ -107,6 +107,10 @@ pub fn assignable(k: KeyCode) -> bool {
 pub struct Config {
     pub max_fps: u32,
     pub fullscreen: bool,
+    /// Escala de la interfaz respecto del zoom que entra (1 = 100%; `ui_scale` en Local.config, como el prototipo).
+    pub ui_scale: f32,
+    /// El zoom entero que entra en la ventana (lo pone la app cada frame; no se guarda).
+    pub ui_base: u32,
     pub keys: Vec<(Bind, KeyCode)>,
     /// Las líneas del archivo (se conserva lo que Rust no usa).
     lines: Vec<String>,
@@ -119,7 +123,10 @@ fn path() -> PathBuf {
 impl Config {
     pub fn load() -> Self {
         let lines: Vec<String> = std::fs::read_to_string(path()).unwrap_or_default().lines().map(str::to_string).collect();
-        let mut c = Self { max_fps: DEFAULT_FPS, fullscreen: false, keys: Vec::new(), lines };
+        let mut c = Self { max_fps: DEFAULT_FPS, fullscreen: false, ui_scale: 1.0, ui_base: 1, keys: Vec::new(), lines };
+        if let Some(s) = c.get("general", "ui_scale").and_then(|v| v.parse().ok()) {
+            c.ui_scale = s;
+        }
         if let Some(f) = c.get("general", "maxFPS").and_then(|v| v.parse().ok()) {
             c.max_fps = f;
         }
@@ -162,6 +169,12 @@ impl Config {
     pub fn set_fps(&mut self, fps: u32) {
         self.max_fps = fps;
         self.set("general", "maxFPS", &fps.to_string());
+        self.save();
+    }
+
+    pub fn set_ui_scale(&mut self, s: f32) {
+        self.ui_scale = s;
+        self.set("general", "ui_scale", &s.to_string());
         self.save();
     }
 

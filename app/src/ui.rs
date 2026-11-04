@@ -118,6 +118,12 @@ pub enum Window {
     Settings,
     /// Libro de conjuros (F).
     Spells,
+    /// Reglas de la partida (como la configuración de mundo de Don't Starve Together).
+    Rules,
+    /// Controles (desde la configuración).
+    Controls,
+    /// Pantalla de texto del título (Mods, Acerca de): centrada sobre negro; click o Esc vuelve.
+    Page(Vec<(String, [f32; 4])>),
     /// Título: elegir la clase de la partida nueva.
     /// ponytail: hasta la lista de personajes y la creación con dados (R5, con el guardado)
     Classes,
@@ -150,6 +156,8 @@ pub enum UiAction {
     Play(usize),
     /// Partida: volver a la pantalla de título.
     MainMenu,
+    SetRule(&'static str, bool),
+    SetUiScale(f32),
 }
 
 struct Hot {
@@ -293,7 +301,9 @@ impl Ui {
             Some(Window::Item(slot)) => self.draw_item(atlas, font, d, out, w, h, slot),
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             Some(Window::Spells) => self.draw_spells(atlas, font, d, out, w, h),
-            Some(Window::Classes) => self.window = None, // sólo en el título
+            Some(Window::Classes | Window::Page(_)) => self.window = None, // sólo en el título
+            Some(Window::Rules) => self.draw_rules(atlas, font, d, out, w, h),
+            Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
             None => {
                 self.draw_tooltip(atlas, font, out, w, h);
                 let casting = self.casting.and_then(|k| d.local().spell_ids().get(k).cloned());
@@ -780,65 +790,131 @@ impl Ui {
     }
 
     /// WndGame: menú de la partida (botón de menú o Esc). Nueva partida sólo si el héroe murió, como el original.
-    /// ponytail: sin configuración, reglas ni menú principal todavía (R5)
     fn draw_menu(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
-        let mut rows: Vec<(&str, UiAction)> = Vec::new();
+        // WndGame: nueva partida sólo si el héroe murió, como el original
+        let mut rows: Vec<Vec<(&str, UiAction)>> = Vec::new();
         if !d.local().is_alive() {
-            rows.push(("Nueva partida", UiAction::NewGame));
+            rows.push(vec![("Nueva partida", UiAction::NewGame)]);
         }
-        rows.push(("Configuracion", UiAction::Open(Window::Settings)));
-        rows.push(("Menu principal", UiAction::MainMenu));
-        rows.push(("Salir", UiAction::Quit));
-        rows.push(("Volver al juego", UiAction::Close));
+        rows.push(vec![("Configuracion", UiAction::Open(Window::Settings))]);
+        rows.push(vec![("Reglas de la partida", UiAction::Open(Window::Rules))]);
+        rows.push(vec![("Menu principal", UiAction::MainMenu), ("Salir", UiAction::Quit)]);
+        rows.push(vec![("Volver al juego", UiAction::Close)]);
         let mh = rows.len() as f32 * (MENU_BTN_H + MENU_GAP) - MENU_GAP;
         let c = [((w - MENU_W) / 2.0).floor(), ((h - TOOLBAR_H - mh) / 2.0).floor(), MENU_W, mh];
         self.hot([0.0, 0.0, w, h], UiAction::Close, None); // click afuera cierra
         self.hot(c, UiAction::Nothing, None);
         Self::draw_window(atlas, out, c);
-        for (r, (label, act)) in rows.into_iter().enumerate() {
-            let rect = [c[0], c[1] + r as f32 * (MENU_BTN_H + MENU_GAP), MENU_W, MENU_BTN_H];
-            self.draw_button(atlas, font, out, rect, label, Some(act));
+        for (r, row) in rows.into_iter().enumerate() {
+            let n = row.len() as f32;
+            let bw = ((MENU_W - MENU_GAP * (n - 1.0)) / n).floor();
+            for (k, (label, act)) in row.into_iter().enumerate() {
+                let rect = [c[0] + k as f32 * (bw + MENU_GAP), c[1] + r as f32 * (MENU_BTN_H + MENU_GAP), bw, MENU_BTN_H];
+                self.draw_button(atlas, font, out, rect, label, Some(act));
+            }
         }
+    }
+
+    /// Reglas de la partida: se aplican al momento. La primera opción de cada una es la de 5e.
+    /// ponytail: se guardarán con la partida cuando haya guardado; en red las decidirá el host
+    fn draw_rules(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
+        let sw = SETTINGS_W.min(w - 16.0);
+        let r = d.rules;
+        let rows = [
+            ("dot_death_saves", "Caido: el daño por turno (veneno, sangrado, fuego) suma fallos de salvacion", r.dot_death_saves, ["Si (5e)", "No"]),
+            ("save_half", "Salvacion superada contra gas toxico o descarga electrica", r.save_half, ["Mitad (5e)", "Sin efecto"]),
+        ];
+        let wrapped: Vec<Vec<String>> = rows.iter().map(|row| wrap(font, row.1, sw)).collect();
+        let ch = LINE_H + MENU_GAP * 2.0 + wrapped.iter().map(|l| l.len() as f32 * LINE_H + MENU_BTN_H + MENU_GAP * 2.0).sum::<f32>() + MENU_BTN_H;
+        let c = [((w - sw) / 2.0).floor(), ((h - ch) / 2.0).floor(), sw, ch];
+        self.hot([0.0, 0.0, w, h], UiAction::Open(Window::Menu), None);
+        self.hot(c, UiAction::Nothing, None);
+        Self::draw_window(atlas, out, c);
+        let title = "Reglas de la partida";
+        font.text(out, title, c[0] + ((sw - font.width(title)) / 2.0).floor(), c[1], YELLOW);
+        let mut y = c[1] + LINE_H + MENU_GAP * 2.0;
+        for ((key, _, value, labels), lines) in rows.into_iter().zip(wrapped) {
+            for line in lines {
+                font.text(out, &line, c[0], y, WHITE);
+                y += LINE_H;
+            }
+            let bw = ((sw - MENU_GAP) / 2.0).floor();
+            for (k, (label, v)) in labels.into_iter().zip([true, false]).enumerate() {
+                let rect = [c[0] + k as f32 * (bw + MENU_GAP), y, bw, MENU_BTN_H];
+                self.draw_button(atlas, font, out, rect, label, Some(UiAction::SetRule(key, v)));
+                if value == v {
+                    outline(out, atlas, rect, YELLOW);
+                }
+            }
+            y += MENU_BTN_H + MENU_GAP * 2.0;
+        }
+        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], "Volver", Some(UiAction::Open(Window::Menu)));
     }
 
     /// WndSettings: FPS, pantalla completa y controles (toca uno y presiona la tecla nueva). Cada cambio se aplica y
     /// se guarda al momento en Local.config. Volver = al menú.
     #[allow(clippy::too_many_arguments)]
     fn draw_settings(&mut self, atlas: &Atlas, font: &Font, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32) {
+        // WndSettings: idioma, pantalla completa, FPS y escala de la interfaz; los controles en su ventana
         let sw = SETTINGS_W.min(w - 16.0);
-        let ctrl_rows = Bind::ALL.len().div_ceil(3);
         let row_h = LINE_H + MENU_BTN_H + MENU_GAP * 2.0;
-        let ch = 2.0 * row_h + LINE_H + ctrl_rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP + MENU_BTN_H;
+        let ch = 4.0 * row_h + MENU_BTN_H;
         let c = [((w - sw) / 2.0).floor(), ((h - ch) / 2.0).floor(), sw, ch];
         let back = if self.in_title { UiAction::Close } else { UiAction::Open(Window::Menu) };
         self.hot([0.0, 0.0, w, h], back.clone(), None); // click afuera = volver
         self.hot(c, UiAction::Nothing, None);
         Self::draw_window(atlas, out, c);
-        let mut y = c[1];
-        let fps: Vec<(String, bool, UiAction)> = FPS_OPTIONS
-            .iter()
-            .map(|&f| (if f == 0 { "Sin limite".into() } else { f.to_string() }, cfg.max_fps == f, UiAction::SetFps(f)))
-            .collect();
+        // ponytail: sólo español hasta que haya estructura de traducción (los textos están en el código)
+        let lang = vec![("Español".to_string(), true, Some(UiAction::Nothing)), ("English".to_string(), false, None)];
         let full = vec![
-            ("Si".to_string(), cfg.fullscreen, UiAction::SetFullscreen(true)),
-            ("No".to_string(), !cfg.fullscreen, UiAction::SetFullscreen(false)),
+            ("Si".to_string(), cfg.fullscreen, Some(UiAction::SetFullscreen(true))),
+            ("No".to_string(), !cfg.fullscreen, Some(UiAction::SetFullscreen(false))),
         ];
-        for (label, options) in [("FPS", fps), ("Pantalla completa (F11)", full)] {
+        let fps: Vec<(String, bool, Option<UiAction>)> = FPS_OPTIONS
+            .iter()
+            .map(|&f| (if f == 0 { "Sin limite".into() } else { f.to_string() }, cfg.max_fps == f, Some(UiAction::SetFps(f))))
+            .collect();
+        // del zoom que entra hacia abajo (75% y 50% en HD): siempre entero, nítido
+        let z = cfg.ui_base.max(1);
+        let scales: Vec<(String, bool, Option<UiAction>)> = (z.saturating_sub(2).max(1)..=z)
+            .map(|s| {
+                let pref = s as f32 / z as f32;
+                (format!("{}%", (pref * 100.0).round()), (cfg.ui_scale - pref).abs() < 0.01, Some(UiAction::SetUiScale(pref)))
+            })
+            .collect();
+        let mut y = c[1];
+        for (label, options) in
+            [("Idioma", lang), ("Pantalla completa (F11)", full), ("FPS", fps), ("Escala de la interfaz (en partida)", scales)]
+        {
             font.text(out, label, c[0], y, YELLOW);
             y += LINE_H;
             let n = options.len() as f32;
             let bw = ((sw - MENU_GAP * (n - 1.0)) / n).floor();
             for (k, (text, selected, act)) in options.into_iter().enumerate() {
                 let rect = [c[0] + k as f32 * (bw + MENU_GAP), y, bw, MENU_BTN_H];
-                self.draw_button(atlas, font, out, rect, &text, Some(act));
+                self.draw_button(atlas, font, out, rect, &text, act);
                 if selected {
                     outline(out, atlas, rect, YELLOW);
                 }
             }
             y += MENU_BTN_H + MENU_GAP * 2.0;
         }
-        font.text(out, "Controles (toca uno y presiona la tecla)", c[0], y, YELLOW);
-        y += LINE_H;
+        let bw = ((sw - MENU_GAP) / 2.0).floor();
+        self.draw_button(atlas, font, out, [c[0], y, bw, MENU_BTN_H], "Controles", Some(UiAction::Open(Window::Controls)));
+        self.draw_button(atlas, font, out, [c[0] + bw + MENU_GAP, y, bw, MENU_BTN_H], "Volver", Some(back));
+    }
+
+    /// Controles: toca una acción y presiona la tecla nueva (Esc cancela). Se guarda al momento.
+    fn draw_controls(&mut self, atlas: &Atlas, font: &Font, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32) {
+        let sw = SETTINGS_W.min(w - 16.0);
+        let rows = Bind::ALL.len().div_ceil(3);
+        let ch = LINE_H + rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP + MENU_BTN_H;
+        let c = [((w - sw) / 2.0).floor(), ((h - ch) / 2.0).floor(), sw, ch];
+        self.hot([0.0, 0.0, w, h], UiAction::Open(Window::Settings), None);
+        self.hot(c, UiAction::Nothing, None);
+        Self::draw_window(atlas, out, c);
+        font.text(out, "Controles (toca uno y presiona la tecla)", c[0], c[1], YELLOW);
+        let y = c[1] + LINE_H;
         let bw = ((sw - MENU_GAP * 2.0) / 3.0).floor();
         for (k, b) in Bind::ALL.into_iter().enumerate() {
             let rect = [c[0] + (k % 3) as f32 * (bw + MENU_GAP), y + (k / 3) as f32 * (CTRL_H + MENU_GAP), bw, CTRL_H];
@@ -849,8 +925,25 @@ impl Ui {
                 outline(out, atlas, rect, YELLOW);
             }
         }
-        y += ctrl_rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP;
-        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], "Volver", Some(back));
+        let y = y + rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP;
+        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], "Volver", Some(UiAction::Open(Window::Settings)));
+    }
+
+    /// Pantalla de texto (Mods, Acerca de): párrafos centrados sobre negro; click en cualquier lado vuelve.
+    fn draw_page(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, paras: &[(String, [f32; 4])]) {
+        out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
+        let mut lines: Vec<(String, [f32; 4])> = Vec::new();
+        for (text, color) in paras {
+            lines.extend(wrap(font, text, w - 24.0).into_iter().map(|l| (l, *color)));
+            lines.push((String::new(), WHITE));
+        }
+        lines.push(("Esc o click para volver".into(), GREY));
+        let mut y = ((h - lines.len() as f32 * 10.0) / 2.0).floor();
+        for (line, color) in lines {
+            font.text(out, &line, ((w - font.width(&line)) / 2.0).floor(), y, color);
+            y += 10.0;
+        }
+        self.hot([0.0, 0.0, w, h], UiAction::Close, None);
     }
 
     /// Pantalla de título (TitleScene.java): arcos de fondo que se desplazan (el de adelante al doble), el banner con
@@ -885,13 +978,19 @@ impl Ui {
         }
         let iy = ((h + layout_h) / 2.0).floor() - item;
         for (icon, label, x, act) in [
-            (0u32, "Jugar", (w / 2.0).floor() - item, UiAction::Open(Window::Classes)),
-            (1, "Acerca de", (w / 2.0).floor(), UiAction::Open(Window::Info {
-                icon: None,
-                title: format!("PixelDungeon-RollInitiative v{}", game::VERSION),
-                text: "Roguelike basado en Pixel Dungeon de Watabou, con las reglas de D&D 5e y multijugador cooperativo.\n\nGPL v3. Arte y sonido del original.".into(),
-                hp: None,
-            })),
+            // Rankings y Badges del original se reemplazaron por Mods
+            (0u32, "Jugar", (w / 2.0).floor() - item * 1.5, UiAction::Open(Window::Classes)),
+            (2, "Mods", (w / 2.0).floor() - item / 2.0, UiAction::Open(Window::Page(vec![
+                ("Mods".into(), YELLOW),
+                ("No hay mods instalados. El sistema de mods todavia no esta disponible.".into(), WHITE),
+                ("Los mods vienen de fuentes externas: ten cuidado de donde los descargas y revisalos antes de instalarlos.".into(), rgba(190, 190, 190, 255)),
+                ("Los mods que traen codigo pueden cambiar el juego de forma considerable y hacer cualquier cosa en tu equipo: instalalos solo si confias en su origen.".into(), rgba(255, 120, 80, 255)),
+            ]))),
+            (1, "Acerca de", (w / 2.0).floor() + item / 2.0, UiAction::Open(Window::Page(vec![
+                (format!("PixelDungeon-RollInitiative v{}", game::VERSION), YELLOW),
+                ("Roguelike basado en Pixel Dungeon de Watabou (GPL v3), con las reglas de D&D 5e y multijugador cooperativo.".into(), WHITE),
+                ("Arte y sonido del original. Todo el proyecto se distribuye como GPL v3.".into(), rgba(190, 190, 190, 255)),
+            ]))),
         ] {
             out.push(piece(atlas, DASHBOARD, [icon * 32, 0, 32, 32], [x + 8.0, iy], [32.0, 32.0], WHITE));
             font.text(out, label, x + ((item - font.width(label)) / 2.0).floor(), iy + 34.0, WHITE);
@@ -904,6 +1003,8 @@ impl Ui {
         font.text(out, &v, w - font.width(&v) - 1.0, h - font.height() - 1.0, GREY);
         match self.window.clone() {
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
+            Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
+            Some(Window::Page(paras)) => self.draw_page(atlas, font, out, w, h, &paras),
             Some(Window::Info { icon, title, text, hp }) => self.draw_info(atlas, font, chars, d, out, w, h, icon, &title, &text, hp),
             Some(Window::Classes) => {
                 let rows = classes.len() as f32 + 1.0;

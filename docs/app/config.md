@@ -9,3 +9,5 @@ donde se corre; en Android, en la carpeta de datos de la app (`DIR`, lo pone `an
   mueven; Esc, R, C y F11 son fijas. `rebind` intercambia si la tecla ya era de otra acción.
 - Cada cambio se guarda al momento; si no se puede escribir, sigue en memoria (aviso en el log).
 - Falta el idioma: los textos del código están en español y falta la estructura para traducirlos.
+
+`ui_scale` (escala de la interfaz, como el prototipo): la app la pasa a `Gpu::set_ui_scale`; `ui_base` es el zoom que entra, para armar las opciones.
