@@ -19,6 +19,7 @@ cargo run -q -p game --example level -- <seed> <piso>   # volcado ASCII de un pi
 - `game/` lógica pura: **nunca** depende de wgpu, winit ni nada de render. Corre headless (host, herramientas).
 - `app/` ventana (winit), render (wgpu), UI, pantallas, red. Lee el estado de `game`, nunca al revés.
   `gpu.rs` (dos pasadas: sprites -> textura virtual -> pantalla), `atlas.rs`, `font.rs`, shaders `.wgsl`.
+  `net.rs` red LAN (std, hilos y canales): UDP 47810 para encontrar partidas, TCP 47811 para jugar.
 - `android/` manifiesto y `build.sh` (sin Gradle). `.github/workflows/build.yml` CI: Linux, Windows, APK.
 - `data/` contenido en JSON · `Assets/` del original (GPL v3) · `roadmap/` plan y decisiones · `docs/` un `.md` por
   archivo de código, misma ruta (`docs/app/gpu.md` <-> `app/src/gpu.rs`).
@@ -37,7 +38,8 @@ cargo run -q -p game --example level -- <seed> <piso>   # volcado ASCII de un pi
 - Arte: sólo el del original o hecho por personas, anotado en `docs/assets.md`. Nunca generar sprites: sin sprite,
   se dibuja el nombre.
 - Audio al final: no agregarlo hasta que se pida.
-- Sin tests de juego: el dueño prueba a mano. Tests automáticos sólo de red. No ejecutar el juego, ni simulaciones,
+- Sin tests de juego: el dueño prueba a mano. Tests automáticos sólo de red (`app/src/net.rs`:
+  `cargo test -p app --lib net`). No ejecutar el juego, ni simulaciones,
   bots o comparaciones de partidas (aunque sean descartables): sólo compilar (escritorio y `cargo ndk ... check`).
 - Trabajo diario en la rama `dev`; `merge: dev -> main` al cerrar cada fase, cuando el dueño la validó. El dueño pushea.
 - Al cerrar lo que cambie la versión, subirla en `Cargo.toml` y `android/AndroidManifest.xml` (regla en

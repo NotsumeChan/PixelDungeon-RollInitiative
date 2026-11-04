@@ -219,42 +219,54 @@ Rust ignoraba) es una opción de la configuración en escritorio: 640x480 / 1280
 El botón de configuración de arriba a la izquierda del título pasó al dashboard ("Opciones", con el mismo ícono al
 doble). Para probar: cambiar la resolución en ventana y en pantalla completa, y el título en vertical (4 botones).
 
-## Para retomar (al cerrar la sesión del 2026-11-04)
+## Para retomar (al cerrar la segunda sesión del 2026-11-04)
 
-**Dónde está todo.** Rama `dev` (por encima de `main`, sin pushear: `git push -u origin dev`). `main`
+**Dónde está todo.** Rama `dev` (26 commits por encima de `main`, sin pushear: `git push -u origin dev`). `main`
 sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide las fases. **Versión 0.8.0**
-(`Cargo.toml` del workspace y `android/AndroidManifest.xml`; regla e historial en `roadmap/versiones.md`).
+(`Cargo.toml` del workspace y `android/AndroidManifest.xml`; regla e historial en `roadmap/versiones.md`; la 0.7 y la
+0.8 se marcaron con una excepción: faltan partículas y proyectil en vuelo). El APK de la última tanda está instalado
+en el teléfono del dueño y el binario de escritorio compilado (`cargo run --release`).
+
+**Hecho en esta sesión** (todo ✏️ escrito y compilado, falta la prueba del dueño salvo lo que dice "probado"):
+creación de personaje con dados (con arrastrar y teclado en pantalla en Android), resolución de la ventana en la
+configuración, Opciones en el dashboard, armas a distancia (R5d), idioma del contenido, `[dev] dice_log`, hotseat,
+y la red LAN (R6): CREAR LAN con sala de espera / UNIRSE, host autoritativo, efectos y dados en el cliente, lista de
+quién falta elegir, avisos privados del log, Atrás de Android = Esc, Salir que cierra el proceso en Android, margen a
+los costados en Android apaisado, ventanas que entran en vertical, mostrar FPS como opción. El dueño probó la red
+con la PC y el teléfono: la partida aparece y se puede entrar (lo reportado se arregló en las dos tandas de arreglos
+de "Estado R6").
 
 **Siguiente, en este orden:**
-1. ~~Creación de personaje con dados~~ ✏️ hecha (0.5.0), falta la prueba del dueño. La 0.6 del prototipo pide además
-   arrastrar (ítems en la mochila; tiradas en la creación).
-2. ~~R5d, armas a distancia~~ ✏️ y ~~arrastrar~~ ✏️ hechos: **0.7.0**, falta la prueba del dueño.
-3. **Idioma**: el del contenido ya se elige (Español / English); falta la estructura de traducción para los textos
-   del código (hoy en español, como el prototipo). No bloquea ninguna versión.
-4. ~~Hotseat~~ ✏️ hecho: **0.8.0**, falta la prueba del dueño.
-5. **R6** ✏️ primera versión jugable (ver "Estado R6"); la versión pasa a 0.9 cuando el dueño la valide con PC +
-   teléfono y esté el personaje portátil. Después, el pulido (partículas, proyectiles, nubes de gas).
+1. **Que el dueño pruebe la última tanda** (PC + teléfono, vertical y apaisado): sala de espera, lista de quién
+   falta, efectos y dados en el teléfono, teclado en pantalla, botón del rasgo, Salir y volver a abrir en Android,
+   que no aparezcan copias de personajes. Lo que falle, primero.
+2. **R6, personaje portátil** (paso 5 de `roadmap/fase5-red.md`): al unirse, el cliente manda su personaje con nivel,
+   XP y equipo (hoy entra con nivel 1 y el equipo inicial) y al irse el host le devuelve el estado y el cliente lo
+   guarda. Con eso y la prueba del dueño, **0.9**.
+3. **Chat de texto** en la partida LAN (pedido del dueño; paso 8 de `fase5-red.md`).
+4. Resto de R6: aplicar el estado sin rearmar la partida (el cliente regenera los pisos en cada estado: puede trabar
+   en el teléfono), el teléfono como host (MulticastLock para recibir los "discover"), escribir la IP a mano.
+5. **Idioma de los textos del código** (hoy en español, como el prototipo; el contenido ya se elige es / en).
+6. Pulido: partículas y proyectiles en vuelo, nubes de gas.
 
 **Pendientes conocidos (pulido):** partículas de trampas y conjuros y proyectiles en vuelo (`screens/particles.py`),
 nubes de gas que se expanden (Blob), el indicador de ocupado gira en el original (acá titila: `Sprite` no rota),
 mimic, habilidades especiales de los mobs (Swarm, Skeleton, Thief), FLEEING, descansos (hoy se recupera todo al
-llegar a un piso nuevo).
-
-**Lo que reportó el dueño en la sesión del 2026-11-04 (ya arreglado, falta que lo confirme):** gnoll que cruzaba
-paredes (era el sprite: ahora sigue cada paso), iniciativa al matar de un golpe (atacar inicia el combate con
-sorpresa), tope de FPS y controles configurables, mochila menos brillante, acceso rápido que soltaba el ítem,
-pantalla de título y menús como el prototipo, nombres de ítems sin sprite ilegibles. Pidió además la lista de
-personajes (hecha) y la creación con dados (punto 1).
+llegar a un piso nuevo). En vertical, el dueño dijo que "cuesta interactuar": se arregló lo que se salía de la
+pantalla; si sigue, pedirle qué pantalla.
 
 **Cómo se trabaja (acordado con el dueño):** el dueño prueba el juego a mano; no correr simulaciones, bots ni
-comparaciones de partidas, sólo compilar (`cargo clippy --workspace` y `cargo ndk -t arm64-v8a check -p app --lib`).
-Commits en `dev`, cortos, a nombre del dueño, sin coautoría, con `#R<n>`; el dueño pushea. Subir la versión al cerrar
-lo que la cambie. `Local.config` cambia cuando el dueño prueba opciones: no commitearlo. Lo que el dueño tiene que
-revisar queda anotado en el "Estado" de cada paso.
+comparaciones de partidas, sólo compilar (`cargo clippy --workspace --all-targets` y
+`cargo ndk -t arm64-v8a check -p app --lib`) y los tests de red (`cargo test -p app --lib net`, los únicos
+automáticos; usan los puertos del juego). Commits en `dev`, cortos, a nombre del dueño, sin coautoría, con `#R<n>`;
+el dueño pushea. Subir la versión al cerrar lo que la cambie. `Local.config` cambia cuando el dueño prueba opciones:
+no commitearlo. Lo que el dueño tiene que revisar queda anotado en el "Estado" de cada paso.
 
-**Pendiente del dueño** (actualizado al cerrar la sesión del 2026-11-04):
+**Pendiente del dueño** (actualizado al cerrar la segunda sesión del 2026-11-04):
 - `git push -u origin dev`, probar y, cuando cierre cada fase, `merge: dev -> main`.
-- Probar R2 a R5 en la PC (`cargo run --release`) y en el teléfono (`android/build.sh` y
+- Red LAN: con ufw activo en la PC, abrir los puertos (`sudo ufw allow 47810/udp` y `sudo ufw allow 47811/tcp`).
+  La partida se crea en la PC (CREAR LAN) y el teléfono entra con UNIRSE, en la misma Wi-Fi.
+- Probar en la PC (`cargo run --release`) y en el teléfono (`android/build.sh` y
   `adb install -r target/android/pdri.apk`; si adb se corta: otro cable/puerto o `adb pair` / `adb connect`). Qué
   mirar: el "Estado" de cada paso, arriba.
 - Respaldar `~/.pddnd-signing/` (sin la clave no se pueden publicar actualizaciones del APK) y, si se quiere firmar
