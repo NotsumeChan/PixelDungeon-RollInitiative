@@ -24,3 +24,6 @@ R3: **jugar un piso** con el héroe (`World`: la partida `game::dungeon::Dungeon
   van encima. FPS bajo el avatar (se apaga con la configuración, R5).
 - Cámara: centrada en el sprite del héroe; arrastrar la desplaza, al caminar vuelve. Zoom con la rueda o pellizcando:
   factor entero de la UI -2 a +2 (siempre nítido).
+
+Tope de FPS (`config.max_fps`): `about_to_wait` espera con `ControlFlow::WaitUntil` hasta el próximo frame; sin tope,
+`Poll` y se dibuja sin parar. Las teclas de juego salen de `Config` (configurables); F11 = pantalla completa.

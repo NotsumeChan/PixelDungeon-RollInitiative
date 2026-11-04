@@ -1,0 +1,11 @@
+# app/src/config.rs
+
+`core/Config.py`: `Local.config`, el mismo INI del prototipo. Rust lee y guarda sólo sus claves y conserva el resto del
+archivo: `[general] maxFPS` (30 / 60 / 120 / 0 = sin límite; sin archivo, 60) y `fullscreen`, y la sección `[keys]`
+(una por acción, con el nombre de la tecla en winit: `up = KeyW`). En escritorio el archivo está en la carpeta desde
+donde se corre; en Android, en la carpeta de datos de la app (`DIR`, lo pone `android_main`).
+
+- `Bind`: acciones con tecla configurable (moverse, esperar, buscar, mochila, accesos rápidos). Las flechas siempre
+  mueven; Esc, R, C y F11 son fijas. `rebind` intercambia si la tecla ya era de otra acción.
+- Cada cambio se guarda al momento; si no se puede escribir, sigue en memoria (aviso en el log).
+- Falta el idioma: los textos del código están en español y falta la estructura para traducirlos.

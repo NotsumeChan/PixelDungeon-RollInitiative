@@ -32,3 +32,7 @@ R5a:
 - Ícono de hambre (buffs.png) en el panel de estado.
 
 R5b: íconos de los estados del héroe en el panel (con su nombre de tooltip); "Estados:" en la ficha y al examinar un mob.
+
+Configuración (WndSettings, desde el menú): FPS, pantalla completa (F11) y controles (se toca la acción y se
+presiona la tecla nueva; Esc cancela). La mochila y la ventana del ítem tienen el marco más tenue (`BAG_TINT`) y las
+ranuras más oscuras (pedido del dueño: estaban muy blancas).

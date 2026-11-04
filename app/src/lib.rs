@@ -1,6 +1,7 @@
 //! Ventana (winit), bucle del juego y render (wgpu). Lee el estado de `game`, nunca al revés.
 //! R3: el héroe juega un piso con turnos, mobs y combate 5e. R4: personajes animados, dados y efectos.
 mod atlas;
+mod config;
 mod dice_fx;
 mod font;
 mod gpu;
@@ -9,7 +10,9 @@ mod sprites;
 mod ui;
 
 use std::sync::Arc;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use config::{Bind, Config};
 
 use game::dungeon::Dungeon;
 use game::geom::{HEIGHT, LENGTH, WIDTH};
@@ -138,6 +141,7 @@ struct App {
     sprites: Vec<Sprite>,
     world: World,
     ui: Ui,
+    config: Config,
     quit: bool,
     input: Input,
     pan: [f32; 2],      // desplazamiento de la cámara al arrastrar (pixeles del mundo)
@@ -166,6 +170,7 @@ impl App {
             sprites: Vec::new(),
             world: World::new(new_seed(), 0),
             ui: Ui::new(),
+            config: Config::load(),
             quit: false,
             input: Input::default(),
             pan: [0.0; 2],
@@ -276,6 +281,12 @@ impl App {
             UiAction::Examine => self.ui.examining = !self.ui.examining,
             UiAction::NewGame => self.new_world(new_seed(), self.world.class),
             UiAction::Quit => self.quit = true,
+            UiAction::SetFps(f) => self.config.set_fps(f),
+            UiAction::SetFullscreen(on) => {
+                self.config.set_fullscreen(on);
+                self.apply_fullscreen();
+            }
+            UiAction::Rebind(b) => self.ui.rebinding = Some(b),
             UiAction::SetQuick(q, id) => {
                 let me = self.world.d.hero;
                 self.world.d.heroes[me].quickslots[q] = Some(id);
@@ -354,11 +365,24 @@ impl App {
     }
 
     fn key(&mut self, code: KeyCode, down: bool) {
-        let dir = match code {
-            KeyCode::KeyW | KeyCode::ArrowUp => Some(0),
-            KeyCode::KeyS | KeyCode::ArrowDown => Some(1),
-            KeyCode::KeyA | KeyCode::ArrowLeft => Some(2),
-            KeyCode::KeyD | KeyCode::ArrowRight => Some(3),
+        // configuración: la próxima tecla va a la acción elegida (Esc cancela)
+        if let Some(b) = self.ui.rebinding {
+            if down {
+                if code != KeyCode::Escape && config::assignable(code) {
+                    self.config.rebind(b, code);
+                }
+                self.ui.rebinding = None;
+                self.input.held = [false; 4];
+            }
+            return;
+        }
+        let bind = self.config.bind_of(code);
+        // las flechas siempre mueven; las otras teclas de movimiento son configurables
+        let dir = match (code, bind) {
+            (KeyCode::ArrowUp, _) | (_, Some(Bind::Up)) => Some(0),
+            (KeyCode::ArrowDown, _) | (_, Some(Bind::Down)) => Some(1),
+            (KeyCode::ArrowLeft, _) | (_, Some(Bind::Left)) => Some(2),
+            (KeyCode::ArrowRight, _) | (_, Some(Bind::Right)) => Some(3),
             _ => None,
         };
         if let Some(d) = dir {
@@ -376,13 +400,26 @@ impl App {
             KeyCode::Escape if !free => self.ui.window = None,
             KeyCode::Escape if self.ui.examining => self.ui.examining = false,
             KeyCode::Escape => self.ui.window = Some(UiWindow::Menu),
-            KeyCode::Space if free => self.ui_action(UiAction::Act(Action::Rest)),
-            KeyCode::KeyQ if free => self.ui_action(UiAction::Act(Action::Search)),
-            KeyCode::KeyI if free => self.ui.window = Some(UiWindow::Bag(BagMode::Browse)),
-            KeyCode::KeyI => self.ui.window = None,
-            KeyCode::Digit1 if free => self.ui_action(UiAction::UseQuick(0)),
-            KeyCode::Digit2 if free => self.ui_action(UiAction::UseQuick(1)),
-            _ => {}
+            KeyCode::F11 => self.ui_action(UiAction::SetFullscreen(!self.config.fullscreen)),
+            _ => match bind {
+                Some(Bind::Wait) if free => self.ui_action(UiAction::Act(Action::Rest)),
+                Some(Bind::Search) if free => self.ui_action(UiAction::Act(Action::Search)),
+                Some(Bind::Bag) if free => self.ui.window = Some(UiWindow::Bag(BagMode::Browse)),
+                Some(Bind::Bag) => self.ui.window = None,
+                Some(Bind::Quick1) if free => self.ui_action(UiAction::UseQuick(0)),
+                Some(Bind::Quick2) if free => self.ui_action(UiAction::UseQuick(1)),
+                _ => {}
+            },
+        }
+    }
+
+    /// Pantalla completa sin bordes (en Android la ventana ya ocupa todo).
+    fn apply_fullscreen(&self) {
+        if cfg!(target_os = "android") {
+            return;
+        }
+        if let Some(gpu) = &self.gpu {
+            gpu.window.set_fullscreen(self.config.fullscreen.then_some(winit::window::Fullscreen::Borderless(None)));
         }
     }
 
@@ -446,7 +483,7 @@ impl App {
         // --- UI: log, panel de estado, carrusel, barra de herramientas, ventanas, tooltips | dados ---
         let (uw, uh) = gpu.ui_size();
         let (uw, uh) = (uw as f32, uh as f32);
-        self.ui.draw(&self.atlas, &self.font, &w.chars, &w.d, s, uw, uh, dt, self.fps);
+        self.ui.draw(&self.atlas, &self.font, &w.chars, &w.d, &self.config, s, uw, uh, dt, self.fps);
         self.world.dice.draw(&self.atlas, &self.font, &mut self.sprites, uw, uh);
         let ui_end = self.sprites.len() as u32;
 
@@ -461,6 +498,7 @@ impl ApplicationHandler for App {
         let window = Arc::new(el.create_window(Window::default_attributes().with_title(TITLE)).expect("ventana"));
         self.gpu = Some(pollster::block_on(Gpu::new(window, &self.atlas)));
         self.world.d.view_changed = true; // la textura de niebla es nueva
+        self.apply_fullscreen();
     }
 
     fn suspended(&mut self, _: &ActiveEventLoop) {
@@ -516,8 +554,15 @@ impl ApplicationHandler for App {
             el.exit();
             return;
         }
-        if let Some(gpu) = &self.gpu {
-            gpu.window.request_redraw(); // sin tope: se dibuja tan rápido como presente la superficie
+        let Some(gpu) = &self.gpu else { return };
+        // tope de FPS (configuración): se espera hasta el próximo frame; 0 = tan rápido como presente la superficie
+        let cap = self.config.max_fps;
+        let next = self.last + Duration::from_secs_f64(1.0 / cap.max(1) as f64);
+        if cap == 0 || Instant::now() >= next {
+            el.set_control_flow(ControlFlow::Poll);
+            gpu.window.request_redraw();
+        } else {
+            el.set_control_flow(ControlFlow::WaitUntil(next));
         }
     }
 }
@@ -532,5 +577,8 @@ pub fn run(el: EventLoop<()>) {
 fn android_main(app: winit::platform::android::activity::AndroidApp) {
     use winit::platform::android::EventLoopBuilderExtAndroid;
     android_logger::init_once(android_logger::Config::default().with_max_level(log::LevelFilter::Info));
+    if let Some(dir) = app.internal_data_path() {
+        let _ = config::DIR.set(dir); // Local.config en la carpeta de datos de la app
+    }
     run(EventLoop::builder().with_android_app(app).build().expect("bucle de eventos"));
 }

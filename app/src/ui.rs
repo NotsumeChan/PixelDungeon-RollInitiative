@@ -15,6 +15,7 @@ use game::terrain;
 use crate::atlas::Atlas;
 use crate::font::Font;
 use crate::gpu::Sprite;
+use crate::config::{key_label, Bind, Config, FPS_OPTIONS};
 use crate::sprites::Chars;
 use crate::{BUFFS, CHROME, EXP_BAR, HP_BAR, ICONS, ITEMS, STATUS, TILES, TOOLBAR, WATER};
 
@@ -75,7 +76,12 @@ const TIP_BG: [f32; 4] = rgba(0, 0, 0, 200);
 const PROMPT_BG: [f32; 4] = rgba(0, 0, 0, 170);
 const BUTTON_OFF: [f32; 4] = rgba(110, 110, 110, 0xFF);
 const STATES: [f32; 4] = rgba(0xFF, 0x88, 0x88, 0xFF);
-const SLOT_BG: [f32; 4] = rgba(0x53, 0x56, 0x4D, 0x99);
+const SLOT_BG: [f32; 4] = rgba(0x3A, 0x3C, 0x36, 0xD8);
+/// La mochila y la ventana del ítem, menos brillantes que el resto (pedido del dueño): multiplica el marco.
+const BAG_TINT: [f32; 4] = [0.72, 0.72, 0.72, 1.0];
+/// WndSettings.
+const SETTINGS_W: f32 = 200.0;
+const CTRL_H: f32 = 14.0;
 const LEVEL_UP: [f32; 4] = rgba(80, 255, 80, 0xFF);
 const LEVEL_DOWN: [f32; 4] = rgba(255, 80, 80, 0xFF);
 
@@ -107,6 +113,8 @@ pub enum Window {
     Bag(BagMode),
     /// WndItem: un ítem del héroe con sus acciones.
     Item(Slot),
+    /// WndSettings: FPS, pantalla completa y controles.
+    Settings,
 }
 
 /// Lo que hace un click en la UI; lo aplica la app.
@@ -126,6 +134,10 @@ pub enum UiAction {
     SetQuick(usize, String),
     /// Un verbo de la ventana del ítem (leer con objetivo primero pide el objetivo).
     Verb(Slot, Verb),
+    SetFps(u32),
+    SetFullscreen(bool),
+    /// Esperar la próxima tecla para esa acción.
+    Rebind(Bind),
 }
 
 struct Hot {
@@ -191,6 +203,8 @@ pub struct Ui {
     pub examining: bool,
     /// Mouse en la capa de UI (tooltips); None en táctil.
     pub mouse: Option<[f32; 2]>,
+    /// Esperando la tecla nueva para esta acción (configuración).
+    pub rebinding: Option<Bind>,
     hot: Vec<Hot>,
     car_cur: Option<ActorId>,
     car_off: f32,
@@ -199,7 +213,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, mouse: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, mouse: None, rebinding: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// La acción de la zona de más arriba bajo `p` (pixeles de la UI), o None si el click es para el mapa.
@@ -248,7 +262,7 @@ impl Ui {
 
     /// Toda la UI, en la capa de UI (w x h pixeles virtuales).
     #[allow(clippy::too_many_arguments)]
-    pub fn draw(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, fps: u32) {
+    pub fn draw(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, fps: u32) {
         self.t += dt;
         self.hot.clear();
         self.draw_log(font, d, out, w, h);
@@ -261,6 +275,7 @@ impl Ui {
             Some(Window::Menu) => self.draw_menu(atlas, font, d, out, w, h),
             Some(Window::Bag(mode)) => self.draw_bag(atlas, font, d, out, w, h, &mode),
             Some(Window::Item(slot)) => self.draw_item(atlas, font, d, out, w, h, slot),
+            Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             None => {
                 self.draw_tooltip(atlas, font, out, w, h);
                 if self.examining {
@@ -477,7 +492,7 @@ impl Ui {
         let ch = BAG_TITLE_H + SLOT_SIZE * rows as f32 + SLOT_MARGIN * (rows - 1) as f32 + BAG_GAP;
         let c = [((w - cw) / 2.0).floor(), ((h - TOOLBAR_H - ch) / 2.0).floor(), cw, ch];
         self.hot([0.0, 0.0, w, h], UiAction::Close, None); // click afuera = cerrar
-        Self::draw_window(atlas, out, c);
+        Self::draw_window_tinted(atlas, out, c, BAG_TINT);
         self.hot(c, UiAction::Nothing, None);
         let title = match mode {
             BagMode::Browse => "Mochila".to_string(),
@@ -545,7 +560,7 @@ impl Ui {
         let ch = head + 4.0 + info.len() as f32 * 9.0 + 4.0 + btn_h;
         let c = [((w - ITEM_WND_W) / 2.0).floor(), ((h - TOOLBAR_H - ch) / 2.0).floor(), ITEM_WND_W, ch];
         self.hot([0.0, 0.0, w, h], UiAction::Close, None);
-        Self::draw_window(atlas, out, c);
+        Self::draw_window_tinted(atlas, out, c, BAG_TINT);
         self.hot(c, UiAction::Nothing, None);
         item_icon(out, atlas, font, &d.item_image(item), [c[0], c[1]], 1.0);
         for (k, line) in name.iter().enumerate() {
@@ -563,8 +578,12 @@ impl Ui {
     }
 
     fn draw_window(atlas: &Atlas, out: &mut Vec<Sprite>, content: [f32; 4]) {
+        Self::draw_window_tinted(atlas, out, content, WHITE);
+    }
+
+    fn draw_window_tinted(atlas: &Atlas, out: &mut Vec<Sprite>, content: [f32; 4], tint: [f32; 4]) {
         let (region, m) = CHROME_WINDOW;
-        nine(out, atlas, region, m, [content[0] - m, content[1] - m, content[2] + 2.0 * m, content[3] + 2.0 * m], WHITE);
+        nine(out, atlas, region, m, [content[0] - m, content[1] - m, content[2] + 2.0 * m, content[3] + 2.0 * m], tint);
     }
 
     fn draw_button(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, rect: [f32; 4], label: &str, act: Option<UiAction>) {
@@ -667,6 +686,7 @@ impl Ui {
         if !d.local().is_alive() {
             rows.push(("Nueva partida", UiAction::NewGame));
         }
+        rows.push(("Configuracion", UiAction::Open(Window::Settings)));
         rows.push(("Salir", UiAction::Quit));
         rows.push(("Volver al juego", UiAction::Close));
         let mh = rows.len() as f32 * (MENU_BTN_H + MENU_GAP) - MENU_GAP;
@@ -678,6 +698,57 @@ impl Ui {
             let rect = [c[0], c[1] + r as f32 * (MENU_BTN_H + MENU_GAP), MENU_W, MENU_BTN_H];
             self.draw_button(atlas, font, out, rect, label, Some(act));
         }
+    }
+
+    /// WndSettings: FPS, pantalla completa y controles (toca uno y presiona la tecla nueva). Cada cambio se aplica y
+    /// se guarda al momento en Local.config. Volver = al menú.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_settings(&mut self, atlas: &Atlas, font: &Font, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32) {
+        let sw = SETTINGS_W.min(w - 16.0);
+        let ctrl_rows = Bind::ALL.len().div_ceil(3);
+        let row_h = LINE_H + MENU_BTN_H + MENU_GAP * 2.0;
+        let ch = 2.0 * row_h + LINE_H + ctrl_rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP + MENU_BTN_H;
+        let c = [((w - sw) / 2.0).floor(), ((h - ch) / 2.0).floor(), sw, ch];
+        self.hot([0.0, 0.0, w, h], UiAction::Open(Window::Menu), None); // click afuera = volver
+        self.hot(c, UiAction::Nothing, None);
+        Self::draw_window(atlas, out, c);
+        let mut y = c[1];
+        let fps: Vec<(String, bool, UiAction)> = FPS_OPTIONS
+            .iter()
+            .map(|&f| (if f == 0 { "Sin limite".into() } else { f.to_string() }, cfg.max_fps == f, UiAction::SetFps(f)))
+            .collect();
+        let full = vec![
+            ("Si".to_string(), cfg.fullscreen, UiAction::SetFullscreen(true)),
+            ("No".to_string(), !cfg.fullscreen, UiAction::SetFullscreen(false)),
+        ];
+        for (label, options) in [("FPS", fps), ("Pantalla completa (F11)", full)] {
+            font.text(out, label, c[0], y, YELLOW);
+            y += LINE_H;
+            let n = options.len() as f32;
+            let bw = ((sw - MENU_GAP * (n - 1.0)) / n).floor();
+            for (k, (text, selected, act)) in options.into_iter().enumerate() {
+                let rect = [c[0] + k as f32 * (bw + MENU_GAP), y, bw, MENU_BTN_H];
+                self.draw_button(atlas, font, out, rect, &text, Some(act));
+                if selected {
+                    outline(out, atlas, rect, YELLOW);
+                }
+            }
+            y += MENU_BTN_H + MENU_GAP * 2.0;
+        }
+        font.text(out, "Controles (toca uno y presiona la tecla)", c[0], y, YELLOW);
+        y += LINE_H;
+        let bw = ((sw - MENU_GAP * 2.0) / 3.0).floor();
+        for (k, b) in Bind::ALL.into_iter().enumerate() {
+            let rect = [c[0] + (k % 3) as f32 * (bw + MENU_GAP), y + (k / 3) as f32 * (CTRL_H + MENU_GAP), bw, CTRL_H];
+            let waiting = self.rebinding == Some(b);
+            let text = if waiting { format!("{} ...", b.label()) } else { format!("{} {}", b.label(), key_label(cfg.key(b))) };
+            self.draw_button(atlas, font, out, rect, &text, Some(UiAction::Rebind(b)));
+            if waiting {
+                outline(out, atlas, rect, YELLOW);
+            }
+        }
+        y += ctrl_rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP;
+        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], "Volver", Some(UiAction::Open(Window::Menu)));
     }
 
     /// Texto de la zona bajo el mouse (la de más arriba), encima del mouse sin salirse de la pantalla.
@@ -724,4 +795,12 @@ pub fn draw_heaps(out: &mut Vec<Sprite>, atlas: &Atlas, font: &Font, d: &Dungeon
             item_icon(out, atlas, font, &d.heap_image(heap), at, 1.0);
         }
     }
+}
+
+/// Borde de 1 pixel (opción elegida, tecla que se está cambiando).
+fn outline(out: &mut Vec<Sprite>, atlas: &Atlas, r: [f32; 4], color: [f32; 4]) {
+    out.push(atlas.rect([r[0], r[1]], [r[2], 1.0], color));
+    out.push(atlas.rect([r[0], r[1] + r[3] - 1.0], [r[2], 1.0], color));
+    out.push(atlas.rect([r[0], r[1]], [1.0, r[3]], color));
+    out.push(atlas.rect([r[0] + r[2] - 1.0, r[1]], [1.0, r[3]], color));
 }

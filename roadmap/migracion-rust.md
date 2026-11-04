@@ -121,6 +121,13 @@ las 8 trampas con sus salvaciones (`game/traps.rs`), reglas de la partida (`dot_
 ahora fijas), íconos de estados en el panel. Para probar: pisar trampas (ocultas y vistas), paralizarse, apagar el
 fuego en el agua, que un mob paralizado no se mueva. Faltan las nubes de gas (Blob) y las partículas.
 
+Arreglos tras la prueba del dueño (2026-11-04): los sprites recorren cada paso (no cortan paredes); atacar fuera de
+combate inicia el combate con iniciativa y sorpresa (un mob que muere de un golpe igual tira iniciativa); la mochila,
+menos brillante.
+
+**R5e (en parte)** ✏️: configuración en `Local.config` desde el menú: tope de FPS, pantalla completa (F11) y controles
+configurables. Falta el idioma (estructura de traducción).
+
 **Siguiente: R5c** (rasgos de clase y
 conjuros), **R5d** (armas a distancia: arrojadizas, bumerán, arco), **R5e** (configuración: idioma, FPS, pantalla
 completa) = **0.7**. Después el resto de R5 para la 0.8 (guardado, creación y lista de personajes, reglas de la
