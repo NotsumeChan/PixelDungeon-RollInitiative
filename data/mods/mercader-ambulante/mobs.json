@@ -10,7 +10,10 @@
    "en": "He goes from floor to floor with a full pack. Never in the same place twice."
   },
   "npc": "pdri:wandering_merchant",
-  "wander": true,
+  "wander": [
+   "mercader-ambulante",
+   "wander"
+  ],
   "speed": 0.5,
   "disposition": 0,
   "weapon": "pdri:dagger",

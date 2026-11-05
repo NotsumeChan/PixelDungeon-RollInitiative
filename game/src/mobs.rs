@@ -214,12 +214,17 @@ impl Dungeon {
         }
     }
 
-    /// Un NPC tranquilo se queda quieto; con `"wander": true` (el mercader ambulante) deambula por el piso, salvo con un
+    /// Un NPC tranquilo se queda quieto; con `"wander": true` (o el ajuste de un mod: `[mod, opción]`, como el mercader
+    /// ambulante) deambula por el piso, salvo con un
     /// héroe al lado o hablando o comerciando con él.
     fn mob_passive(&mut self, id: u32, pos: i32) {
         let m = self.mob_mut(id).unwrap();
         m.enemy_seen = false;
-        let wander = m.stats["wander"].as_bool() == Some(true);
+        // `"wander"`: true, o [mod, opción] = el ajuste de ese mod (`registry::settings`)
+        let wander = match &m.stats["wander"] {
+            serde_json::Value::Array(s) => s.first().and_then(|a| crate::registry::setting(a.as_str()?, s.get(1)?.as_str()?)).and_then(|v| v.as_bool()).unwrap_or(true),
+            v => v.as_bool() == Some(true),
+        };
         let busy = self.heroes.iter().any(|h| {
             h.is_alive() && (adjacent(h.ch.pos, pos) || h.trading == Some(id) || h.talking.as_ref().is_some_and(|t| t.0 == id))
         });

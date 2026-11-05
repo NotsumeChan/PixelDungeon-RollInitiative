@@ -155,7 +155,7 @@ dependencies = [
 
 [[package]]
 name = "app"
-version = "0.9.18"
+version = "0.9.19"
 dependencies = [
  "android_logger",
  "bytemuck",
@@ -1016,7 +1016,7 @@ dependencies = [
 
 [[package]]
 name = "game"
-version = "0.9.18"
+version = "0.9.19"
 dependencies = [
  "mlua",
  "serde_json",

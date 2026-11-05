@@ -21,6 +21,15 @@
    "min": 0,
    "max": 200,
    "step": 25
+  },
+  {
+   "id": "wander",
+   "name": {
+    "es": "Deambula (si no, se queda junto a la bajada)",
+    "en": "Wanders (otherwise stays by the stairs)"
+   },
+   "type": "bool",
+   "default": true
   }
  ]
 }

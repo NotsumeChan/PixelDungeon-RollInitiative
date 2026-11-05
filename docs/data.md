@@ -29,7 +29,7 @@ Registros que lee `game/registry.py` (los mods los pisan o suman: `docs/mods.md`
   las empiezan y las entregan (`docs/game/npcs.md`). Un ítem de misión: `category` "quest" y `gen_weight` 0.
 - **NPCs** (`docs/game/npcs.md`): en `mobs.json`, `npc` (id del diálogo) hace NPC al mob y `disposition` (-2..2) es su
   actitud inicial; `inventory` ([[ítem, n]]), `stock` ([[categoría, n]] al azar), `weapon` y `armor` (su equipo). **npcs.json**: piso (o `"*"`, cualquier piso) ->
-  [[mob, probabilidad (número o lista por profundidad: piso 1, 2...; después, 0), opciones (`{"near": "exit"}`: junto a la bajada)]]; `"wander": true` en el mob: deambula. **dialogs.json**: id -> `start` (nodo inicial) y `nodes`: nodo -> `text` y `options`
+  [[mob, probabilidad (número o lista por profundidad: piso 1, 2...; después, 0), opciones (`{"near": "exit"}`: junto a la bajada)]]; `"wander": true` en el mob: deambula (o `[mod, opción]`: según ese ajuste del mod). **dialogs.json**: id -> `start` (nodo inicial) y `nodes`: nodo -> `text` y `options`
   ([{`text`, `if`, `do`, `go`}, y para una tirada `check` [pericia, CD], `fail` y `fail_do`]; sin `go`, la charla
   termina).
 - **buffs.json** (`BUFFS`): ver `docs/game/buffs.md`. **spells.json** (`SPELLS`): ver `docs/game/spells.md`.
