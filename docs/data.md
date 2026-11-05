@@ -17,9 +17,13 @@ Registros que lee `game/registry.py`. IDs `namespace:nombre` (`pdri:` = juego ba
   - `missile`: `thrown`, `dice`, `kind`, `finesse`, `range`, `STR`, `dly`, `qty` [mín, máx], `spin`, `on_hit`
     [estado, duración, nivel, CD], `returns`, `upgradable`. Munición: `flight_image`.
   - `food`: `energy`. `potion` / `scroll`: `effect` (nombre en `items.EFFECTS`), `target`.
-- **NPCs** (`docs/game/npcs.md`): en `mobs.json`, `npc` (id del diálogo) hace NPC al mob. **npcs.json**: piso ->
+- **skills.json**: pericias de 5e, id -> `name` y `ability`. En `classes.json`, `skill_prof` = las pericias con
+  competencia.
+- **NPCs** (`docs/game/npcs.md`): en `mobs.json`, `npc` (id del diálogo) hace NPC al mob y `disposition` (-2..2) es su
+  actitud inicial. **npcs.json**: piso ->
   [[mob, probabilidad]]. **dialogs.json**: id -> `start` (nodo inicial) y `nodes`: nodo -> `text` y `options`
-  ([{`text`, `if`, `do`, `go`}]; sin `go`, la charla termina).
+  ([{`text`, `if`, `do`, `go`}, y para una tirada `check` [pericia, CD], `fail` y `fail_do`]; sin `go`, la charla
+  termina).
 - **buffs.json** (`BUFFS`): ver `docs/game/buffs.md`. **spells.json** (`SPELLS`): ver `docs/game/spells.md`.
 - Lo que sigue en código (no son datos): los efectos por nombre (`EFFECTS`, `TICKS`, `KINDS`), las tablas de espacios
   de conjuro y `FREE_CASTS`.

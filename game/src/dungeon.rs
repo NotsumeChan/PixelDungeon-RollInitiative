@@ -150,6 +150,7 @@ pub struct Dungeon {
     pub(crate) bestiary: Map<String, Value>,
     pub(crate) npcs: Map<String, Value>,
     pub(crate) dialogs: Map<String, Value>,
+    pub(crate) skills: Map<String, Value>,
     /// Flags de los diálogos y misiones: de la partida (en la LAN, del grupo). Se guardan.
     pub flags: BTreeMap<String, i64>,
 }
@@ -197,6 +198,7 @@ impl Dungeon {
             bestiary: load("bestiary"),
             npcs: load("npcs"),
             dialogs: load("dialogs"),
+            skills: load("skills"),
             flags: BTreeMap::new(),
         };
         // apariencias sin identificar: lo primero que gasta el rng de la partida (como el prototipo)

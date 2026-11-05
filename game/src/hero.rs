@@ -226,6 +226,11 @@ impl Hero {
         dice::proficiency(self.lvl)
     }
 
+    /// ¿Tiene la clase competencia en esta pericia (`skill_prof`)? El bono lo da `Dungeon::skill_bonus`.
+    pub fn proficient_skill(&self, skill: &str) -> bool {
+        self.class_has("skill_prof", skill)
+    }
+
     /// Salvación: mod de la característica + competencia si la clase la tiene (`save_prof`).
     pub fn save_bonus(&self, ability: &str) -> i32 {
         self.ability_mod(ability) + if self.class_has("save_prof", ability) { self.proficiency() } else { 0 }
@@ -785,14 +790,13 @@ impl Dungeon {
         }
     }
 
-    /// Medicina (5e): d20 + SAB contra CD 10 sobre un aliado caído al lado. Una acción.
-    /// ponytail: sin competencia en habilidades todavía (Medicina sólo suma SAB)
+    /// Medicina (5e): d20 + SAB (+ competencia) contra CD 10 sobre un aliado caído al lado. Una acción.
     fn stabilize(&mut self, i: usize, ally: usize) {
         if !self.heroes[ally].is_downed() || self.heroes[ally].stable {
             return;
         }
         let (nat, _) = dice::d20(&mut self.rng, 0);
-        let b = self.heroes[i].ability_mod("WIS");
+        let b = self.skill_bonus(i, "pdri:medicine");
         let ok = nat + b >= 10;
         self.roll_event("Medicina CD10", nat + b, 1 + b, 20 + b, Some(ok));
         let cell = self.heroes[ally].ch.pos;

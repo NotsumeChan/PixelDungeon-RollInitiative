@@ -781,6 +781,7 @@ impl Ui {
             out.push(p);
         }
         font.text(out, &capitalize(&dv.name), c[0] + 19.0, c[1] + 4.0, YELLOW);
+        font.text(out, dv.attitude, c[0] + c[2] - font.width(dv.attitude), c[1] + 4.0, GREY);
         let mut y = c[1] + head;
         for l in &lines {
             font.text(out, l, c[0], y, WHITE);
@@ -866,6 +867,10 @@ impl Ui {
             (format!("Salvaciones {}", saves.join(" ")), WHITE),
             (format!("XP {}/{}   Oro {}", me.exp, me.max_exp(), me.gold), WHITE),
         ];
+        let skills: Vec<String> = d.proficient_skills(d.hero).iter().map(|(n, b)| format!("{n} {b:+}")).collect();
+        if !skills.is_empty() {
+            lines.push((format!("Pericias: {}", skills.join(", ")), WHITE));
+        }
         let trait_btn = if me.has_trait("pdri:second_wind") {
             let state = if me.second_wind { "disponible" } else { "usado" };
             lines.push((format!("Segundo Aliento (F): {state}"), WHITE));

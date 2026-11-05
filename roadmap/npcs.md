@@ -57,6 +57,18 @@ Estado: plan confirmado por el dueño (2026-11-05, ver "Decisiones del dueño").
   atacarlo (empieza el combate con él sorprendido), que no corte la caminata ni entre al combate de otros mobs, y en
   la LAN que cada uno vea su propio diálogo.
 
+- **N2** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: las 18 pericias de 5e como datos
+  (`data/skills.json`) y sus competencias por clase (`skill_prof`: Guerrero Atletismo e Intimidación, Mago Arcanos y
+  Perspicacia, Pícaro Engaño, Persuasión, Sigilo y Percepción, Explorador Percepción, Supervivencia y Perspicacia), en
+  la ficha; opciones con tirada (`check`) que van a un nodo u otro según el resultado, con el dado grande y el
+  resultado en el log de todos; actitud de cada NPC (de hostil a muy amistoso, se ve en la ventana, mueve la CD 2 por
+  punto); atacar a un NPC hace desconfiar a los que lo vieron. Medicina ya suma la competencia. Contenido: el
+  Fabricante (observarlo con Perspicacia, mentirle con Engaño, coquetearle con Interpretación) y el Mercader
+  (regatear con Persuasión, intimidarlo; si es amistoso, un regalo). Cada intento, una vez por partida. Para probar:
+  cada tirada con una clase con y sin competencia (el bono del botón cambia), que mentir mal lo vuelva desconfiado y
+  suba la CD de lo demás, que regatear bien habilite "¿Algo especial para un amigo?", pegarle a uno delante del otro
+  (en pisos distintos no se ven: probarlo con un mod o más adelante), y el dado y el log en la LAN.
+
 ## Pasos (cada uno se prueba a mano)
 1. **N1 motor**: NPC pasivo, Hablar, diálogos como datos con condiciones y efectos, flags, ventana de diálogo, red.
 2. **N2 social**: pericias y tiradas, disposición, atacar a un NPC.

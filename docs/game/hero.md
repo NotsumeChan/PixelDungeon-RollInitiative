@@ -3,6 +3,8 @@
 `game/hero.py` (Hero.java + HeroClass.java + Regeneration.java), con las reglas de 5e. La clase sale de
 `data/classes.json`: dado de golpe, competencias, arma y armadura iniciales, `awareness_base`, `speed_ft`.
 
+- Pericias: `proficient_skill` (las `skill_prof` de la clase); el bono lo da `Dungeon::skill_bonus` (`npcs.rs`).
+  Estabilizar usa Medicina con su competencia.
 - PV: nivel 1 = dado de golpe al máximo + CON; por nivel, promedio + CON (mínimo 1; `gain_level`, que usan la XP y el
   personaje portátil). XP para subir: `5 + nivel * 5`.
 - Ataque: d20 + mod (FUE, o la mejor de FUE/DES con arma sutil) + competencia si la clase la tiene. Desventaja con

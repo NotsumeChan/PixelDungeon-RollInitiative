@@ -1,6 +1,6 @@
 # game/src/npcs.rs
 
-NPCs (`roadmap/npcs.md`, paso N1). Un NPC es un mob con `"npc": "<id de diálogo>"` en `data/mobs.json` que aparece
+NPCs (`roadmap/npcs.md`, pasos N1 y N2). Un NPC es un mob con `"npc": "<id de diálogo>"` en `data/mobs.json` que aparece
 tranquilo (`State::Passive`): no caza, no entra al combate, no corta el paso del héroe y no cuenta para el respawner.
 Si lo dañan (o el diálogo lo ataca) se despierta como un mob dormido y pelea.
 
@@ -12,9 +12,18 @@ Si lo dañan (o el diálogo lo ataca) se despierta como un mob dormido y pelea.
 - `dialog(i)`: lo que muestra la UI (`DialogView`): texto y las opciones cuyas condiciones se cumplen. `{name}` en un
   texto = el nombre del héroe.
 - Condiciones (`if`, todas): `["has", ítem, n]`, `["gold", n]`, `["flag", clave, "=" | "!=" | ">=" | "<", valor]`,
-  `["class", id]`, `["level", n]`, `["not", condición]`. Una desconocida no se cumple.
+  `["class", id]`, `["level", n]`, `["disposition", n]` (la actitud del NPC es al menos n), `["skill", pericia]` (la
+  clase tiene competencia), `["not", condición]`. Una desconocida no se cumple.
 - Efectos (`do`, en orden): `["give", ítem, n]` (mochila llena: al suelo), `["take", ítem, n]`, `["gold", ±n]`,
   `["flag", clave, valor]`, `["add", clave, ±n]`, `["log", texto]` (sólo para quien habla), `["map"]` (el mapa del
-  piso, sin las puertas secretas), `["attack"]` (lo vuelve hostil y lo ataca: inicia el combate y lo sorprende),
+  piso, sin las puertas secretas), `["disposition", ±n]` (su actitud, entre -2 y 2), `["attack"]` (lo vuelve hostil y lo ataca: inicia el combate y lo sorprende),
   `["end"]`. Uno desconocido no hace nada.
 - `Dungeon::flags` (clave -> entero): de la partida, compartidos en la LAN; se guardan.
+
+Tiradas sociales (N2): una opción con `"check": [pericia, CD]` tira d20 + la característica de la pericia
+(`data/skills.json`) + la competencia si la clase la tiene (`skill_prof`), con el dado grande, y lo anota en el log de
+todos. Bien: `go` y `do`; mal: `fail` y `fail_do`. La UI muestra la pericia, el bono y la CD en el botón.
+- Actitud (`Mob::disposition`, -2 hostil .. 2 muy amistoso; inicial `disposition` en `mobs.json`): cada punto baja la
+  CD en 2 (desconfiado la sube); la ventana la muestra arriba a la derecha. Se guarda con el piso.
+- Atacar a un NPC (pegarle, o el efecto `attack`) hace que los otros NPCs tranquilos que lo vieron desconfíen más (-1).
+- `skill_bonus` también lo usa Medicina al estabilizar; `proficient_skills`, la ficha.

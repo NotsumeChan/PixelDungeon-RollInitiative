@@ -68,6 +68,9 @@ pub struct Mob {
     pub enemy_seen: bool,
     pub alerted: bool,
     pub fov: Vec<bool>,
+    /// Actitud de un NPC hacia los héroes (5e): -2 hostil, -1 desconfiado, 0 indiferente, 1 amistoso, 2 muy amistoso.
+    /// Cambia la CD de las tiradas sociales (`npcs.rs`). Inicial: `disposition` en data/mobs.json.
+    pub disposition: i32,
 }
 
 impl Mob {
@@ -78,7 +81,8 @@ impl Mob {
         ch.base_speed = stats.get("speed").and_then(Value::as_f64).unwrap_or(1.0);
         ch.base_speed_ft = stats.get("speed_ft").and_then(Value::as_i64).unwrap_or(30) as i32;
         ch.flying = stats.get("flying").and_then(Value::as_bool).unwrap_or(false);
-        Self { id, ch, key: key.to_string(), stats, state, target: -1, enemy: None, enemy_seen: false, alerted: false, fov: Vec::new() }
+        let disposition = stats.get("disposition").and_then(Value::as_i64).unwrap_or(0).clamp(-2, 2) as i32;
+        Self { id, ch, key: key.to_string(), stats, state, target: -1, enemy: None, enemy_seen: false, alerted: false, fov: Vec::new(), disposition }
     }
 
     pub fn armor_class(&self) -> i32 {
@@ -236,11 +240,16 @@ impl Dungeon {
     /// Mob.damage: lo despierta y lo alerta.
     pub(crate) fn mob_damage(&mut self, id: u32, dmg: i32, src: Option<ActorId>) {
         let Some(m) = self.mob_mut(id) else { return };
+        let was_npc = m.state == State::Passive;
         if matches!(m.state, State::Sleeping | State::Passive) {
             m.state = State::Wandering;
         }
         m.alerted = true;
-        if m.ch.hp <= 0 {
+        let dead = m.ch.hp <= 0;
+        if was_npc {
+            self.npc_attacked(id);
+        }
+        if dead {
             return;
         }
         if dmg > 0 {

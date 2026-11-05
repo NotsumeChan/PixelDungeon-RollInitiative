@@ -176,7 +176,7 @@ fn floor_v(f: &Floor) -> Value {
     let mobs: Vec<Value> = f
         .mobs
         .iter()
-        .map(|m| json!([m.id, m.key, state_name(m.state), m.target, m.enemy_seen, m.alerted, char_v(&m.ch)]))
+        .map(|m| json!([m.id, m.key, state_name(m.state), m.target, m.enemy_seen, m.alerted, char_v(&m.ch), m.disposition]))
         .collect();
     let s = &f.scheduler;
     json!({"now": s.now, "map": l.map, "visited": l.visited, "mapped": l.mapped, "heaps": heaps, "mobs": mobs,
@@ -349,6 +349,9 @@ pub fn load(data: &Value) -> Option<Dungeon> {
             mob.target = m[3].as_i64()? as i32;
             mob.enemy_seen = m[4].as_bool()?;
             mob.alerted = m[5].as_bool()?;
+            if let Some(v) = m.get(7).and_then(Value::as_i64) {
+                mob.disposition = v.clamp(-2, 2) as i32; // opcional: guardados de antes de N2
+            }
             load_char(&d, &mut mob.ch, &m[6])?;
             mobs.push(mob);
         }

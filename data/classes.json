@@ -47,6 +47,10 @@
    "WIS",
    "CHA",
    "INT"
+  ],
+  "skill_prof": [
+   "pdri:athletics",
+   "pdri:intimidation"
   ]
  },
  "pdri:mage": {
@@ -97,6 +101,10 @@
    "WIS",
    "CHA",
    "STR"
+  ],
+  "skill_prof": [
+   "pdri:arcana",
+   "pdri:insight"
   ]
  },
  "pdri:rogue": {
@@ -148,6 +156,12 @@
    "WIS",
    "CHA",
    "STR"
+  ],
+  "skill_prof": [
+   "pdri:deception",
+   "pdri:persuasion",
+   "pdri:stealth",
+   "pdri:perception"
   ]
  },
  "pdri:huntress": {
@@ -200,6 +214,11 @@
    "STR",
    "INT",
    "CHA"
+  ],
+  "skill_prof": [
+   "pdri:perception",
+   "pdri:survival",
+   "pdri:insight"
   ]
  }
 }
