@@ -23,6 +23,8 @@ use crate::{ARCS_BG, ARCS_FG, BANNERS, BUFFS, CHROME, DASHBOARD, EXP_BAR, HP_BAR
 const LINE_H: f32 = 10.0;
 const LOG_LINES: usize = 4;
 const LOG_LINE_H: f32 = 9.0;
+/// Alto del log más la barra, desde abajo (los dados chicos van arriba de esto en vertical).
+pub const LOG_AREA: f32 = TOOLBAR_H + 1.0 + LOG_LINES as f32 * LOG_LINE_H;
 const TOOLBAR_H: f32 = 25.0;
 /// WndInfoCell / WndInfoMob.
 const INFO_W: f32 = 120.0;
@@ -406,9 +408,13 @@ impl Ui {
     fn draw_log(&self, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
         let bottom = h - TOOLBAR_H - 1.0;
         let mine: Vec<&String> = d.messages.iter().filter(|m| m.0.is_none_or(|to| to == d.hero)).map(|m| &m.1).collect();
-        let first = mine.len().saturating_sub(LOG_LINES);
-        for (i, msg) in mine[first..].iter().enumerate() {
-            font.text(out, msg, 2.0, bottom - (LOG_LINES - i) as f32 * LOG_LINE_H, WHITE);
+        // los mensajes largos (chat, tiradas) se parten al ancho; se ven las últimas LOG_LINES líneas
+        let recent = &mine[mine.len().saturating_sub(LOG_LINES)..];
+        let lines: Vec<String> = recent.iter().flat_map(|m| wrap(font, m, w - 4.0)).collect();
+        let first = lines.len().saturating_sub(LOG_LINES);
+        let shown = &lines[first..];
+        for (i, line) in shown.iter().enumerate() {
+            font.text(out, line, 2.0, bottom - (shown.len() - i) as f32 * LOG_LINE_H, WHITE);
         }
         let me = d.local();
         let center = if !d.heroes.iter().any(|h| h.is_alive()) {

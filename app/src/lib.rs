@@ -1116,7 +1116,9 @@ impl App {
         let (uw, uh) = gpu.ui_size();
         let (uw, uh) = (uw as f32, uh as f32);
         self.ui.draw(&self.atlas, &self.font, &w.chars, &w.d, &self.config, s, uw, uh, dt, self.fps);
-        self.world.dice.draw(&self.atlas, &self.font, &mut self.sprites, uw, uh);
+        // en vertical el log ocupa todo el ancho: los dados chicos van arriba de él
+        let bottom = if uh > uw { ui::LOG_AREA + 2.0 } else { 0.0 };
+        self.world.dice.draw(&self.atlas, &self.font, &mut self.sprites, uw, uh, bottom);
         let ui_end = self.sprites.len() as u32;
 
         let batches = [(Tex::Atlas, 0..atlas_end), (Tex::Fog, atlas_end..fog_end), (Tex::Atlas, fog_end..world_end)];

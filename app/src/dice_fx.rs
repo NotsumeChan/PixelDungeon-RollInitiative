@@ -141,8 +141,9 @@ impl DiceFx {
         }
     }
 
-    /// En la capa de UI (w x h pixeles virtuales).
-    pub fn draw(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32) {
+    /// En la capa de UI (w x h pixeles virtuales). `bottom` = lo que ocupa la UI abajo (los dados chicos van arriba:
+    /// en vertical, del log).
+    pub fn draw(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, bottom: f32) {
         if let Some(e) = self.current.clone() {
             let bw = BOX_W.max(font.width(&e.label) + 6.0); // "CON CD11" no entra en el ancho base
             // un texto largo ("Persuasión CD12") a escala 3 se sale en vertical: la escala baja (entera, nítida) hasta
@@ -171,7 +172,7 @@ impl DiceFx {
             let (x, y) = if self.tier == DECIDE {
                 (((w - bw * s) / 2.0).floor(), (h / 2.0 - BOX_H * s - DECIDE_RISE).floor())
             } else {
-                (w - BOX_MARGIN.0 - bw * s, h - BOX_MARGIN.1 - BOX_H * s)
+                (w - BOX_MARGIN.0 - bw * s, h - BOX_MARGIN.1.max(bottom) - BOX_H * s)
             };
             let (x, y) = (x + dx, y + dy);
             out.push(atlas.rect([x, y], [bw * s, BOX_H * s], BG));
