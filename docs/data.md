@@ -4,7 +4,8 @@ Registros que lee `game/registry.py`. IDs `namespace:nombre` (`pdri:` = juego ba
 
 - **classes.json** (`HERO_CLASSES`): ver el comentario en `game/hero.py` (`dnd_class`, `hit_die`, `weapon_prof`,
   `armor_prof`, `save_prof`, `traits`, `spellcasting`, `start_weapon`, `start_armor`, `items` (id o [id, cantidad]),
-  `quick`, `known`, `awareness_base`, `hunger_step`, `sprite`, `speed_ft` (5e, pies; 30)).
+  `quick`, `known`, `awareness_base`, `hunger_step`, `sprite`, `speed_ft` (5e, pies; 30), `ability_priority` (las 6
+  características de la más a la menos importante: la creación de personaje les da las tiradas más altas)).
 - **mobs.json** (`MOBS`): `name`, `desc`, `sprite`, `frame` [ancho, alto], `anims` (nombre -> [fps, [frames], se repite]),
   `HT`, `defense`, `damage` [mín, máx], `attack`, `dr`, `exp`, `max_lvl`, `speed` (PD, fuera de combate), `speed_ft` (5e, pies; 30), `initiative` (mod DES; 0), `flying`, `loot` [id, prob], `saves`.
   **bestiary.json**: piso -> [[mob, peso], ...].

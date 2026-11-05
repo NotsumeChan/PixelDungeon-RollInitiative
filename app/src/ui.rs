@@ -29,6 +29,8 @@ const INFO_W: f32 = 120.0;
 /// WndGame.
 const MENU_W: f32 = 120.0;
 const MENU_BTN_H: f32 = 20.0;
+/// Botones de abajo de la lista y la creación de personaje: altos para el dedo.
+const BOTTOM_BTN_H: f32 = 24.0;
 const MENU_GAP: f32 = 2.0;
 /// Chrome.java: (recorte en chrome.png, margen del nine-patch).
 const CHROME_WINDOW: ([u32; 4], f32) = ([0, 0, 22, 22], 7.0);
@@ -1124,7 +1126,7 @@ impl Ui {
         let narrow = w < 260.0;
         let row_h: f32 = if narrow { 40.0 } else { 30.0 };
         const LIST_Y: f32 = 15.0;
-        let visible = (((h - LIST_Y - 42.0) / (row_h + 2.0)).floor() as usize).max(1);
+        let visible = (((h - LIST_Y - 2.0 * (BOTTOM_BTN_H + 4.0) - 2.0) / (row_h + 2.0)).floor() as usize).max(1);
         self.roster_scroll = self.roster_scroll.min(rows.len().saturating_sub(visible));
         out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
         self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
@@ -1167,11 +1169,11 @@ impl Ui {
         ];
         let bw2 = ((w - 16.0 - 4.0) / 3.0).floor();
         for (k, (label, act)) in lan.into_iter().enumerate() {
-            self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw2 + 2.0), h - 38.0, bw2, 16.0], label, act);
+            self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw2 + 2.0), h - 2.0 * (BOTTOM_BTN_H + 4.0) + 2.0, bw2, BOTTOM_BTN_H], label, act);
         }
         let bw = ((w - 16.0 - 4.0) / 3.0).floor();
         for (k, (label, act)) in buttons.into_iter().enumerate() {
-            self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw + 2.0), h - 20.0, bw, 16.0], label, act);
+            self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw + 2.0), h - BOTTOM_BTN_H - 4.0, bw, BOTTOM_BTN_H], label, act);
         }
     }
 
@@ -1262,9 +1264,9 @@ impl Ui {
                 hy += LINE_H;
             }
         }
-        let help = "Arrastra una tirada a una caracteristica (sobra 1), o entre caracteristicas para cambiarlas. Click en una caracteristica para escribir el numero (1-20).";
+        let help = "Las tiradas mas altas ya van a las caracteristicas de la clase. Arrastra una tirada a una caracteristica (sobra 1), o entre caracteristicas para cambiarlas. Click en una caracteristica para escribir el numero (1-20).";
         for line in wrap(font, help, w - 16.0) {
-            if hy + LINE_H > h - 21.0 {
+            if hy + LINE_H > h - BOTTOM_BTN_H - 5.0 {
                 break;
             }
             font.text(out, &line, 8.0, hy, GREY);
@@ -1280,7 +1282,7 @@ impl Ui {
         ];
         let bw = ((w - 16.0 - 4.0) / 3.0).floor();
         for (k, (label, act)) in buttons.into_iter().enumerate() {
-            self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw + 2.0), h - 20.0, bw, 16.0], label, act);
+            self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw + 2.0), h - BOTTOM_BTN_H - 4.0, bw, BOTTOM_BTN_H], label, act);
         }
 
         // lo que se arrastra sigue al puntero (desde que se movió: un click no lo muestra)
@@ -1616,7 +1618,8 @@ impl Create {
     /// Un click. `seed` sólo se usa al tirar.
     pub fn apply(&mut self, c: Cr, seed: i64) {
         match c {
-            Cr::New => *self = Create::default(),
+            // ya tirado: la app reparte las tiradas según la clase (`auto_assign`)
+            Cr::New => *self = Create { pool: dice::roll_ability_pool(&mut game::rng::Rng::new(seed)), ..Create::default() },
             Cr::Name => (self.focus, self.chip) = (Some(Focus::Name), None),
             Cr::Class(k) => self.class = k,
             Cr::Unfocus => self.focus = None,
@@ -1652,6 +1655,20 @@ impl Create {
     }
 
     /// Pone la tirada `i` en `a`; si estaba en otra característica, se mueve.
+    /// Las tiradas más altas a las características de la clase, en el orden de `order` (índices de `ABILITIES`, de
+    /// la más importante a la menos). Sin `force`, sólo si todo sale de las tiradas (no pisa lo que se cambió a mano).
+    pub fn auto_assign(&mut self, order: &[usize; 6], force: bool) {
+        if self.pool.is_empty() || (!force && self.source.iter().any(Option::is_none)) {
+            return;
+        }
+        let mut by_value: Vec<usize> = (0..self.pool.len()).collect();
+        by_value.sort_by_key(|&i| std::cmp::Reverse(self.pool[i].0)); // estable: en empate, la primera
+        (self.scores, self.source, self.chip) = ([None; 6], [None; 6], None);
+        for (&a, &i) in order.iter().zip(&by_value) {
+            (self.scores[a], self.source[a]) = (Some(self.pool[i].0), Some(i));
+        }
+    }
+
     fn assign(&mut self, i: usize, a: usize) {
         if let Some(o) = self.source.iter().position(|s| *s == Some(i)) {
             (self.scores[o], self.source[o]) = (None, None);

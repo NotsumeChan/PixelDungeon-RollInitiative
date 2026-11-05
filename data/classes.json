@@ -39,6 +39,14 @@
   "save_prof": [
    "STR",
    "CON"
+  ],
+  "ability_priority": [
+   "STR",
+   "CON",
+   "DEX",
+   "WIS",
+   "CHA",
+   "INT"
   ]
  },
  "pdri:mage": {
@@ -81,7 +89,15 @@
     "pdri:magic_missile",
     "pdri:sleep"
    ]
-  }
+  },
+  "ability_priority": [
+   "INT",
+   "CON",
+   "DEX",
+   "WIS",
+   "CHA",
+   "STR"
+  ]
  },
  "pdri:rogue": {
   "name": {
@@ -124,6 +140,14 @@
   "save_prof": [
    "DEX",
    "INT"
+  ],
+  "ability_priority": [
+   "DEX",
+   "CON",
+   "INT",
+   "WIS",
+   "CHA",
+   "STR"
   ]
  },
  "pdri:huntress": {
@@ -168,6 +192,14 @@
     "pdri:hunters_mark",
     "pdri:cure_wounds"
    ]
-  }
+  },
+  "ability_priority": [
+   "DEX",
+   "WIS",
+   "CON",
+   "STR",
+   "INT",
+   "CHA"
+  ]
  }
 }

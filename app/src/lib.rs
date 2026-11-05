@@ -256,6 +256,20 @@ fn class_rows(c: &serde_json::Map<String, serde_json::Value>) -> Vec<ui::RosterR
         .collect()
 }
 
+/// El orden de las características de una clase (`ability_priority` de classes.json, como índices de `ABILITIES`); las
+/// que falten van al final en su orden.
+fn ability_order(cls: Option<&serde_json::Value>) -> [usize; 6] {
+    let names = cls.and_then(|c| c["ability_priority"].as_array()).cloned().unwrap_or_default();
+    let named = names.iter().filter_map(|n| game::dice::ABILITIES.iter().position(|a| n.as_str() == Some(*a)));
+    let mut order = Vec::new();
+    for a in named.chain(0..6) {
+        if !order.contains(&a) {
+            order.push(a);
+        }
+    }
+    std::array::from_fn(|k| order[k])
+}
+
 fn new_seed() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_micros() as i64 % 2_147_483_647)
 }
@@ -593,7 +607,13 @@ impl App {
                 if matches!(c, ui::Cr::New) {
                     self.ui.window = Some(UiWindow::Create);
                 }
+                let fresh = matches!(c, ui::Cr::New | ui::Cr::Roll); // tiradas nuevas: se reparten siempre
+                let reorder = fresh || matches!(c, ui::Cr::Class(_));
                 self.ui.create.apply(c, new_seed());
+                if reorder {
+                    let order = ability_order(self.classes.get(CLASSES[self.ui.create.class]));
+                    self.ui.create.auto_assign(&order, fresh);
+                }
             }
             UiAction::Chat(cr) => match cr {
                 ui::Cr::New => self.ui.chat = Some(String::new()),

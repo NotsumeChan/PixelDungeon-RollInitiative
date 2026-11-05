@@ -157,6 +157,12 @@ teclado en pantalla al tocar el nombre o una característica. Sin arrastrar (el 
 lo mismo. **Versión 0.5.0.** Para probar: tirar, asignar, mover una tirada de una característica a otra, escribir un
 número, LIMPIAR, empezar sin nombre (usa el de la clase), en el teléfono el teclado y la creación en vertical.
 
+Arreglos en la creación (pedido del dueño, 2026-11-05) ✏️: botones de abajo de la lista de personajes y de la
+creación más altos (24 en vez de 16, para el dedo); NUEVO ya tira los dados y las tiradas más altas van a las
+características de la clase (`ability_priority` en `classes.json`: Guerrero FUE-CON, Mago INT-CON, Pícaro DES-CON,
+Explorador DES-SAB); TIRAR reparte igual y cambiar de clase reacomoda si no se tocó nada a mano. Para probar: tocar los
+botones en el teléfono, NUEVO con cada clase, cambiar de clase antes y después de mover una tirada.
+
 **Estado R6** ✏️ escrito (2026-11-04), pendiente de prueba del dueño (PC + teléfono): red LAN en `app/src/net.rs`
 (`docs/app/net.md`), sólo std. Lista de personajes -> CREAR LAN (juegas con el elegido y la partida queda abierta; el
 log muestra la IP) o UNIRSE (lista de partidas de la red; tocar una entra con el personaje elegido). Host autoritativo

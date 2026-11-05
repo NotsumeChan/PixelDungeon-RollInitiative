@@ -103,3 +103,7 @@ abre la línea de arriba; Enter / LISTO manda, Esc cancela. En Android, el mismo
 
 Diálogo con un NPC (`draw_dialog`): si el héroe local tiene un diálogo abierto (`Dungeon::dialog`), tapa el resto de
 la UI: retrato, nombre, texto y las opciones como botones (`Action::Choose`). Esc / Atrás = `Action::Bye`.
+
+Creación de personaje: NUEVO y TIRAR ya tiran los 4d6 y `Create::auto_assign` reparte las tiradas más altas según el
+`ability_priority` de la clase (la app lo pide: `ability_order` en `lib.rs`); cambiar de clase las reacomoda si no se
+tocó nada a mano. Los botones de abajo de la lista y de la creación miden `BOTTOM_BTN_H` (24) para el dedo.
