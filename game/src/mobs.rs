@@ -19,6 +19,8 @@ pub enum State {
     Sleeping,
     Wandering,
     Hunting,
+    /// NPC tranquilo: no caza; se le habla (`npcs.rs`). Atacarlo lo despierta como a uno dormido.
+    Passive,
 }
 
 impl State {
@@ -28,6 +30,7 @@ impl State {
             State::Sleeping => "Está durmiendo",
             State::Wandering => "Está deambulando",
             State::Hunting => "Te está cazando",
+            State::Passive => "Está tranquilo",
         }
     }
 }
@@ -133,6 +136,10 @@ impl Dungeon {
             State::Sleeping => self.mob_sleeping(id, in_fov),
             State::Wandering => self.mob_wandering(id, in_fov, just_alerted),
             State::Hunting => self.mob_hunting(id, in_fov),
+            State::Passive => {
+                self.mob_mut(id).unwrap().enemy_seen = false;
+                self.spend(ActorId::Mob(id), TICK);
+            }
         }
     }
 
@@ -229,7 +236,7 @@ impl Dungeon {
     /// Mob.damage: lo despierta y lo alerta.
     pub(crate) fn mob_damage(&mut self, id: u32, dmg: i32, src: Option<ActorId>) {
         let Some(m) = self.mob_mut(id) else { return };
-        if m.state == State::Sleeping {
+        if matches!(m.state, State::Sleeping | State::Passive) {
             m.state = State::Wandering;
         }
         m.alerted = true;

@@ -100,3 +100,6 @@ Tanda del 2026-11-04 (pedidos del dueño tras probar en el teléfono):
 Chat de la partida LAN (`Ui::chat`, `UiAction::Chat`): Enter o el botón "Chat" de la barra (sólo en red, `Ui::lan`)
 abre la línea de arriba; Enter / LISTO manda, Esc cancela. En Android, el mismo teclado en pantalla de la creación
 (`draw_keys`).
+
+Diálogo con un NPC (`draw_dialog`): si el héroe local tiene un diálogo abierto (`Dungeon::dialog`), tapa el resto de
+la UI: retrato, nombre, texto y las opciones como botones (`Action::Choose`). Esc / Atrás = `Action::Bye`.

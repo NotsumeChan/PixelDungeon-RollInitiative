@@ -26,8 +26,14 @@ Estado: plan confirmado por el dueño (2026-11-05, ver "Decisiones del dueño").
   diálogo.
 - **Misiones** (`data/quests.json`): nombre, descripción, objetivos como condiciones (`kill` [mob, n] con el
   contador `kills:<mob>`, `has` ítem, `flag`) y recompensa (efectos). Ventana de misiones en la ficha.
-- **Comercio** (`data/shops.json`): stock fijo [ítem, cantidad] o sacado del generador; precio = `price` de
-  `items.json` (nuevo campo), modificado por la disposición. Vender = la mitad. Ventana de tienda con la mochila.
+- **Inventario y equipo de los NPC** (pedido del dueño, 2026-11-05): cada NPC lleva mochila, arma y armadura (como el
+  héroe): en `mobs.json`, `inventory` ([ítem, cantidad] o sacado del generador) y `weapon` / `armor`. Pelea con su
+  equipo, se guarda con el piso y, si muere, lo suelta. Un diálogo puede dar o pedirle cosas a su inventario.
+- **Comercio**: la tienda **vende lo que el NPC tiene en su inventario** (así el mercader fijo y el ambulante son lo
+  mismo); precio = `price` de `items.json` (nuevo campo), modificado por la disposición. Vender = la mitad y el ítem
+  pasa a su inventario. Ventana de tienda con las dos mochilas.
+- **Mercader ambulante** (futuro): un NPC con tienda que deambula (`State::Passive` que camina) y puede aparecer en
+  cualquier piso; reabastece su inventario cada tanto.
 - **Colocación**: `npcs` por piso (como `bestiary.json`), con un rng propio derivado de la seed del piso: no gasta el
   rng del nivel, así los pisos y los mobs siguen saliendo iguales.
 - **Red**: `Talk` y `Choose(k)` son acciones como las demás (el host las valida). El diálogo abierto va en el estado
@@ -41,11 +47,22 @@ Estado: plan confirmado por el dueño (2026-11-05, ver "Decisiones del dueño").
 - Fuera por ahora (decisión del dueño): el Fantasma triste (`Ghost.java`).
 - Para después (sprites que ya están en `Assets/Characters/`): blacksmith, imp, ratking, ghost.
 
+## Estado
+- **N1** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: NPCs tranquilos, Hablar, diálogos como datos con
+  condiciones y efectos, flags de la partida, ventana de diálogo, guardado y red (`docs/game/npcs.md`). Contenido: el
+  Mercader en el piso 1 (vende una ración por 10 de oro y el mapa del piso por 30, un rumor) y el Fabricante de
+  varitas en el piso 2 (consejos, el ingrediente que busca, regala una poción de curación una vez por partida). Los
+  dos se pueden atacar (opción [Atacar], o pegarles). Para probar: tocar al NPC (se acerca y habla), cada opción, que
+  las de oro no aparezcan sin oro, el regalo una sola vez (también tras guardar y volver), Esc / Atrás cierra,
+  atacarlo (empieza el combate con él sorprendido), que no corte la caminata ni entre al combate de otros mobs, y en
+  la LAN que cada uno vea su propio diálogo.
+
 ## Pasos (cada uno se prueba a mano)
 1. **N1 motor**: NPC pasivo, Hablar, diálogos como datos con condiciones y efectos, flags, ventana de diálogo, red.
 2. **N2 social**: pericias y tiradas, disposición, atacar a un NPC.
 3. **N3 misiones**: contadores, recompensas, ventana de misiones; el Fabricante de varitas.
-4. **N4 comercio**: precios, tienda, comprar y vender; el Mercader.
+4. **N4 inventario y comercio**: inventario y equipo de los NPC, precios, tienda desde el inventario, comprar y
+   vender; el Mercader; después, el mercader ambulante.
 5. **N5 mods**: el formato en `docs/data.md` y un mod de ejemplo con un NPC propio.
 
 ## Decisiones del dueño (2026-11-05)

@@ -77,6 +77,7 @@ fn state_name(s: State) -> &'static str {
         State::Sleeping => "SLEEPING",
         State::Wandering => "WANDERING",
         State::Hunting => "HUNTING",
+        State::Passive => "PASSIVE",
     }
 }
 
@@ -103,6 +104,7 @@ fn hero_v(h: &Hero) -> Value {
            "backpack": h.backpack.iter().map(item_v).collect::<Vec<_>>(), "quick": h.quickslots,
            "second_wind": h.second_wind, "slots": h.slots, "free_casts": h.free_casts,
            "marked": h.marked.map(actor_v), "dead": h.dead, "saves": h.saves, "stable": h.stable,
+           "talking": h.talking.as_ref().map(|(m, n)| json!([m, n])),
            "char": char_v(&h.ch)})
 }
 
@@ -192,7 +194,7 @@ pub fn dump(d: &Dungeon) -> Value {
            }).collect::<Vec<_>>(), "known": d.known, "generator": d.generator.weights(),
            "quotas": [d.potions_of_strength, d.scrolls_of_upgrade],
            "rules": [d.rules.dot_death_saves, d.rules.save_half],
-           "next_mob": d.next_mob, "next_buff": d.next_buff,
+           "next_mob": d.next_mob, "next_buff": d.next_buff, "flags": d.flags,
            "heroes": d.heroes.iter().map(hero_v).collect::<Vec<_>>(), "local": d.hero,
            "floors": d.floors.iter().map(|(k, f)| (k.to_string(), floor_v(f))).collect::<serde_json::Map<_, _>>()})
 }
@@ -274,6 +276,9 @@ pub fn load(data: &Value) -> Option<Dungeon> {
     d.rules = Rules { dot_death_saves: data["rules"][0].as_bool()?, save_half: data["rules"][1].as_bool()? };
     d.next_mob = data["next_mob"].as_u64()? as u32;
     d.next_buff = data["next_buff"].as_u64()? as u32;
+    d.flags = data.get("flags").and_then(Value::as_object).map_or_else(Default::default, |o| {
+        o.iter().filter_map(|(k, v)| Some((k.clone(), v.as_i64()?))).collect()
+    });
     // héroes
     let mut heroes = Vec::new();
     for hd in hds {
@@ -298,6 +303,8 @@ pub fn load(data: &Value) -> Option<Dungeon> {
         h.dead = hd["dead"].as_bool()?;
         h.saves = ints::<i32>(&hd["saves"])?.try_into().ok()?;
         h.stable = hd["stable"].as_bool()?;
+        // opcionales (guardados de antes de los NPCs)
+        h.talking = hd.get("talking").and_then(|t| Some((t[0].as_u64()? as u32, t[1].as_str()?.to_string())));
         load_char(&d, &mut h.ch, &hd["char"])?;
         h.update_awareness();
         heroes.push(h);
@@ -335,6 +342,7 @@ pub fn load(data: &Value) -> Option<Dungeon> {
             let state = match m[2].as_str()? {
                 "HUNTING" => State::Hunting,
                 "WANDERING" => State::Wandering,
+                "PASSIVE" => State::Passive,
                 _ => State::Sleeping,
             };
             let mut mob = Mob::new(m[0].as_u64()? as u32, key, stats, 0, state);

@@ -1,0 +1,231 @@
+{
+ "pdri:wandmaker": {
+  "start": "start",
+  "nodes": {
+   "start": {
+    "text": {
+     "es": "¡Qué sorpresa encontrar a alguien decente en un lugar así, {name}! Vine por un ingrediente raro, pero en estos túneles me pierdo enseguida.",
+     "en": "Oh, what a pleasant surprise to meet a decent person in such a place, {name}! I came for a rare ingredient, but I get lost in these tunnels in no time."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "¿Qué ingrediente buscas?",
+       "en": "What ingredient are you looking for?"
+      },
+      "go": "ingredient"
+     },
+     {
+      "text": {
+       "es": "¿Algún consejo para las alcantarillas?",
+       "en": "Any advice for the sewers?"
+      },
+      "go": "advice"
+     },
+     {
+      "text": {
+       "es": "¿Tienes algo que me sirva?",
+       "en": "Do you have anything for me?"
+      },
+      "if": [
+       [
+        "flag",
+        "pdri:wandmaker_gift",
+        "=",
+        0
+       ]
+      ],
+      "do": [
+       [
+        "give",
+        "pdri:potion_healing",
+        1
+       ],
+       [
+        "flag",
+        "pdri:wandmaker_gift",
+        1
+       ]
+      ],
+      "go": "gift"
+     },
+     {
+      "text": {
+       "es": "[Atacar]",
+       "en": "[Attack]"
+      },
+      "do": [
+       [
+        "attack"
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "Adiós.",
+       "en": "Goodbye."
+      }
+     }
+    ]
+   },
+   "ingredient": {
+    "text": {
+     "es": "Polvo de cadáver. Se junta de los restos de esqueletos. Si me lo traes, te pago con una de mis mejores varitas.",
+     "en": "Corpse dust. It can be gathered from skeletal remains. Bring it to me and I'll pay you with one of my best wands."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Lo buscaré.",
+       "en": "I'll look for it."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "advice": {
+    "text": {
+     "es": "Las ratas andan en grupos y los gnolls tiran lanzas. Y revisa bien las paredes: estos túneles esconden puertas.",
+     "en": "Rats travel in packs and gnolls throw spears. And check the walls carefully: these tunnels hide doors."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "gift": {
+    "text": {
+     "es": "Toma esta poción. No la desperdicies, que no tengo otra.",
+     "en": "Take this potion. Don't waste it, I don't have another one."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   }
+  }
+ },
+ "pdri:shopkeeper": {
+  "start": "start",
+  "nodes": {
+   "start": {
+    "text": {
+     "es": "Bienvenido, bienvenido. Mercancía fina para aventureros con oro en los bolsillos.",
+     "en": "Welcome, welcome. Fine goods for adventurers with gold in their pockets."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Una ración, por favor (10 de oro).",
+       "en": "A ration, please (10 gold)."
+      },
+      "if": [
+       [
+        "gold",
+        10
+       ]
+      ],
+      "do": [
+       [
+        "gold",
+        -10
+       ],
+       [
+        "give",
+        "pdri:ration",
+        1
+       ]
+      ],
+      "go": "thanks"
+     },
+     {
+      "text": {
+       "es": "Véndeme el mapa de este piso (30 de oro).",
+       "en": "Sell me the map of this floor (30 gold)."
+      },
+      "if": [
+       [
+        "gold",
+        30
+       ]
+      ],
+      "do": [
+       [
+        "gold",
+        -30
+       ],
+       [
+        "map"
+       ]
+      ],
+      "go": "thanks"
+     },
+     {
+      "text": {
+       "es": "¿Qué se cuenta por aquí?",
+       "en": "What's the word around here?"
+      },
+      "go": "rumor"
+     },
+     {
+      "text": {
+       "es": "[Atacar]",
+       "en": "[Attack]"
+      },
+      "do": [
+       [
+        "attack"
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "Adiós.",
+       "en": "Goodbye."
+      }
+     }
+    ]
+   },
+   "thanks": {
+    "text": {
+     "es": "Un placer hacer negocios.",
+     "en": "A pleasure doing business."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "rumor": {
+    "text": {
+     "es": "Dicen que un viejo mago anda perdido más abajo, buscando algo entre los huesos.",
+     "en": "They say an old wizard wanders lost further down, looking for something among the bones."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   }
+  }
+ }
+}

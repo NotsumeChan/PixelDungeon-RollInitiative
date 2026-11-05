@@ -293,6 +293,9 @@ pub fn action_v(a: Action) -> Value {
         Action::Cast(k, c) => json!(["cast", k, c]),
         Action::SecondWind => json!(["second_wind"]),
         Action::Throw(s, c) => json!(["throw", slot_v(s), c]),
+        Action::Talk(id) => json!(["talk", id]),
+        Action::Choose(k) => json!(["choose", k]),
+        Action::Bye => json!(["bye"]),
     }
 }
 
@@ -316,6 +319,9 @@ pub fn action_of(v: &Value) -> Option<Action> {
         "cast" => Action::Cast(idx(1)?, cell(2)?),
         "second_wind" => Action::SecondWind,
         "throw" => Action::Throw(slot_of(&v[1])?, cell(2)?),
+        "talk" => Action::Talk(u32::try_from(v[1].as_u64()?).ok()?),
+        "choose" => Action::Choose(idx(1)?),
+        "bye" => Action::Bye,
         _ => return None,
     })
 }
@@ -377,6 +383,8 @@ fn valid(d: &Dungeon, i: usize, a: Action) -> bool {
             Action::Use(s, _, t) => has(s) && t.is_none_or(has),
             Action::Throw(s, _) => has(s),
             Action::Cast(k, _) => k < h.spell_ids().len(),
+            Action::Talk(id) => d.passive(ActorId::Mob(id)),
+            Action::Choose(_) => h.talking.is_some(),
             _ => true,
         }
 }
@@ -664,6 +672,9 @@ mod tests {
             Action::Cast(1, 40),
             Action::SecondWind,
             Action::Throw(Slot::Pack(0), 99),
+            Action::Talk(4),
+            Action::Choose(2),
+            Action::Bye,
         ];
         for a in all {
             assert_eq!(action_of(&action_v(a)), Some(a), "{a:?}");

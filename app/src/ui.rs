@@ -6,6 +6,7 @@
 use game::actor::ActorId;
 use game::dice::{self, ABILITIES, ABILITY_NAMES};
 use game::dungeon::Dungeon;
+use game::npcs::DialogView;
 use game::geom::LENGTH;
 use game::hero::{Action, Slot, Verb, BACKPACK_SIZE, HUNGRY};
 use game::items::{weapon_dice, Image, Item, SLOT_ARMOR, SLOT_RING, SLOT_WEAPON};
@@ -352,6 +353,11 @@ impl Ui {
         }
         self.draw_toolbar(atlas, font, d, out, w, h);
         self.draw_waiting(atlas, font, d, out, w);
+        // diálogo con un NPC: tapa todo lo demás hasta que se cierre (Esc o Adiós)
+        if let Some(dv) = d.dialog(d.hero) {
+            self.draw_dialog(atlas, font, chars, d, out, w, h, &dv);
+            return;
+        }
         match self.window.clone() {
             Some(Window::Info { icon, title, text, hp }) => self.draw_info(atlas, font, chars, d, out, w, h, icon, &title, &text, hp),
             Some(Window::Hero) => self.draw_hero(atlas, font, d, out, w, h),
@@ -754,6 +760,40 @@ impl Ui {
         font.text(out, label, x, y, if act.is_some() { WHITE } else { BUTTON_OFF });
         if let Some(act) = act {
             self.hot(rect, act, None);
+        }
+    }
+
+    /// Diálogo con un NPC: retrato, nombre, lo que dice y las opciones como botones.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_dialog(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32, dv: &DialogView) {
+        let ww = (w - 16.0).min(220.0);
+        let lines = wrap(font, &dv.text, ww);
+        let opts: Vec<(usize, Vec<String>)> = dv.options.iter().map(|(k, t)| (*k, wrap(font, t, ww - 8.0))).collect();
+        let opt_h: f32 = opts.iter().map(|o| o.1.len().max(1) as f32 * LINE_H + 6.0).sum();
+        let head = 19.0;
+        let ch = head + lines.len() as f32 * LINE_H + 4.0 + opt_h;
+        let c = [((w - ww) / 2.0).floor(), ((h - TOOLBAR_H - ch) / 2.0).floor().max(2.0), ww, ch];
+        self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
+        Self::draw_window(atlas, out, c);
+        if let Some(p) = chars.portrait(d, atlas, dv.npc, [c[0] + 8.0, c[1] + 8.0], 16.0) {
+            out.push(p);
+        }
+        font.text(out, &capitalize(&dv.name), c[0] + 19.0, c[1] + 4.0, YELLOW);
+        let mut y = c[1] + head;
+        for l in &lines {
+            font.text(out, l, c[0], y, WHITE);
+            y += LINE_H;
+        }
+        y += 4.0;
+        let (region, m) = CHROME_BUTTON;
+        for (k, ls) in opts {
+            let r = [c[0], y, ww, ls.len().max(1) as f32 * LINE_H + 4.0];
+            nine(out, atlas, region, m, r, WHITE);
+            for (j, l) in ls.iter().enumerate() {
+                font.text(out, l, c[0] + 4.0, y + 2.0 + j as f32 * LINE_H, WHITE);
+            }
+            self.hot(r, UiAction::Act(Action::Choose(k)), None);
+            y += r[3] + 2.0;
         }
     }
 

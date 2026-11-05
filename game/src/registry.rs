@@ -8,13 +8,15 @@ use serde_json::{Map, Value};
 
 /// El contenido del juego base va dentro del binario (Android sin AssetManager).
 /// ponytail: sólo el juego base; los mods agregarán sus carpetas aquí (1.x)
-const BASE: [(&str, &str); 6] = [
+const BASE: [(&str, &str); 8] = [
     ("classes", include_str!("../../data/classes.json")),
     ("mobs", include_str!("../../data/mobs.json")),
     ("bestiary", include_str!("../../data/bestiary.json")),
     ("items", include_str!("../../data/items.json")),
     ("buffs", include_str!("../../data/buffs.json")),
     ("spells", include_str!("../../data/spells.json")),
+    ("npcs", include_str!("../../data/npcs.json")),
+    ("dialogs", include_str!("../../data/dialogs.json")),
 ];
 
 /// Hash del contenido (los JSON de los registros, en orden): un cliente con otro contenido no entra a la partida.

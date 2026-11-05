@@ -148,6 +148,10 @@ pub struct Dungeon {
     pub(crate) items: Map<String, Value>,
     pub(crate) mobs_data: Map<String, Value>,
     pub(crate) bestiary: Map<String, Value>,
+    pub(crate) npcs: Map<String, Value>,
+    pub(crate) dialogs: Map<String, Value>,
+    /// Flags de los diálogos y misiones: de la partida (en la LAN, del grupo). Se guardan.
+    pub flags: BTreeMap<String, i64>,
 }
 
 fn load(name: &str) -> Map<String, Value> {
@@ -191,6 +195,9 @@ impl Dungeon {
             items: load("items"),
             mobs_data: load("mobs"),
             bestiary: load("bestiary"),
+            npcs: load("npcs"),
+            dialogs: load("dialogs"),
+            flags: BTreeMap::new(),
         };
         // apariencias sin identificar: lo primero que gasta el rng de la partida (como el prototipo)
         // ponytail: si un mod agrega más de 12 pociones o pergaminos faltan apariencias
@@ -474,6 +481,7 @@ impl Dungeon {
             self.floor_mut().scheduler.add(ActorId::Hero(i), 0.0); // primero: en empates actúa antes que nadie
             self.create_mobs();
             self.create_items();
+            self.create_npcs();
             self.floor_mut().scheduler.add(ActorId::Respawner, 0.0);
         }
         let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
@@ -587,7 +595,7 @@ impl Dungeon {
         self.floor_mut().level.rng = rng;
     }
 
-    fn add_mob(&mut self, key: &str, pos: i32, state: State) {
+    pub(crate) fn add_mob(&mut self, key: &str, pos: i32, state: State) {
         self.add_mob_delayed(key, pos, state, 0.0);
     }
 
@@ -602,7 +610,8 @@ impl Dungeon {
 
     /// Level.respawner: cada 50 de tiempo, si faltan mobs, aparece uno (despierto) fuera de la vista.
     fn respawn_act(&mut self) {
-        if self.floor().mobs.len() < Self::n_mobs(self.depth, &mut self.rng) {
+        let hostile = self.floor().mobs.iter().filter(|m| m.stats.get("npc").is_none()).count(); // los NPCs no cuentan
+        if hostile < Self::n_mobs(self.depth, &mut self.rng) {
             let mut rng = self.rng.clone();
             let pos = self.respawn_cell(&mut rng);
             self.rng = rng;
@@ -846,7 +855,7 @@ impl Dungeon {
     /// que no lo vieron venir quedan sorprendidos (5e).
     pub(crate) fn start_combat(&mut self, ambush: bool) {
         let chars: Vec<ActorId> =
-            self.floor().scheduler.actors.iter().map(|e| e.0).filter(|&a| a.in_rounds() && self.alive(a)).collect();
+            self.floor().scheduler.actors.iter().map(|e| e.0).filter(|&a| a.in_rounds() && self.alive(a) && !self.passive(a)).collect();
         for &a in &chars {
             self.roll_initiative(a);
         }
@@ -920,7 +929,7 @@ impl Dungeon {
         let s = &self.floor().scheduler;
         let old: Vec<ActorId> = s.order.as_ref().unwrap().iter().copied().filter(|&a| s.contains(a)).collect();
         let new: Vec<ActorId> =
-            s.actors.iter().map(|e| e.0).filter(|&a| a.in_rounds() && !old.contains(&a) && self.alive(a)).collect();
+            s.actors.iter().map(|e| e.0).filter(|&a| a.in_rounds() && !old.contains(&a) && self.alive(a) && !self.passive(a)).collect();
         for &a in &new {
             self.roll_initiative(a);
         }

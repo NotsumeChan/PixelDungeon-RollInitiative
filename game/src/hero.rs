@@ -14,6 +14,7 @@ use crate::dungeon::{Dungeon, Fx, Pending, Tone};
 use crate::geom::{LENGTH, NEIGHBOURS9};
 use crate::items::{armor_ac, capitalize, HeapKind, Item, GOLD};
 use crate::registry::text;
+use crate::mobs::State;
 
 pub const TIME_TO_REST: f64 = 1.0;
 pub const TIME_TO_SEARCH: f64 = 2.0;
@@ -92,6 +93,12 @@ pub enum Action {
     SecondWind,
     /// Lanzar una unidad de la arrojadiza hacia la celda.
     Throw(Slot, i32),
+    /// Hablar con un NPC (acercarse si hace falta): abre su diálogo. No gasta tiempo.
+    Talk(u32),
+    /// Elegir la opción k del diálogo abierto.
+    Choose(usize),
+    /// Cerrar el diálogo.
+    Bye,
 }
 
 pub struct Hero {
@@ -133,6 +140,8 @@ pub struct Hero {
     pub dead: bool,
     pub saves: [i32; 2],
     pub stable: bool,
+    /// Diálogo abierto: (id del NPC, nodo).
+    pub talking: Option<(u32, String)>,
 }
 
 impl Hero {
@@ -184,6 +193,7 @@ impl Hero {
             dead: false,
             saves: [0, 0],
             stable: false,
+            talking: None,
             cls,
         };
         h.ch.base_speed_ft = h.cls.get("speed_ft").and_then(Value::as_i64).unwrap_or(30) as i32;
@@ -419,6 +429,7 @@ impl Dungeon {
             Some(ActorId::Hero(j)) if seen && j != i => {
                 if self.heroes[j].is_downed() { Action::Help(j) } else { Action::Move(cell) }
             }
+            Some(ActorId::Mob(id)) if seen && self.passive(ActorId::Mob(id)) => Action::Talk(id),
             Some(a) if seen && a != ActorId::Hero(i) => Action::Attack(a),
             // cofre, tumba o restos: se abren desde al lado; un montón se recoge parado encima
             _ if seen && level.heaps.contains_key(&cell) => {
@@ -499,6 +510,29 @@ impl Dungeon {
                     _ => self.heroes[i].action = None,
                 }
             }
+            Action::Talk(id) => {
+                let tp = self.mob(id).filter(|_| self.passive(ActorId::Mob(id))).map(|m| m.ch.pos);
+                match tp {
+                    Some(_) if self.floor().scheduler.in_combat(me) => {
+                        self.heroes[i].action = None;
+                        self.tell(i, "En pleno combate no hay tiempo para charlar");
+                    }
+                    Some(tp) if adjacent(pos, tp) => {
+                        self.heroes[i].action = None;
+                        self.talk(i, id);
+                    }
+                    Some(tp) if self.heroes[i].fov[tp as usize] && self.hero_get_closer(i, tp) => {}
+                    _ => self.heroes[i].action = None,
+                }
+            }
+            Action::Choose(k) => {
+                self.heroes[i].action = None;
+                self.choose(i, k);
+            }
+            Action::Bye => {
+                self.heroes[i].action = None;
+                self.heroes[i].talking = None;
+            }
             Action::Help(j) => {
                 let ally = self.heroes[j].ch.pos;
                 if adjacent(pos, ally) {
@@ -544,7 +578,7 @@ impl Dungeon {
     fn check_visible_mobs(&mut self, i: usize) {
         let fov = &self.heroes[i].fov;
         let visible: Vec<ActorId> =
-            self.floor().mobs.iter().filter(|m| fov[m.ch.pos as usize]).map(|m| ActorId::Mob(m.id)).collect();
+            self.floor().mobs.iter().filter(|m| fov[m.ch.pos as usize] && m.state != State::Passive).map(|m| ActorId::Mob(m.id)).collect();
         let h = &mut self.heroes[i];
         if visible.iter().any(|m| !h.visible_enemies.contains(m)) {
             h.action = None;

@@ -52,7 +52,7 @@ const ONESHOT: [&str; 3] = ["attack", "operate", "read"];
 
 /// Hojas de personajes por nombre de archivo (el `sprite` de data/classes.json y data/mobs.json). Van al atlas
 /// detrás de las hojas fijas. Sin hoja = se dibuja el nombre.
-pub const CHAR_SHEETS: [(&str, &[u8]); 10] = [
+pub const CHAR_SHEETS: [(&str, &[u8]); 12] = [
     ("warrior.png", include_bytes!("../../Assets/Characters/warrior.png")),
     ("mage.png", include_bytes!("../../Assets/Characters/mage.png")),
     ("rogue.png", include_bytes!("../../Assets/Characters/rogue.png")),
@@ -63,6 +63,8 @@ pub const CHAR_SHEETS: [(&str, &[u8]); 10] = [
     ("swarm.png", include_bytes!("../../Assets/Characters/swarm.png")),
     ("skeleton.png", include_bytes!("../../Assets/Characters/skeleton.png")),
     ("thief.png", include_bytes!("../../Assets/Characters/thief.png")),
+    ("wandmaker.png", include_bytes!("../../Assets/Characters/wandmaker.png")),
+    ("shopkeeper.png", include_bytes!("../../Assets/Characters/shopkeeper.png")),
 ];
 
 /// Esquina del sprite parado en su celda: centrado en x, apoyado abajo (CharSprite.worldToCamera).
