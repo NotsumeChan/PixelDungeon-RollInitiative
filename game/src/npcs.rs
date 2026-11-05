@@ -56,9 +56,14 @@ fn attitude(disp: i32) -> &'static str {
     }
 }
 
+/// `{"near": "exit"}` en `npcs.json`: a cuántas casillas de la bajada como mucho.
+const NEAR: i32 = 3;
+
 impl Dungeon {
-    /// Los NPCs de un piso nuevo (`data/npcs.json`: piso -> [[mob, probabilidad]]; `"*"`, en cualquier piso). Con un rng propio: no gasta el del
-    /// nivel, así los pisos, sus mobs y sus ítems salen iguales que sin NPCs.
+    /// Los NPCs de un piso nuevo (`data/npcs.json`: piso -> [[mob, probabilidad, opciones]]; `"*"`, en cualquier piso).
+    /// La probabilidad es un número o una lista por profundidad (piso 1, 2, ...; después de la lista, 0). Opciones:
+    /// `{"near": "exit"}` lo pone a `NEAR` casillas o menos de la bajada. Con un rng propio: no gasta el del nivel, así
+    /// los pisos, sus mobs y sus ítems salen iguales que sin NPCs.
     pub(crate) fn create_npcs(&mut self) {
         let table: Vec<Value> = [self.depth.to_string(), "*".to_string()]
             .iter()
@@ -68,9 +73,27 @@ impl Dungeon {
             .collect();
         let mut rng = Rng::new(level_seed(self.seed, self.depth) ^ 0x4E50_4353);
         for e in table {
-            let (Some(key), Some(p)) = (e[0].as_str(), e[1].as_f64()) else { continue };
+            let p = match &e[1] {
+                Value::Array(a) => a.get(self.depth as usize - 1).and_then(Value::as_f64),
+                v => v.as_f64(),
+            };
+            let (Some(key), Some(p)) = (e[0].as_str(), p) else { continue };
             if !self.mobs_data.contains_key(key) || rng.float() >= p {
                 continue;
+            }
+            if e[2]["near"] == "exit" {
+                let l = self.level();
+                let near: Vec<i32> = (0..LENGTH)
+                    .filter(|&c| l.passable[c as usize] && c != l.exit && c != l.entrance && crate::char::distance(c, l.exit) <= NEAR)
+                    .filter(|&c| self.find_char(c).is_none())
+                    .collect();
+                if !near.is_empty() {
+                    let c = near[rng.int(near.len() as i32) as usize];
+                    self.add_mob(key, c, State::Passive);
+                    let id = self.next_mob - 1;
+                    self.equip_npc(id, &mut rng);
+                    continue;
+                }
             }
             for _ in 0..50 {
                 let l = self.level();

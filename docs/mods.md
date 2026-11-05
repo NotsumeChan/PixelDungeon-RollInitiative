@@ -39,7 +39,8 @@ Un mod puede traer `script.lua` (Lua 5.4) con funciones que los diálogos llaman
 ## Mods incluidos
 
 `data/mods/<mod>/` van dentro del juego, después del base y antes de los del usuario (que pueden pisarlos):
-`mercader-ambulante` (el mercader ambulante: `"*"` en `npcs.json` = cualquier piso; `"wander": true` en el mob =
+`mercader-ambulante` (el mercader ambulante: `"*"` en `npcs.json` = cualquier piso, con 25 % en el piso 1 que baja
+hasta 0 en el 6 y junto a la bajada; `"wander": true` en el mob =
 deambula; es un mob con `base` sobre el mercader).
 
 ## Ejemplo: `mods/ejemplo-herrero/`
