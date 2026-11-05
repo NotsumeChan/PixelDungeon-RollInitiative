@@ -144,7 +144,10 @@ impl DiceFx {
     /// En la capa de UI (w x h pixeles virtuales).
     pub fn draw(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32) {
         if let Some(e) = self.current.clone() {
-            let s = self.tier.scale;
+            let bw = BOX_W.max(font.width(&e.label) + 6.0); // "CON CD11" no entra en el ancho base
+            // un texto largo ("Persuasión CD12") a escala 3 se sale en vertical: la escala baja (entera, nítida) hasta
+            // que el recuadro entre en el ancho
+            let s = self.tier.scale.min(((w - 4.0) / bw).floor()).max(1.0);
             let rolling = self.t < self.tier.roll;
             let extreme = if rolling || e.hi == e.lo {
                 None
@@ -165,7 +168,6 @@ impl DiceFx {
                 dx = self.rng.int_range_incl(-SHAKE_PX, SHAKE_PX) as f32 * s;
                 dy = self.rng.int_range_incl(-SHAKE_PX, SHAKE_PX) as f32 * s;
             }
-            let bw = BOX_W.max(font.width(&e.label) + 6.0); // "CON CD11" no entra en el ancho base
             let (x, y) = if self.tier == DECIDE {
                 (((w - bw * s) / 2.0).floor(), (h / 2.0 - BOX_H * s - DECIDE_RISE).floor())
             } else {

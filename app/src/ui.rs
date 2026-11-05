@@ -786,8 +786,9 @@ impl Ui {
         if let Some(p) = chars.portrait(d, atlas, dv.npc, [c[0] + 8.0, c[1] + 8.0], 16.0) {
             out.push(p);
         }
-        font.text(out, &capitalize(&dv.name), c[0] + 19.0, c[1] + 4.0, YELLOW);
-        font.text(out, dv.attitude, c[0] + c[2] - font.width(dv.attitude), c[1] + 4.0, GREY);
+        // nombre y, debajo, la actitud (en la misma línea se pisaban con nombres largos)
+        font.text(out, &capitalize(&dv.name), c[0] + 19.0, c[1], YELLOW);
+        font.text(out, dv.attitude, c[0] + 19.0, c[1] + 9.0, GREY);
         let mut y = c[1] + head;
         for l in &lines {
             font.text(out, l, c[0], y, WHITE);
