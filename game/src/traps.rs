@@ -4,7 +4,7 @@
 //! 3x3 alrededor de la trampa. Agregar Blob cuando lleguen las pociones de gas.
 use crate::actor::ActorId;
 use crate::char::distance;
-use crate::dice::{ABILITIES, ABILITY_NAMES};
+use crate::dice::{ability_names, ABILITIES};
 use crate::dungeon::{Dungeon, Pending, Tone};
 use crate::geom::NEIGHBOURS8;
 use crate::mobs::{pick_mob, State};
@@ -57,7 +57,7 @@ impl Dungeon {
             if !hero {
                 return;
             }
-            self.log("Una placa oculta hace click");
+            self.log(crate::tr!("Una placa oculta hace click", "A hidden pressure plate clicks"));
         }
         self.floor_mut().level.set(cell, t::INACTIVE_TRAP);
         if let ActorId::Hero(i) = who {
@@ -67,25 +67,25 @@ impl Dungeon {
         let depth = self.depth;
         match trap {
             t::TOXIC_TRAP => {
-                self.say(cell, "Una nube de gas tóxico brota de la trampa");
+                self.say(cell, crate::tr!("Una nube de gas tóxico brota de la trampa", "A cloud of toxic gas bursts from the trap"));
                 for c in self.area(cell) {
                     self.trap_save(c, "CON", TrapEffect::Toxic(4 + depth));
                 }
             }
             t::FIRE_TRAP => {
-                self.say(cell, "La trampa estalla en llamas");
+                self.say(cell, crate::tr!("La trampa estalla en llamas", "The trap bursts into flames"));
                 for c in self.area(cell) {
                     self.trap_save(c, "DEX", TrapEffect::Fire);
                 }
             }
             t::PARALYTIC_TRAP => {
-                self.say(cell, "Una nube de gas paralizante brota de la trampa");
+                self.say(cell, crate::tr!("Una nube de gas paralizante brota de la trampa", "A cloud of paralytic gas bursts from the trap"));
                 for c in self.area(cell) {
                     self.trap_save(c, "CON", TrapEffect::Paralysis(trap_dc(depth)));
                 }
             }
             t::POISON_TRAP => {
-                self.say(cell, "Un dardo envenenado sale disparado");
+                self.say(cell, crate::tr!("Un dardo envenenado sale disparado", "A poison dart shoots out"));
                 self.trap_save(who, "CON", TrapEffect::Dart(4 + depth / 2));
             }
             t::ALARM_TRAP => {
@@ -98,17 +98,17 @@ impl Dungeon {
                         m.target = cell;
                     }
                 }
-                self.say(cell, "La trampa suelta un chillido que resuena por toda la mazmorra");
+                self.say(cell, crate::tr!("La trampa suelta un chillido que resuena por toda la mazmorra", "The trap emits a piercing shriek that echoes through the dungeon"));
             }
             t::LIGHTNING_TRAP => {
                 // entre 1/3 y 2/3 de la vida actual
                 let hp = self.ch(who).map_or(0, |c| c.hp);
                 let dmg = self.rng.int_range_incl(hp / 3, 2 * hp / 3).max(1);
-                self.say(cell, "Una descarga eléctrica sale de la trampa");
+                self.say(cell, crate::tr!("Una descarga eléctrica sale de la trampa", "A bolt of lightning leaps from the trap"));
                 self.trap_save(who, "DEX", TrapEffect::Lightning(dmg));
             }
             t::GRIPPING_TRAP => {
-                self.say(cell, "Unas garras de metal se cierran sobre la trampa");
+                self.say(cell, crate::tr!("Unas garras de metal se cierran sobre la trampa", "Metal claws snap shut over the trap"));
                 self.trap_save(who, "DEX", TrapEffect::Gripping(depth + 3));
             }
             t::SUMMONING_TRAP => {
@@ -132,7 +132,7 @@ impl Dungeon {
                     self.add_mob_delayed(&key, p, State::Wandering, SUMMON_DELAY);
                     n -= 1;
                 }
-                self.say(cell, "Aparecen monstruos de la nada");
+                self.say(cell, crate::tr!("Aparecen monstruos de la nada", "Monsters appear out of nowhere"));
             }
             _ => {}
         }
@@ -152,7 +152,7 @@ impl Dungeon {
     /// Tira la salvación ya (el orden del rng no depende del render) y aplica el efecto cuando la animación del dado
     /// la muestra (pending); lo que no se ve, en el acto.
     fn trap_save(&mut self, who: ActorId, ability: &'static str, effect: TrapEffect) {
-        let (ok, detail) = self.saving_throw(who, ability, crate::traps::trap_dc(self.depth), "trampa");
+        let (ok, detail) = self.saving_throw(who, ability, crate::traps::trap_dc(self.depth), crate::tr!("trampa", "trap"));
         let pos = self.ch(who).map_or(-1, |c| c.pos);
         let seen = pos >= 0 && self.sees(pos);
         let p = Pending::TrapSave { who, ability, ok, detail, seen, effect };
@@ -168,18 +168,22 @@ impl Dungeon {
         if !self.alive(who) {
             return;
         }
-        let short = ABILITIES.iter().position(|x| *x == ability).map_or(ability, |k| ABILITY_NAMES[k]);
+        let short = ABILITIES.iter().position(|x| *x == ability).map_or(ability, |k| ability_names()[k]);
         let half = self.rules.save_half;
         if seen {
             let name = self.ch(who).map_or(String::new(), |c| c.name.clone());
-            let mut msg = format!("{name} {} la salvación de {short}", if ok { "supera" } else { "falla" });
+            let mut msg = if ok {
+                crate::trf!("{name} supera la salvación de {short}", "{name} succeeds on a {short} saving throw")
+            } else {
+                crate::trf!("{name} falla la salvación de {short}", "{name} fails a {short} saving throw")
+            };
             if ok && effect.half() {
-                msg += if half { ": la mitad del efecto" } else { ": sin efecto" };
+                msg += if half { crate::tr!(": la mitad del efecto", ": half effect") } else { crate::tr!(": sin efecto", ": no effect") };
             }
             let line = if self.verbose_rolls { format!("{msg} ({detail})") } else { msg };
             self.log(&line);
             let tone = if ok { Tone::Pos } else { Tone::Neg };
-            self.status(who, &format!("{short} {}", if ok { "supera" } else { "falla" }), tone);
+            self.status(who, &if ok { crate::trf!("{short} supera", "{short} save") } else { crate::trf!("{short} falla", "{short} fail") }, tone);
         }
         match effect {
             TrapEffect::Toxic(n) if !ok || half => self.add_buff(who, "pdri:poison", Some(if ok { n / 2 } else { n } as f64), 0, 0),

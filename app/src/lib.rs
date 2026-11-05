@@ -14,7 +14,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use config::{Bind, Config};
-use game::{characters, save};
+use game::{characters, save, tr, trf};
 
 use game::dungeon::Dungeon;
 use game::geom::{HEIGHT, LENGTH, WIDTH};
@@ -511,31 +511,31 @@ impl App {
                         self.ui = Ui::new();
                         self.ui.in_title = true;
                         self.ui.window = Some(UiWindow::Lobby);
-                        self.lan_status = format!("Partida abierta en {}.", net::local_ip());
+                        self.lan_status = trf!("Partida abierta en {}.", "Game open at {}.", net::local_ip());
                     }
-                    Err(e) => self.world.d.log(&format!("No se pudo abrir la partida LAN: {e}")),
+                    Err(e) => self.world.d.log(&trf!("No se pudo abrir la partida LAN: {e}", "Couldn't open the LAN game: {e}")),
                 }
             }
             UiAction::OpenJoin => {
                 self.lan_status.clear();
                 match net::Browser::new() {
                     Ok(b) => self.browser = Some(b),
-                    Err(e) => self.lan_status = format!("Sin red: {e}."),
+                    Err(e) => self.lan_status = trf!("Sin red: {e}.", "No network: {e}."),
                 }
                 self.ui.window = Some(UiWindow::Join);
             }
             UiAction::JoinGame(i) => {
                 let Some(g) = self.lan_games.get(i) else { return };
                 if g.info["version"] != game::VERSION {
-                    self.lan_status = format!("Esa partida es de la version {}.", g.info["version"].as_str().unwrap_or("?"));
+                    self.lan_status = trf!("Esa partida es de la version {}.", "That game is from version {}.", g.info["version"].as_str().unwrap_or("?"));
                     return;
                 }
                 if g.info["hash"] != game::registry::content_hash().as_str() {
-                    self.lan_status = "Esa partida tiene otro contenido (data/ o mods).".into();
+                    self.lan_status = tr!("Esa partida tiene otro contenido (data/ o mods).", "That game has different content (data/ or mods).").into();
                     return;
                 }
                 let Some(c) = self.ui.roster_sel.and_then(|i| self.roster.get(i)).cloned() else {
-                    self.lan_status = "Elige un personaje en la lista.".into();
+                    self.lan_status = tr!("Elige un personaje en la lista.", "Choose a character from the list.").into();
                     return;
                 };
                 // personaje portátil: entra con lo de su partida (si tiene una con el héroe vivo)
@@ -544,9 +544,9 @@ impl App {
                     Ok(cg) => {
                         self.net = Net::Client(cg);
                         self.character = Some(c);
-                        self.lan_status = "Conectando...".into();
+                        self.lan_status = tr!("Conectando...", "Connecting...").into();
                     }
-                    Err(e) => self.lan_status = format!("No se pudo conectar: {e}."),
+                    Err(e) => self.lan_status = trf!("No se pudo conectar: {e}.", "Couldn't connect: {e}."),
                 }
             }
             UiAction::SelectChar(i) => {
@@ -851,7 +851,7 @@ impl App {
                     self.awaiting = true;
                 }
                 if let Some(names) = c.lobby.take() {
-                    self.lan_status = format!("En la sala: {}. Esperando que el host empiece...", names.join(", "));
+                    self.lan_status = trf!("En la sala: {}. Esperando que el host empiece...", "In the lobby: {}. Waiting for the host to start...", names.join(", "));
                 }
                 if let Some((nd, wait)) = c.pump() {
                     self.world.d = nd;
@@ -870,7 +870,7 @@ impl App {
                 self.world.d.fx.append(&mut c.fx);
                 self.world.d.dice_events.append(&mut c.dice);
                 if c.closed || c.refused.is_some() {
-                    let why = c.refused.clone().map_or("Se corto la conexion con el host.".to_string(), |w| format!("El host no te dejo entrar: {w}."));
+                    let why = c.refused.clone().map_or(tr!("Se corto la conexion con el host.", "Lost the connection to the host.").to_string(), |w| trf!("El host no te dejo entrar: {w}.", "The host didn't let you in: {w}."));
                     self.autosave(); // antes de Net::Off: guarda su héroe, no la partida del host
                     self.net = Net::Off;
                     self.awaiting = false;
@@ -938,15 +938,15 @@ impl App {
                 let class = c["class"].as_str().unwrap_or("");
                 let Some(cls) = self.classes.get(class) else {
                     // clase de un mod que no está cargado (o del prototipo): no se puede jugar
-                    return ui::RosterRow { name, status: format!("clase desconocida: {class}"), stats: String::new(), sheet: None };
+                    return ui::RosterRow { name, status: trf!("clase desconocida: {class}", "unknown class: {class}"), stats: String::new(), sheet: None };
                 };
                 let run = save::load_run(&dir, characters::id(c)).filter(|d| d.heroes.iter().any(|h| h.is_alive()));
                 let status = match run {
-                    Some(d) => format!("en partida - piso {}, nivel {}", d.depth, d.local().lvl),
+                    Some(d) => trf!("en partida - piso {}, nivel {}", "in a run - depth {}, level {}", d.depth, d.local().lvl),
                     None => format!("{} d{}", game::registry::text(&cls["dnd_class"]), cls["hit_die"]),
                 };
                 let ab = characters::abilities(c);
-                let stats: Vec<String> = (0..6).map(|k| format!("{} {}", game::dice::ABILITY_NAMES[k], ab[k])).collect();
+                let stats: Vec<String> = (0..6).map(|k| format!("{} {}", game::dice::ability_names()[k], ab[k])).collect();
                 let sheet = skin_sheet(&self.skins, characters::skin(c)).or_else(|| skin_sheet(&self.skins, class));
                 ui::RosterRow { name, status, stats: stats.join("  "), sheet }
             })
@@ -1038,7 +1038,7 @@ impl App {
                 let ok = i["version"] == game::VERSION && i["hash"] == game::registry::content_hash().as_str();
                 let name = i["name"].as_str().unwrap_or("?");
                 let extra = if ok { String::new() } else { format!(" (v{})", i["version"].as_str().unwrap_or("?")) };
-                (format!("{name} - {} jugadores - {}{extra}", i["players"], g.addr.ip()), ok)
+                (trf!("{name} - {} jugadores - {}{extra}", "{name} - {} players - {}{extra}", i["players"], g.addr.ip()), ok)
             })
             .collect()
         };

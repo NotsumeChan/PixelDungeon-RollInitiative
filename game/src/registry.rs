@@ -78,6 +78,22 @@ pub fn lang() -> &'static str {
     LANGS[LANG.load(Ordering::Relaxed)].0
 }
 
+/// Texto del código (UI y mensajes) en el idioma actual: `tr!("Atrás", "Back")` da un `&'static str`.
+#[macro_export]
+macro_rules! tr {
+    ($es:literal, $en:literal) => {
+        if $crate::registry::lang() == "en" { $en } else { $es }
+    };
+}
+
+/// Como `tr!` pero con formato (`format!`): `trf!("Recoges {n}", "You pick up {n}")` o con argumentos al final.
+#[macro_export]
+macro_rules! trf {
+    ($es:literal, $en:literal $(, $a:expr)* $(,)?) => {
+        if $crate::registry::lang() == "en" { format!($en $(, $a)*) } else { format!($es $(, $a)*) }
+    };
+}
+
 /// Texto de contenido: `str` o `{"es": ..., "en": ...}`. Si falta el idioma actual, inglés; si no, el primero que haya
 /// (un mod puede traer sólo los suyos).
 pub fn text(v: &Value) -> String {

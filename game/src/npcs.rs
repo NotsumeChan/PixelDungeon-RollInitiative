@@ -25,6 +25,7 @@ use crate::level::level_seed;
 use crate::mobs::State;
 use crate::registry::text;
 use crate::rng::Rng;
+use crate::{tr, trf};
 
 /// Lo que la UI muestra del diálogo abierto: el NPC, su texto y las opciones disponibles (índice en el nodo, texto).
 pub struct DialogView {
@@ -45,7 +46,15 @@ pub struct ShopView {
 }
 
 /// Actitud por disposición, de -2 a 2.
-const ATTITUDES: [&str; 5] = ["hostil", "desconfiado", "indiferente", "amistoso", "muy amistoso"];
+fn attitude(disp: i32) -> &'static str {
+    match disp.clamp(-2, 2) {
+        -2 => tr!("hostil", "hostile"),
+        -1 => tr!("desconfiado", "wary"),
+        0 => tr!("indiferente", "indifferent"),
+        1 => tr!("amistoso", "friendly"),
+        _ => tr!("muy amistoso", "very friendly"),
+    }
+}
 
 impl Dungeon {
     /// Los NPCs de un piso nuevo (`data/npcs.json`: piso -> [[mob, probabilidad]]). Con un rng propio: no gasta el del
@@ -159,11 +168,11 @@ impl Dungeon {
         let Some(item) = self.mob(id).and_then(|m| m.pack.get(k)).cloned() else { return };
         let price = self.buy_price(id, &item);
         if price == 0 {
-            self.tell(i, "Eso no está a la venta");
+            self.tell(i, tr!("Eso no está a la venta", "That's not for sale"));
             return;
         }
         if self.heroes[i].gold < price {
-            self.tell(i, "No te alcanza el oro");
+            self.tell(i, tr!("No te alcanza el oro", "You can't afford it"));
             return;
         }
         let Some(one) = self.npc_take_one(id, &item.id) else { return };
@@ -171,11 +180,11 @@ impl Dungeon {
         match self.collect(i, one) {
             Ok(()) => {
                 self.heroes[i].gold -= price;
-                self.tell(i, &format!("Compras {name} por {price} de oro"));
+                self.tell(i, &trf!("Compras {name} por {price} de oro", "You buy {name} for {price} gold"));
             }
             Err(back) => {
                 self.npc_store(id, back);
-                self.tell(i, "No te queda lugar en la mochila");
+                self.tell(i, tr!("No te queda lugar en la mochila", "Your backpack is full"));
             }
         }
     }
@@ -189,7 +198,7 @@ impl Dungeon {
         let Some(item) = self.heroes[i].backpack.get(k) else { return };
         let price = self.sell_price(id, item);
         if price == 0 {
-            self.tell(i, "No le interesa");
+            self.tell(i, tr!("No le interesa", "Not interested"));
             return;
         }
         let bp = &mut self.heroes[i].backpack;
@@ -197,7 +206,7 @@ impl Dungeon {
         let name = self.item_name(&one);
         self.heroes[i].gold += price;
         self.npc_store(id, one);
-        self.tell(i, &format!("Vendes {name} por {price} de oro"));
+        self.tell(i, &trf!("Vendes {name} por {price} de oro", "You sell {name} for {price} gold"));
     }
 
     /// ¿Es un NPC tranquilo (se le habla, no pelea)?
@@ -228,7 +237,7 @@ impl Dungeon {
         let me = &self.heroes[i].ch.name;
         let fill = |v: &Value| text(v).replace("{name}", me);
         let label = |o: &Value| match self.check_of(id, o) {
-            Some((sk, dc)) => format!("{} [{} {:+}, CD {dc}]", fill(&o["text"]), self.skill_name(&sk), self.skill_bonus(i, &sk)),
+            Some((sk, dc)) => trf!("{} [{} {:+}, CD {dc}]", "{} [{} {:+}, DC {dc}]", fill(&o["text"]), self.skill_name(&sk), self.skill_bonus(i, &sk)),
             None => fill(&o["text"]),
         };
         let options = n["options"]
@@ -240,7 +249,7 @@ impl Dungeon {
             .map(|(k, o)| (k, label(o)))
             .collect();
         let m = self.mob(id)?;
-        let attitude = ATTITUDES[(m.disposition.clamp(-2, 2) + 2) as usize];
+        let attitude = attitude(m.disposition);
         Some(DialogView { npc: ActorId::Mob(id), name: m.ch.name.clone(), attitude, text: fill(&n["text"]), options })
     }
 
@@ -292,9 +301,10 @@ impl Dungeon {
         let b = self.skill_bonus(i, skill);
         let ok = nat + b >= dc;
         let name = self.skill_name(skill);
-        self.roll_event(&format!("{name} CD{dc}"), nat + b, 1 + b, 20 + b, Some(ok));
+        self.roll_event(&trf!("{name} CD{dc}", "{name} DC{dc}"), nat + b, 1 + b, 20 + b, Some(ok));
         let who = self.heroes[i].ch.name.clone();
-        self.log(&format!("{who}: {name} {} contra CD {dc}, {}", nat + b, if ok { "lo logra" } else { "falla" }));
+        let res = if ok { tr!("lo logra", "success") } else { tr!("falla", "failure") };
+        self.log(&trf!("{who}: {name} {} contra CD {dc}, {res}", "{who}: {name} {} vs DC {dc}, {res}", nat + b));
         ok
     }
 
@@ -375,7 +385,7 @@ impl Dungeon {
                         self.floor_mut().level.drop(it, pos, HeapKind::Heap); // mochila llena: al suelo
                     }
                 }
-                self.tell(i, &format!("Recibes {name}"));
+                self.tell(i, &trf!("Recibes {name}", "You receive {name}"));
             }
             "take" => {
                 // pasa a su inventario
@@ -413,7 +423,7 @@ impl Dungeon {
                 }
                 self.observe();
                 self.view_changed = true;
-                self.tell(i, "Ahora conoces el mapa de este piso");
+                self.tell(i, tr!("Ahora conoces el mapa de este piso", "You now know the map of this floor"));
             }
             "disposition" => {
                 let Some(m) = self.mob_mut(id) else { return };
@@ -421,7 +431,7 @@ impl Dungeon {
                 m.disposition = (m.disposition + n(1) as i32).clamp(-2, 2);
                 let (after, name) = (m.disposition, m.ch.name.clone());
                 if after != before {
-                    let msg = format!("{} se vuelve {}", crate::items::capitalize(&name), ATTITUDES[(after + 2) as usize]);
+                    let msg = trf!("{} se vuelve {}", "{} becomes {}", crate::items::capitalize(&name), attitude(after));
                     self.tell(i, &msg);
                 }
             }
@@ -457,12 +467,12 @@ impl Dungeon {
                             let now = self.flags.get(&format!("kills:{mob}")).copied().unwrap_or(0);
                             self.flags.insert(format!("qbase:{key}:{mob}"), now);
                         }
-                        self.log(&format!("Nueva mision: {qname}"));
+                        self.log(&trf!("Nueva misión: {qname}", "New quest: {qname}"));
                     }
                     Some("done") if self.quest_state(&key) == 1 => {
                         self.flags.insert(format!("quest:{key}"), 2);
                         let who = self.heroes[i].ch.name.clone();
-                        self.log(&format!("{who} completa la mision: {qname}"));
+                        self.log(&trf!("{who} completa la misión: {qname}", "{who} completes the quest: {qname}"));
                     }
                     _ => {}
                 }
@@ -530,7 +540,7 @@ impl Dungeon {
                         let prog: Vec<String> = self.objectives(i, q).iter().map(|(t, h, n)| format!("{t} {h}/{n}")).collect();
                         Some(format!("{name}: {}", prog.join(", ")))
                     }
-                    2 => Some(format!("{name}: hecha")),
+                    2 => Some(trf!("{name}: hecha", "{name}: done")),
                     _ => None,
                 }
             })

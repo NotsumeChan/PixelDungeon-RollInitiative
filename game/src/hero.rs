@@ -59,13 +59,13 @@ pub enum Verb {
 impl Verb {
     pub fn label(self) -> &'static str {
         match self {
-            Verb::Eat => "COMER",
-            Verb::Drink => "BEBER",
-            Verb::Read => "LEER",
-            Verb::Equip => "EQUIPAR",
-            Verb::Unequip => "QUITAR",
-            Verb::Throw => "LANZAR",
-            Verb::Drop => "SOLTAR",
+            Verb::Eat => crate::tr!("COMER", "EAT"),
+            Verb::Drink => crate::tr!("BEBER", "DRINK"),
+            Verb::Read => crate::tr!("LEER", "READ"),
+            Verb::Equip => crate::tr!("EQUIPAR", "EQUIP"),
+            Verb::Unequip => crate::tr!("QUITAR", "REMOVE"),
+            Verb::Throw => crate::tr!("LANZAR", "THROW"),
+            Verb::Drop => crate::tr!("SOLTAR", "DROP"),
         }
     }
 }
@@ -539,7 +539,7 @@ impl Dungeon {
                 match tp {
                     Some(_) if self.floor().scheduler.in_combat(me) => {
                         self.heroes[i].action = None;
-                        self.tell(i, "En pleno combate no hay tiempo para charlar");
+                        self.tell(i, crate::tr!("En pleno combate no hay tiempo para charlar", "No time to chat in the middle of combat"));
                     }
                     Some(tp) if adjacent(pos, tp) => {
                         self.heroes[i].action = None;
@@ -669,14 +669,14 @@ impl Dungeon {
             }
         }
         if intentional {
-            self.status(ActorId::Hero(i), "buscando", Tone::Default);
+            self.status(ActorId::Hero(i), crate::tr!("buscando", "searching"), Tone::Default);
             self.effect(Fx::Anim { who: ActorId::Hero(i), kind: "operate", cell: pos });
         }
         if found {
-            self.tell(i, "Encuentras algo oculto");
+            self.tell(i, crate::tr!("Encuentras algo oculto", "You find something hidden"));
             self.observe();
         } else if intentional {
-            self.tell(i, "Buscas, pero no encuentras nada");
+            self.tell(i, crate::tr!("Buscas, pero no encuentras nada", "You search, but find nothing"));
         }
     }
 
@@ -689,9 +689,9 @@ impl Dungeon {
             if h.ch.hp > 0 {
                 h.ch.hp += gain; // caído (XP repartida) no se levanta por subir de nivel
             }
-            let msg = format!("Subes a nivel {}: +{gain} PV, competencia +{}", h.lvl, h.proficiency());
+            let msg = crate::trf!("Subes a nivel {}: +{gain} PV, competencia +{}", "You reach level {}: +{gain} HP, proficiency +{}", h.lvl, h.proficiency());
             self.tell(i, &msg);
-            self.status(ActorId::Hero(i), "sube de nivel", Tone::Pos);
+            self.status(ActorId::Hero(i), crate::tr!("sube de nivel", "level up"), Tone::Pos);
         }
     }
 
@@ -702,9 +702,9 @@ impl Dungeon {
         let was_down = h.is_downed();
         h.ch.hp += amount;
         if was_down && h.ch.hp > 0 {
-            let msg = format!("{} recupera la conciencia", h.ch.name);
+            let msg = crate::trf!("{} recupera la conciencia", "{} regains consciousness", h.ch.name);
             self.log(&msg);
-            self.status(ActorId::Hero(i), "se levanta", Tone::Pos);
+            self.status(ActorId::Hero(i), crate::tr!("se levanta", "gets up"), Tone::Pos);
         }
         amount
     }
@@ -717,7 +717,7 @@ impl Dungeon {
             return;
         }
         let src_pos = src.and_then(|s| self.ch(s)).map(|c| c.pos);
-        let src_name = src.and_then(|s| self.source_name(s)).unwrap_or_else(|| "daño".to_string());
+        let src_name = src.and_then(|s| self.source_name(s)).unwrap_or_else(|| crate::tr!("daño", "damage").to_string());
         // daño por turno (un estado) a un caído: según la regla de la partida `dot_death_saves`
         let counts = self.rules.dot_death_saves || !matches!(src, Some(ActorId::Buff(_)));
         let h = &mut self.heroes[i];
@@ -726,15 +726,16 @@ impl Dungeon {
                 let n = if src_pos.is_some_and(|p| adjacent(p, h.ch.pos)) { 2 } else { 1 };
                 h.stable = false;
                 h.saves[1] += n;
-                let msg = format!(
+                let msg = crate::trf!(
                     "{} recibe daño estando caído ({src_name}): {n} fallo{} ({}/3)",
+                    "{} takes damage while down ({src_name}): {n} failure{} ({}/3)",
                     h.ch.name,
                     if n > 1 { "s" } else { "" },
                     h.saves[1].min(3)
                 );
                 let dies = h.saves[1] >= 3;
                 self.log(&msg);
-                self.status(ActorId::Hero(i), "fallo", Tone::Neg);
+                self.status(ActorId::Hero(i), crate::tr!("fallo", "failure"), Tone::Neg);
                 if dies {
                     self.hero_die(i, src);
                 }
@@ -755,9 +756,9 @@ impl Dungeon {
             }
             h.saves = [0, 0];
             h.stable = false;
-            let msg = format!("{} cae inconsciente", h.ch.name);
+            let msg = crate::trf!("{} cae inconsciente", "{} falls unconscious", h.ch.name);
             self.log(&msg);
-            self.status(ActorId::Hero(i), "inconsciente", Tone::Neg);
+            self.status(ActorId::Hero(i), crate::tr!("inconsciente", "unconscious"), Tone::Neg);
         }
     }
 
@@ -776,9 +777,9 @@ impl Dungeon {
             s.remove(ActorId::Buff(b.uid));
         }
         let msg = if self.heroes.len() == 1 {
-            format!("Has muerto{cause}. R = nueva partida")
+            crate::trf!("Has muerto{cause}. R = nueva partida", "You died{cause}. R = new game")
         } else {
-            format!("{} muere{cause}", self.heroes[i].ch.name)
+            crate::trf!("{} muere{cause}", "{} dies{cause}", self.heroes[i].ch.name)
         };
         self.log(&msg);
     }
@@ -787,7 +788,7 @@ impl Dungeon {
     /// fallos. Se aplica cuando el dado se muestra (pending).
     fn death_save(&mut self, i: usize) {
         let (nat, _) = dice::d20(&mut self.rng, 0);
-        self.roll_event("Muerte CD10", nat, 1, 20, Some(nat >= 10));
+        self.roll_event(crate::tr!("Muerte CD10", "Death DC10"), nat, 1, 20, Some(nat >= 10));
         self.defer(Pending::DeathSave { hero: i, nat });
     }
 
@@ -806,15 +807,15 @@ impl Dungeon {
             h.saves[1] += if nat == 1 { 2 } else { 1 };
         }
         let [s, f] = h.saves;
-        let msg = format!("{}: salvación contra la muerte {nat} ({s} éxitos, {f} fallos)", h.ch.name);
+        let msg = crate::trf!("{}: salvación contra la muerte {nat} ({s} éxitos, {f} fallos)", "{}: death saving throw {nat} ({s} successes, {f} failures)", h.ch.name);
         self.log(&msg);
         if f >= 3 {
             self.hero_die(i, None);
         } else if s >= 3 {
             self.heroes[i].stable = true;
-            let msg = format!("{} está estable", self.heroes[i].ch.name);
+            let msg = crate::trf!("{} está estable", "{} is stable", self.heroes[i].ch.name);
             self.log(&msg);
-            self.status(ActorId::Hero(i), "estable", Tone::Pos);
+            self.status(ActorId::Hero(i), crate::tr!("estable", "stable"), Tone::Pos);
         }
     }
 
@@ -826,7 +827,7 @@ impl Dungeon {
         let (nat, _) = dice::d20(&mut self.rng, 0);
         let b = self.skill_bonus(i, "pdri:medicine");
         let ok = nat + b >= 10;
-        self.roll_event("Medicina CD10", nat + b, 1 + b, 20 + b, Some(ok));
+        self.roll_event(crate::tr!("Medicina CD10", "Medicine DC10"), nat + b, 1 + b, 20 + b, Some(ok));
         let cell = self.heroes[ally].ch.pos;
         self.effect(Fx::Anim { who: ActorId::Hero(i), kind: "operate", cell });
         self.defer(Pending::Stabilize { hero: i, ally, ok });
@@ -837,10 +838,10 @@ impl Dungeon {
         let (me, other) = (self.heroes[i].ch.name.clone(), self.heroes[ally].ch.name.clone());
         if ok && self.heroes[ally].is_downed() {
             self.heroes[ally].stable = true;
-            self.log(&format!("{me} estabiliza a {other}"));
-            self.status(ActorId::Hero(ally), "estable", Tone::Pos);
+            self.log(&crate::trf!("{me} estabiliza a {other}", "{me} stabilizes {other}"));
+            self.status(ActorId::Hero(ally), crate::tr!("estable", "stable"), Tone::Pos);
         } else if !ok {
-            self.log(&format!("{me} no logra estabilizar a {other}"));
+            self.log(&crate::trf!("{me} no logra estabilizar a {other}", "{me} fails to stabilize {other}"));
         }
     }
 
@@ -865,10 +866,10 @@ impl Dungeon {
             } else {
                 let new = h.hunger + HUNGER_STEP;
                 if new >= STARVING {
-                    self.tell(i, "¡Te mueres de hambre!");
+                    self.tell(i, crate::tr!("¡Te mueres de hambre!", "You are starving!"));
                     self.heroes[i].action = None;
                 } else if new >= HUNGRY && HUNGRY > h.hunger {
-                    self.tell(i, "Tienes hambre");
+                    self.tell(i, crate::tr!("Tienes hambre", "You are hungry"));
                 }
                 self.heroes[i].hunger = new.min(STARVING);
             }
@@ -911,7 +912,7 @@ impl Dungeon {
         let epos = self.ch(enemy).map_or(-1, |c| c.pos);
         if cover > 0 && self.sees(epos) {
             let name = self.ch(enemy).map_or(String::new(), |c| c.name.clone());
-            self.log(&format!("{name} tiene media cobertura (-{cover})"));
+            self.log(&crate::trf!("{name} tiene media cobertura (-{cover})", "{name} has half cover (-{cover})"));
         }
         (self.heroes[i].ranged, self.heroes[i].cover) = (Some(weapon), cover);
         let hit = self.attack(ActorId::Hero(i), enemy);
@@ -957,7 +958,7 @@ impl Dungeon {
         }
         let range = Hero::range_of(item).1;
         if !h.fov[cell as usize] {
-            self.tell(i, "No ves esa casilla");
+            self.tell(i, crate::tr!("No ves esa casilla", "You can't see that spot"));
             return;
         }
         let (stop, cover) = self.shot(pos, cell);
@@ -965,7 +966,7 @@ impl Dungeon {
             return;
         }
         if distance(pos, stop) > range {
-            self.tell(i, "Está demasiado lejos");
+            self.tell(i, crate::tr!("Está demasiado lejos", "That's too far away"));
             return;
         }
         let Some(one) = self.take_one(i, slot) else { return };
@@ -1008,14 +1009,14 @@ impl Dungeon {
         let Some(heap) = self.floor_mut().level.heaps.get_mut(&cell) else { return };
         let msg = match heap.kind {
             HeapKind::Heap => return,
-            HeapKind::Tomb => "Abres la tumba",
-            HeapKind::Skeleton => "Revisas los restos",
-            HeapKind::Chest => "Abres el cofre",
+            HeapKind::Tomb => crate::tr!("Abres la tumba", "You open the tomb"),
+            HeapKind::Skeleton => crate::tr!("Revisas los restos", "You search the remains"),
+            HeapKind::Chest => crate::tr!("Abres el cofre", "You open the chest"),
         };
         heap.kind = HeapKind::Heap;
         if heap.items.is_empty() {
             self.floor_mut().level.heaps.remove(&cell);
-            self.tell(i, "Está vacío");
+            self.tell(i, crate::tr!("Está vacío", "It's empty"));
         } else {
             self.tell(i, msg);
         }
@@ -1031,9 +1032,9 @@ impl Dungeon {
             return;
         }
         let item = heap.items[0].clone();
-        let msg = if item.id == GOLD { format!("Recoges {} de oro", item.quantity) } else { format!("Recoges {}", self.item_name(&item)) };
+        let msg = if item.id == GOLD { crate::trf!("Recoges {} de oro", "You pick up {} gold", item.quantity) } else { crate::trf!("Recoges {}", "You pick up {}", self.item_name(&item)) };
         if self.collect(i, item).is_err() {
-            self.tell(i, "Tu mochila está llena");
+            self.tell(i, crate::tr!("Tu mochila está llena", "Your backpack is full"));
             return;
         }
         let heaps = &mut self.floor_mut().level.heaps;
@@ -1056,7 +1057,7 @@ impl Dungeon {
                 self.take_one(i, slot);
                 let h = &mut self.heroes[i];
                 h.hunger = (h.hunger - item.data["energy"].as_f64().unwrap_or(0.0)).max(0.0);
-                self.tell(i, &format!("Comes {}", text(&item.data["name"])));
+                self.tell(i, &crate::trf!("Comes {}", "You eat {}", text(&item.data["name"])));
                 self.effect(Fx::Anim { who: me, kind: "operate", cell: pos });
                 self.spend(me, TIME_TO_EAT);
             }
@@ -1094,7 +1095,7 @@ impl Dungeon {
                     o.cursed_known = true;
                     let o = o.clone();
                     let name = self.item_name(&o);
-                    self.tell(i, &format!("No puedes quitarte {name}: está maldito"));
+                    self.tell(i, &crate::trf!("No puedes quitarte {name}: está maldito", "You can't remove {name}: it's cursed"));
                     return;
                 }
                 let mut new = h.backpack.remove(k);
@@ -1106,7 +1107,7 @@ impl Dungeon {
                     h.backpack.push(o);
                 }
                 let name = self.item_name(&item);
-                self.tell(i, &format!("Te equipas {name}{}", if cursed { ": ¡está maldito!" } else { "" }));
+                self.tell(i, &crate::trf!("Te equipas {name}{}", "You equip {name}{}", if cursed { crate::tr!(": ¡está maldito!", ": it's cursed!") } else { "" }));
                 self.spend(me, TIME_TO_EQUIP * if armor { 2.0 } else { 1.0 });
             }
             Verb::Unequip | Verb::Drop if item.cursed && !matches!(slot, Slot::Pack(_)) => {
@@ -1115,12 +1116,16 @@ impl Dungeon {
                     it.cursed_known = true;
                 }
                 let name = self.item_name(&item);
-                let what = if verb == Verb::Drop { "soltar" } else { "quitarte" };
-                self.tell(i, &format!("No puedes {what} {name}: está maldito"));
+                let msg = if verb == Verb::Drop {
+                    crate::trf!("No puedes soltar {name}: está maldito", "You can't drop {name}: it's cursed")
+                } else {
+                    crate::trf!("No puedes quitarte {name}: está maldito", "You can't remove {name}: it's cursed")
+                };
+                self.tell(i, &msg);
             }
             Verb::Unequip if !matches!(slot, Slot::Pack(_)) => {
                 if self.heroes[i].backpack.len() >= BACKPACK_SIZE {
-                    self.tell(i, "Tu mochila está llena");
+                    self.tell(i, crate::tr!("Tu mochila está llena", "Your backpack is full"));
                     return;
                 }
                 let it = self.take_one(i, slot).unwrap();
@@ -1154,12 +1159,12 @@ impl Dungeon {
             "heal" => {
                 let ht = self.heroes[i].ch.ht;
                 self.heal(i, ht);
-                self.tell(i, "Tus heridas se cierran");
+                self.tell(i, crate::tr!("Tus heridas se cierran", "Your wounds close up"));
             }
             "strength" => {
                 let s = &mut self.heroes[i].abilities[0];
                 *s = (*s + 1).min(20);
-                let msg = format!("Te sientes más fuerte: FUE {s}");
+                let msg = crate::trf!("Te sientes más fuerte: FUE {s}", "You feel stronger: STR {s}");
                 self.tell(i, &msg);
             }
             "experience" => {
@@ -1177,7 +1182,7 @@ impl Dungeon {
                 };
                 self.known.insert(id);
                 let name = self.item_name(&self.heroes[i].item(slot).unwrap().clone());
-                self.tell(i, &format!("Es {name}"));
+                self.tell(i, &crate::trf!("Es {name}", "It's {name}"));
             }
             "upgrade" => {
                 let Some(slot) = target else { return };
@@ -1186,7 +1191,7 @@ impl Dungeon {
                 t.cursed = false;
                 t.cursed_known = true;
                 let name = text(&t.data["name"]);
-                self.tell(i, &format!("Tu {name} brilla"));
+                self.tell(i, &crate::trf!("Tu {name} brilla", "Your {name} glows"));
             }
             "remove_curse" => {
                 let h = &mut self.heroes[i];
@@ -1198,7 +1203,7 @@ impl Dungeon {
                         any = true;
                     }
                 }
-                self.tell(i, if any { "Una luz limpia tu equipo" } else { "Sientes una calma extraña" });
+                self.tell(i, if any { crate::tr!("Una luz limpia tu equipo", "A cleansing light washes over your gear") } else { crate::tr!("Sientes una calma extraña", "You feel a strange calm") });
             }
             "magic_mapping" => {
                 for c in 0..LENGTH {
@@ -1212,19 +1217,19 @@ impl Dungeon {
                 }
                 self.observe();
                 self.view_changed = true;
-                self.tell(i, "Recuerdas el mapa de este piso");
+                self.tell(i, crate::tr!("Recuerdas el mapa de este piso", "You now know the layout of this depth"));
             }
             "teleport" => {
                 let mut rng = self.rng.clone();
                 let pos = self.level().random_respawn_cell(&mut rng, |c| self.find_char(c).is_some());
                 self.rng = rng;
                 if pos == -1 {
-                    self.tell(i, "No pasa nada");
+                    self.tell(i, crate::tr!("No pasa nada", "Nothing happens"));
                     return;
                 }
                 self.place_char(ActorId::Hero(i), pos);
                 self.heroes[i].action = None;
-                self.tell(i, "Apareces en otro lugar");
+                self.tell(i, crate::tr!("Apareces en otro lugar", "You are teleported elsewhere"));
             }
             _ => {}
         }

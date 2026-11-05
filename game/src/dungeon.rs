@@ -242,7 +242,7 @@ impl Dungeon {
         self.depth = self.heroes[i].depth;
         self.view_changed = true;
         let name = self.heroes[i].ch.name.clone();
-        self.log(&format!("Turno de {name}"));
+        self.log(&crate::trf!("Turno de {name}", "{name}'s turn"));
     }
 
     /// Saca al héroe `i` de la partida (los de otra sesión LAN al jugar solo). Los índices de los héroes de después
@@ -447,7 +447,7 @@ impl Dungeon {
     // --- pisos ---
     pub(crate) fn descend(&mut self, i: usize) {
         if self.heroes[i].depth >= MAX_DEPTH {
-            self.tell(i, "Fin de la demo: el piso 5 no está incluido");
+            self.tell(i, crate::tr!("Fin de la demo: el piso 5 no está incluido", "End of the demo: depth 5 is not included"));
             return;
         }
         self.go_to(i, self.heroes[i].depth + 1);
@@ -455,7 +455,7 @@ impl Dungeon {
 
     pub(crate) fn ascend(&mut self, i: usize) {
         if self.heroes[i].depth <= 1 {
-            self.tell(i, "No puedes salir de la mazmorra");
+            self.tell(i, crate::tr!("No puedes salir de la mazmorra", "You can't leave the dungeon"));
             return;
         }
         self.go_to(i, self.heroes[i].depth - 1);
@@ -510,7 +510,7 @@ impl Dungeon {
         }
         self.observe();
         let msg =
-            if self.heroes.len() == 1 { format!("Piso {depth}") } else { format!("{}: piso {depth}", self.heroes[i].ch.name) };
+            if self.heroes.len() == 1 { crate::trf!("Piso {depth}", "Depth {depth}") } else { crate::trf!("{}: piso {depth}", "{}: depth {depth}", self.heroes[i].ch.name) };
         self.log(&msg);
     }
 
@@ -847,7 +847,7 @@ impl Dungeon {
         let c = self.ch_mut(a).unwrap();
         c.init = init;
         if let ActorId::Hero(_) = a {
-            let label = format!("Iniciativa {}", c.name);
+            let label = crate::trf!("Iniciativa {}", "Initiative {}", c.name);
             self.roll_event(&label, init, 1 + b, 20 + b, None);
         }
     }
@@ -884,7 +884,7 @@ impl Dungeon {
                     && !m.enemy_seen
                 {
                     m.ch.surprised = true;
-                    self.status(a, "sorprendido", Tone::Warn);
+                    self.status(a, crate::tr!("sorprendido", "surprised"), Tone::Warn);
                 }
             }
         }
@@ -895,7 +895,7 @@ impl Dungeon {
             .filter(|c| self.level().visible[c.pos as usize])
             .map(|c| format!("{} {}", c.name, c.init))
             .collect();
-        self.log(&format!("¡Combate! Iniciativa: {}", seen.join(", ")));
+        self.log(&crate::trf!("¡Combate! Iniciativa: {}", "Combat! Initiative: {}", seen.join(", ")));
         let first = order[0];
         let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
         (s.turn, s.round, s.calm) = (0, 1, 0);
@@ -963,7 +963,7 @@ impl Dungeon {
             }
             s.order = None;
             if !order.is_empty() {
-                self.log("Fin del combate");
+                self.log(crate::tr!("Fin del combate", "Combat is over"));
             }
             return;
         }
@@ -1078,7 +1078,7 @@ impl Dungeon {
         let hit = nat == 20 || (nat != 1 && nat + bonus >= ac);
         let (a, e) = (self.ch(att).unwrap(), self.ch(enemy).unwrap());
         let (apos, epos, aname, ename) = (a.pos, e.pos, a.name.clone(), e.name.clone());
-        let line = format!("{aname}: d20 {roll_text}{bonus:+}={} vs CA {ac}", nat + bonus);
+        let line = crate::trf!("{aname}: d20 {roll_text}{bonus:+}={} vs CA {ac}", "{aname}: d20 {roll_text}{bonus:+}={} vs AC {ac}", nat + bonus);
         let seen = self.sees(apos) || self.sees(epos);
         self.effect(Fx::Anim { who: att, kind: "attack", cell: epos });
         if seen {
@@ -1091,8 +1091,8 @@ impl Dungeon {
                     target: enemy,
                     hit: false,
                     dmg: 0,
-                    detail: format!("{line}, falla"),
-                    simple: format!("{aname} falla"),
+                    detail: crate::trf!("{line}, falla", "{line}, miss"),
+                    simple: crate::trf!("{aname} falla", "{aname} misses"),
                 };
                 self.pending.push(p);
             }
@@ -1108,14 +1108,14 @@ impl Dungeon {
         if let Some(e) = event {
             self.roll_event(&e.label, e.value, e.lo, e.hi, None);
         }
-        let tag = if crit { "CRITICO " } else { "" };
+        let tag = if crit { crate::tr!("CRITICO ", "CRIT ") } else { "" };
         let p = Pending::Attack {
             attacker: att,
             target: enemy,
             hit: true,
             dmg,
             detail: format!("{line}, {tag}{dmg_text}={dmg}"),
-            simple: format!("{aname} golpea a {ename}: {dmg}{}", if crit { " (critico)" } else { "" }),
+            simple: crate::trf!("{aname} golpea a {ename}: {dmg}{}", "{aname} hits {ename}: {dmg}{}", if crit { crate::tr!(" (critico)", " (crit)") } else { "" }),
         };
         self.pending.push(p);
         true
@@ -1150,7 +1150,7 @@ impl Dungeon {
                         let dmg = if resist { dmg / 2 } else { dmg };
                         self.damage(target, dmg, Some(attacker));
                     } else {
-                        self.status(target, "esquiva", Tone::Neutral);
+                        self.status(target, crate::tr!("esquiva", "dodges"), Tone::Neutral);
                     }
                 }
                 Pending::DeathSave { hero, nat } => self.apply_death_save(hero, nat),

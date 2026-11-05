@@ -21,6 +21,7 @@ use crate::dungeon::{Dungeon, Fx, Pending, Tone};
 use crate::hero::Hero;
 use crate::mobs::State;
 use crate::registry::text;
+use crate::{tr, trf};
 
 /// Espacios de conjuro por nivel de personaje (5e): lanzador completo (Mago) y medio (Explorador, reglas 2024).
 const FULL: [&[i32]; 10] = [&[2], &[3], &[4, 2], &[4, 3], &[4, 3, 2], &[4, 3, 3], &[4, 3, 3, 1], &[4, 3, 3, 2], &[4, 3, 3, 3, 1], &[4, 3, 3, 3, 2]];
@@ -167,7 +168,7 @@ impl Dungeon {
             return;
         }
         if !self.heroes[i].second_wind {
-            self.tell(i, "Ya usaste el Segundo Aliento");
+            self.tell(i, tr!("Ya usaste el Segundo Aliento", "You already used Second Wind"));
             return;
         }
         self.heroes[i].second_wind = false;
@@ -175,7 +176,7 @@ impl Dungeon {
         let lvl = self.heroes[i].lvl;
         let heal = self.heal(i, roll + lvl);
         self.roll_event("1d10", rolled[0], 1, 10, None);
-        self.log(&format!("Segundo Aliento: +{heal} PV"));
+        self.log(&trf!("Segundo Aliento: +{heal} PV", "Second Wind: +{heal} HP"));
         self.status(ActorId::Hero(i), &format!("+{heal}"), Tone::Pos);
     }
 
@@ -201,7 +202,7 @@ impl Dungeon {
         let Some(sid) = self.heroes[i].spell_ids().get(k).cloned() else { return };
         let Some(s) = self.spell(&sid).cloned() else { return };
         if !self.heroes[i].proficient_armor() && !self.heroes[i].is_feature(&sid) {
-            self.tell(i, "No puedes lanzar conjuros con una armadura sin competencia");
+            self.tell(i, tr!("No puedes lanzar conjuros con una armadura sin competencia", "You can't cast spells in armor you lack proficiency with"));
             return;
         }
         let pos = self.heroes[i].ch.pos;
@@ -212,26 +213,26 @@ impl Dungeon {
             "enemy" => {
                 let t = self.find_char(cell).filter(|&t| t != me && self.heroes[i].fov[cell as usize]);
                 let Some(t) = t else {
-                    self.tell(i, "Necesitas un enemigo a la vista");
+                    self.tell(i, tr!("Necesitas un enemigo a la vista", "You need an enemy in sight"));
                     return;
                 };
                 let (stop, c) = self.shot(pos, cell);
                 if stop != cell {
-                    self.tell(i, "No hay línea de tiro");
+                    self.tell(i, tr!("No hay línea de tiro", "No clear line of fire"));
                     return;
                 }
                 target = Some(t);
                 cover = c;
             }
             "cell" if !self.heroes[i].fov[cell as usize] => {
-                self.tell(i, "Necesitas una casilla a la vista");
+                self.tell(i, tr!("Necesitas una casilla a la vista", "You need a tile in sight"));
                 return;
             }
             "touch" => {
                 // uno mismo o un aliado al lado (también caído)
                 let t = self.find_char(cell);
                 if t != Some(me) && !(matches!(t, Some(ActorId::Hero(_))) && adjacent(pos, cell)) {
-                    self.tell(i, "Tócate a ti o a un aliado que esté al lado");
+                    self.tell(i, tr!("Tócate a ti o a un aliado que esté al lado", "Touch yourself or an adjacent ally"));
                     return;
                 }
                 target = t;
@@ -247,7 +248,11 @@ impl Dungeon {
             } else {
                 let slot = if h.is_feature(&sid) { 0 } else { h.slot_for(level) };
                 if slot == 0 {
-                    let msg = if h.is_feature(&sid) { "No te quedan usos (se recuperan al descansar)" } else { "No te quedan espacios de conjuro" };
+                    let msg = if h.is_feature(&sid) {
+                        tr!("No te quedan usos (se recuperan al descansar)", "No uses left (they recover on a rest)")
+                    } else {
+                        tr!("No te quedan espacios de conjuro", "No spell slots left")
+                    };
                     self.tell(i, msg);
                     return;
                 }
@@ -288,9 +293,9 @@ impl Dungeon {
         let ac = self.armor_class_of(target);
         let hit = nat == 20 || (nat != 1 && nat + bonus >= ac);
         self.roll_event("d20", nat, 1, 20, None);
-        let line = format!("{name}: d20 {txt}{bonus:+}={} vs CA {ac}", nat + bonus);
+        let line = trf!("{name}: d20 {txt}{bonus:+}={} vs CA {ac}", "{name}: d20 {txt}{bonus:+}={} vs AC {ac}", nat + bonus);
         if !hit {
-            let p = Pending::Attack { attacker: me, target, hit: false, dmg: 0, detail: format!("{line}, falla"), simple: format!("{name} falla") };
+            let p = Pending::Attack { attacker: me, target, hit: false, dmg: 0, detail: trf!("{line}, falla", "{line}, miss"), simple: trf!("{name} falla", "{name} misses") };
             self.defer(p);
             return;
         }
@@ -302,14 +307,14 @@ impl Dungeon {
         let k = rolled.len() as i32;
         self.roll_event(&format!("{k}d{sides}"), rolled.iter().sum(), k, k * sides, None);
         let tname = self.ch(target).map_or(String::new(), |c| c.name.clone());
-        let crit = if nat == 20 { " (critico)" } else { "" };
+        let crit = if nat == 20 { tr!(" (crítico)", " (critical)") } else { "" };
         let p = Pending::Attack {
             attacker: me,
             target,
             hit: true,
             dmg: total,
             detail: format!("{line}, {dtext}={total}"),
-            simple: format!("{name} golpea a {tname}: {total}{crit}"),
+            simple: trf!("{name} golpea a {tname}: {total}{crit}", "{name} hits {tname}: {total}{crit}"),
         };
         self.defer(p);
         if let Some(buff) = s.get("buff").and_then(Value::as_array) {
@@ -328,7 +333,7 @@ impl Dungeon {
         let tname = self.ch(target).map_or(String::new(), |c| c.name.clone());
         let me = ActorId::Hero(i);
         if saved && !half {
-            let p = Pending::Attack { attacker: me, target, hit: false, dmg: 0, detail: format!("{name}: {stxt}, se salva"), simple: format!("{tname} resiste {name}") };
+            let p = Pending::Attack { attacker: me, target, hit: false, dmg: 0, detail: trf!("{name}: {stxt}, se salva", "{name}: {stxt}, saved"), simple: trf!("{tname} resiste {name}", "{tname} resists {name}") };
             self.defer(p);
             return;
         }
@@ -347,7 +352,7 @@ impl Dungeon {
             hit: true,
             dmg,
             detail: format!("{name}: {stxt}, {dtext}={dmg}"),
-            simple: format!("{name} a {tname}: {dmg}"),
+            simple: trf!("{name} a {tname}: {dmg}", "{name} on {tname}: {dmg}"),
         };
         self.defer(p);
         if !saved && let Some(buff) = s.get("buff").and_then(Value::as_array) {
@@ -371,8 +376,8 @@ impl Dungeon {
             target,
             hit: true,
             dmg: total,
-            detail: format!("{name}: {darts} dardos ({})={total}", list.join("+")),
-            simple: format!("{name}: {total} a {tname}"),
+            detail: trf!("{name}: {darts} dardos ({})={total}", "{name}: {darts} darts ({})={total}", list.join("+")),
+            simple: trf!("{name}: {total} a {tname}", "{name}: {total} to {tname}"),
         };
         self.defer(p);
     }
@@ -412,9 +417,13 @@ impl Dungeon {
             m.enemy_seen = false;
             m.alerted = false;
             slept.push(m.ch.name.clone());
-            self.status(ActorId::Mob(id), "duerme", Tone::Neutral);
+            self.status(ActorId::Mob(id), tr!("duerme", "asleep"), Tone::Neutral);
         }
-        let msg = if slept.is_empty() { "nadie se duerme".to_string() } else { format!("{} se duermen", slept.join(", ")) };
+        let msg = if slept.is_empty() {
+            tr!("nadie se duerme", "nobody falls asleep").to_string()
+        } else {
+            trf!("{} se duermen", "{} fall asleep", slept.join(", "))
+        };
         self.log(&format!("{name}: {msg}"));
     }
 
@@ -441,8 +450,8 @@ impl Dungeon {
         }
         let heal = self.heal(j, amount);
         self.status(who, &format!("+{heal}"), Tone::Pos);
-        let to = if j != caster { format!(" a {}", self.heroes[j].ch.name) } else { String::new() };
-        self.log(&format!("{name}: +{heal} PV{to}"));
+        let to = if j != caster { trf!(" a {}", " to {}", self.heroes[j].ch.name) } else { String::new() };
+        self.log(&trf!("{name}: +{heal} PV{to}", "{name}: +{heal} HP{to}"));
     }
 
     fn spell_mark(&mut self, i: usize, s: &Value, name: &str, target: ActorId) {
@@ -457,6 +466,6 @@ impl Dungeon {
         self.add_buff(target, &id, duration, 0, 0);
         self.heroes[i].marked = Some(target);
         let tname = self.ch(target).map_or(String::new(), |c| c.name.clone());
-        self.log(&format!("{name}: marcas a {tname}"));
+        self.log(&trf!("{name}: marcas a {tname}", "{name}: {tname} is marked"));
     }
 }

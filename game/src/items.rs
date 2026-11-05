@@ -6,6 +6,7 @@ use crate::dungeon::Dungeon;
 use crate::hero::Hero;
 use crate::registry::text;
 use crate::rng::Rng;
+use crate::{tr, trf};
 
 pub const GOLD: &str = "pdri:gold";
 /// Generator.Category: peso de cada categoría (se divide a la mitad cada vez que sale, se reinicia por piso).
@@ -252,7 +253,9 @@ impl Dungeon {
         let cat = item.category();
         if (cat == "potion" || cat == "scroll") && !self.known.contains(&item.id) {
             let look = self.looks.get(&item.id).map_or("?", |l| l.0);
-            return if cat == "potion" { format!("poción {look}") } else { format!("pergamino \"{look}\"") };
+            // la apariencia guardada es el nombre en español: el inglés sale de POTION_LOOKS
+            let en = POTION_LOOKS.iter().find(|p| p[0] == look).map_or(look, |p| p[1]);
+            return if cat == "potion" { trf!("poción {look}", "{en} potion") } else { trf!("pergamino \"{look}\"", "scroll \"{look}\"") };
         }
         let name = text(&item.data["name"]);
         if (item.is_equipment() || item.flag("upgradable")) && item.level_known && item.level != 0 {
@@ -285,12 +288,12 @@ impl Dungeon {
     /// Texto de la ventana del ítem (WndItem / item_info), con los números de 5e.
     pub fn item_info(&self, item: &Item, hero: &Hero) -> String {
         let kind = |k: &str| match k {
-            "simple" => "simple",
-            "martial" => "marcial",
-            "clothing" => "ropa",
-            "light" => "ligera",
-            "medium" => "media",
-            "heavy" => "pesada",
+            "simple" => tr!("simple", "Simple"),
+            "martial" => tr!("marcial", "Martial"),
+            "clothing" => tr!("ropa", "Cloth"),
+            "light" => tr!("ligera", "Light"),
+            "medium" => tr!("media", "Medium"),
+            "heavy" => tr!("pesada", "Heavy"),
             _ => "?",
         };
         let d = &item.data;
@@ -304,81 +307,89 @@ impl Dungeon {
                     let ammo: i32 = hero.backpack.iter().filter(|i| i.id == ammo_id).map(|i| i.quantity).sum();
                     let r = &d["range"];
                     let ammo_name = self.items.get(ammo_id).map_or(String::new(), |a| capitalize(&text(&a["name"])));
-                    format!(
+                    trf!(
                         "Arma a distancia {} (DES). Daño {dice}. Alcance {}/{} casillas (más lejos, desventaja). {ammo_name}s: {ammo}. Cuerpo a cuerpo golpea como un garrote (1d4)",
+                        "{} ranged weapon (DEX). Damage {dice}. Range {}/{} tiles (beyond: disadvantage). {ammo_name}s: {ammo}. In melee it hits like a club (1d4)",
                         kind(item.str("kind")),
                         r[0],
                         r[1]
                     )
                 } else {
-                    let fin = if item.flag("finesse") { ", sutil (FUE o DES)" } else { "" };
-                    format!("Arma {}{fin}. Daño {dice}", kind(item.str("kind")))
+                    let fin = if item.flag("finesse") { tr!(", sutil (FUE o DES)", ", finesse (STR or DEX)") } else { "" };
+                    trf!("Arma {}{fin}. Daño {dice}", "{} weapon{fin}. Damage {dice}", kind(item.str("kind")))
                 };
                 if item.level_known && item.level != 0 {
-                    t += &format!(", {:+} al ataque", item.level);
+                    t += &trf!(", {:+} al ataque", ", {:+} to hit", item.level);
                 }
                 t += &speed_text(item);
-                t += &format!(". Requiere FUE {need}");
+                t += &trf!(". Requiere FUE {need}", ". Requires STR {need}");
                 if need > str_ {
-                    t += &format!(" (te falta fuerza: desventaja y -{} al ataque)", need - str_);
+                    t += &trf!(" (te falta fuerza: desventaja y -{} al ataque)", " (too weak: disadvantage and -{} to hit)", need - str_);
                 }
                 if !hero.proficient_weapon_item(Some(item)) {
-                    t += ". No eres competente: sin bonificador de competencia";
+                    t += tr!(". No eres competente: sin bonificador de competencia", ". Not proficient: no proficiency bonus");
                 }
                 t
             }
             "missile" if item.flag("thrown") => {
                 let r = &d["range"];
-                let fin = if item.flag("finesse") { ", sutil (FUE o DES)" } else { " (FUE)" };
-                let mut t = format!(
+                let fin = if item.flag("finesse") { tr!(", sutil (FUE o DES)", ", finesse (STR or DEX)") } else { tr!(" (FUE)", " (STR)") };
+                let mut t = trf!(
                     "Arma arrojadiza {}{fin}. Daño {}. Alcance {}/{} casillas (más lejos, desventaja)",
+                    "{} thrown weapon{fin}. Damage {}. Range {}/{} tiles (beyond: disadvantage)",
                     kind(item.str("kind")),
                     weapon_dice(item),
                     r[0],
                     r[1]
                 );
                 t += &speed_text(item);
-                t += if item.flag("returns") { ". Vuelve a tu mano" } else { ". Si acierta se pierde; si falla, cae al suelo" };
+                t += if item.flag("returns") {
+                    tr!(". Vuelve a tu mano", ". Returns to your hand")
+                } else {
+                    tr!(". Si acierta se pierde; si falla, cae al suelo", ". Lost on a hit; drops to the floor on a miss")
+                };
                 if let Some(desc) = d.get("desc") {
                     t += &format!(". {}", text(desc).trim_end_matches('.'));
                 }
-                t += &format!(". Requiere FUE {need}");
+                t += &trf!(". Requiere FUE {need}", ". Requires STR {need}");
                 if need > str_ {
-                    t += " (te falta fuerza: desventaja)";
+                    t += tr!(" (te falta fuerza: desventaja)", " (too weak: disadvantage)");
                 }
                 if !hero.proficient_weapon_item(Some(item)) {
-                    t += ". No eres competente: sin bonificador de competencia";
+                    t += tr!(". No eres competente: sin bonificador de competencia", ". Not proficient: no proficiency bonus");
                 }
                 t + "."
             }
             "armor" => {
                 let dex = match d.get("dex_max").and_then(Value::as_i64) {
-                    None => "+ DES".to_string(),
+                    None => tr!("+ DES", "+ DEX").to_string(),
                     Some(0) => String::new(),
-                    Some(m) => format!("+ DES (max {m})"),
+                    Some(m) => trf!("+ DES (max {m})", "+ DEX (max {m})"),
                 };
                 let bonus = if item.level_known && item.level != 0 { format!(" {:+}", item.level) } else { String::new() };
-                let mut t = format!("Armadura {}. CA {}{bonus} {dex}", kind(item.str("kind")), item.int("ac"));
+                let mut t = trf!("Armadura {}. CA {}{bonus} {dex}", "{} armor. AC {}{bonus} {dex}", kind(item.str("kind")), item.int("ac"));
                 if need != 0 {
-                    t += &format!(". Requiere FUE {need}");
+                    t += &trf!(". Requiere FUE {need}", ". Requires STR {need}");
                 }
                 if need > str_ {
-                    t += " (te falta fuerza: más lento y desventaja al atacar)";
+                    t += tr!(" (te falta fuerza: más lento y desventaja al atacar)", " (too weak: slower and disadvantage on attacks)");
                 }
                 if !hero.proficient_armor_item(Some(item)) {
-                    t += ". No eres competente: atacas con desventaja";
+                    t += tr!(". No eres competente: atacas con desventaja", ". Not proficient: disadvantage on attacks");
                 }
                 t
             }
-            "potion" | "scroll" if !self.known.contains(&item.id) => "No sabes qué hace. Hay una sola forma de averiguarlo.".into(),
-            "gold" => format!("{} monedas de oro.", item.quantity),
+            "potion" | "scroll" if !self.known.contains(&item.id) => {
+                tr!("No sabes qué hace. Hay una sola forma de averiguarlo.", "You don't know what it does. There's only one way to find out.").into()
+            }
+            "gold" => trf!("{} monedas de oro.", "{} gold coins.", item.quantity),
             _ => d.get("desc").map_or(String::new(), text),
         };
         if item.is_equipment() {
             if !item.level_known {
-                t += ". No conoces su nivel ni si está maldita";
+                t += tr!(". No conoces su nivel ni si está maldita", ". Unknown level; it may be cursed");
             } else if item.cursed && item.cursed_known {
-                t += ". Está maldita: no te la podrás quitar";
+                t += tr!(". Está maldita: no te la podrás quitar", ". It's cursed: you can't take it off");
             }
             t += ".";
         }
@@ -398,7 +409,7 @@ impl Dungeon {
 
 fn speed_text(item: &Item) -> String {
     let dly = item.data.get("dly").and_then(Value::as_f64).unwrap_or(1.0);
-    if dly != 1.0 { format!(". Velocidad x{}", 1.0 / dly) } else { String::new() }
+    if dly != 1.0 { trf!(". Velocidad x{}", ". Speed x{}", 1.0 / dly) } else { String::new() }
 }
 
 pub fn capitalize(s: &str) -> String {

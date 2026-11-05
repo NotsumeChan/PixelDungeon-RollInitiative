@@ -10,7 +10,7 @@
 use serde_json::Value;
 
 use crate::actor::{ActorId, TICK};
-use crate::dice::{self, ABILITIES, ABILITY_NAMES};
+use crate::dice::{self, ABILITIES};
 use crate::dungeon::{Dungeon, Tone};
 use crate::registry::text;
 
@@ -177,7 +177,7 @@ impl Dungeon {
             let b = c.buffs.remove(k);
             let (cname, pos) = (c.name.clone(), c.pos);
             if self.alive(a) && pos >= 0 && self.level().visible[pos as usize] {
-                self.log(&format!("{cname}: ya no está {}", b.name().to_lowercase()));
+                self.log(&crate::trf!("{cname}: ya no está {}", "{cname}: no longer {}", b.name().to_lowercase()));
             }
         }
         self.floor_mut().scheduler.remove(ActorId::Buff(uid));
@@ -203,18 +203,18 @@ impl Dungeon {
     /// Devuelve (superada, detalle para el log).
     pub(crate) fn saving_throw(&mut self, a: ActorId, ability: &str, dc: i32, why: &str) -> (bool, String) {
         if self.has_flag(a, "paralysed") && (ability == "STR" || ability == "DEX") {
-            return (false, "paralizado: falla".into());
+            return (false, crate::tr!("paralizado: falla", "paralysed: fails").into());
         }
         let (nat, txt) = dice::d20(&mut self.rng, 0);
         let bonus = self.save_bonus(a, ability);
         let ok = nat + bonus >= dc;
         let pos = self.ch(a).map_or(-1, |c| c.pos);
         if pos >= 0 && self.level().visible[pos as usize] {
-            let short = ABILITIES.iter().position(|x| *x == ability).map_or(ability, |k| ABILITY_NAMES[k]);
-            let label = if why.is_empty() { format!("{short} CD{dc}") } else { format!("{short} CD{dc} {why}") };
+            let short = ABILITIES.iter().position(|x| *x == ability).map_or(ability, |k| dice::ability_names()[k]);
+            let label = if why.is_empty() { crate::trf!("{short} CD{dc}", "{short} DC{dc}") } else { crate::trf!("{short} CD{dc} {why}", "{short} DC{dc} {why}") };
             self.roll_event(&label, nat + bonus, 1 + bonus, 20 + bonus, Some(ok));
         }
-        (ok, format!("d20 {txt}{bonus:+}={} vs CD {dc}", nat + bonus))
+        (ok, crate::trf!("d20 {txt}{bonus:+}={} vs CD {dc}", "d20 {txt}{bonus:+}={} vs DC {dc}", nat + bonus))
     }
 
     /// Nombre de un origen de daño (el log y "Has muerto (...)").
@@ -224,8 +224,8 @@ impl Dungeon {
             ActorId::Buff(uid) => {
                 self.chars().into_iter().find_map(|(a, _)| self.buff(a, uid).map(|b| b.name().to_lowercase()))
             }
-            ActorId::Hunger(_) => Some("hambre".into()),
-            ActorId::Trap => Some("trampa eléctrica".into()),
+            ActorId::Hunger(_) => Some(crate::tr!("hambre", "hunger").into()),
+            ActorId::Trap => Some(crate::tr!("trampa eléctrica", "lightning trap").into()),
             _ => None,
         }
     }

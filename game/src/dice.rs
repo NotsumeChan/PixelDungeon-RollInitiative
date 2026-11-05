@@ -5,6 +5,10 @@ use crate::rng::Rng;
 pub const ABILITIES: [&str; 6] = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
 /// Abreviaturas en español, en el orden de `ABILITIES`.
 pub const ABILITY_NAMES: [&str; 6] = ["FUE", "DES", "CON", "INT", "SAB", "CAR"];
+/// Abreviaturas a mostrar en el idioma actual (en inglés son las mismas claves).
+pub fn ability_names() -> [&'static str; 6] {
+    if crate::registry::lang() == "en" { ABILITIES } else { ABILITY_NAMES }
+}
 /// Array estándar de 5e, en el orden de `ABILITIES` (partida sin personaje, y la de fondo del título).
 pub const DEFAULT_SCORES: [i32; 6] = [15, 14, 13, 12, 10, 8];
 /// Rango de una característica escrita a mano en la creación de personaje.
@@ -43,7 +47,7 @@ pub fn d20(rng: &mut Rng, advantage: i32) -> (i32, String) {
     }
     let (a, b) = (rng.int_range_incl(1, 20), rng.int_range_incl(1, 20));
     let r = if advantage > 0 { a.max(b) } else { a.min(b) };
-    (r, format!("{r}[{a}/{b}{}]", if advantage > 0 { " V" } else { " D" }))
+    (r, format!("{r}[{a}/{b}{}]", if advantage > 0 { crate::tr!(" V", " A") } else { " D" }))
 }
 
 /// (característica - 10) / 2 redondeado hacia abajo: 8 -> -1, 10 -> 0, 15 -> +2.

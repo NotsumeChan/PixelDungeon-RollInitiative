@@ -28,10 +28,10 @@ impl State {
     /// AiState.status (ventana de examinar).
     pub fn name(self) -> &'static str {
         match self {
-            State::Sleeping => "Está durmiendo",
-            State::Wandering => "Está deambulando",
-            State::Hunting => "Te está cazando",
-            State::Passive => "Está tranquilo",
+            State::Sleeping => crate::tr!("Está durmiendo", "It's asleep"),
+            State::Wandering => crate::tr!("Está deambulando", "It's wandering"),
+            State::Hunting => crate::tr!("Te está cazando", "It's hunting you"),
+            State::Passive => crate::tr!("Está tranquilo", "It's calm"),
         }
     }
 }
@@ -284,7 +284,7 @@ impl Dungeon {
         *self.flags.entry(format!("kills:{}", m.key)).or_insert(0) += 1; // para las misiones de matar (npcs.rs)
         self.effect(Fx::Die { who: ActorId::Mob(id), cell: m.ch.pos, stats: m.stats.clone() }); // el render deja el cadáver
         if self.level().visible[m.ch.pos as usize] {
-            self.log(&format!("{} muere", m.ch.name));
+            self.log(&crate::trf!("{} muere", "{} dies", m.ch.name));
         }
         let alive: Vec<usize> = self.here().filter(|&h| self.heroes[h].is_alive()).collect();
         let n = alive.len() as i32;

@@ -4,7 +4,7 @@
 //! R5: mochila (WndBag), ventana del ítem (WndItem), accesos rápidos e ícono de hambre.
 //! ponytail: sin íconos de estados ni configuración todavía (R5)
 use game::actor::ActorId;
-use game::dice::{self, ABILITIES, ABILITY_NAMES};
+use game::dice::{self, ABILITIES};
 use game::dungeon::Dungeon;
 use game::npcs::{DialogView, ShopView};
 use game::geom::LENGTH;
@@ -12,6 +12,7 @@ use game::hero::{Action, Slot, Verb, BACKPACK_SIZE, HUNGRY};
 use game::items::{weapon_dice, Image, Item, SLOT_ARMOR, SLOT_RING, SLOT_WEAPON};
 use game::registry::text;
 use game::terrain;
+use game::{tr, trf};
 
 use crate::atlas::Atlas;
 use crate::font::Font;
@@ -24,7 +25,9 @@ const LINE_H: f32 = 10.0;
 const LOG_LINES: usize = 4;
 const LOG_LINE_H: f32 = 9.0;
 /// La tecla de cancelar como se llama en esta plataforma (en Android hace de Esc el botón Atrás).
-const ESC: &str = if cfg!(target_os = "android") { "Atras" } else { "Esc" };
+fn esc() -> &'static str {
+    if cfg!(target_os = "android") { tr!("Atras", "Back") } else { "Esc" }
+}
 /// Alto del log más la barra, desde abajo (los dados chicos van arriba de esto en vertical).
 pub const LOG_AREA: f32 = TOOLBAR_H + 1.0 + LOG_LINES as f32 * LOG_LINE_H;
 const TOOLBAR_H: f32 = 25.0;
@@ -322,7 +325,7 @@ impl Ui {
         let level = d.level();
         let c = cell as usize;
         if !(0..LENGTH).contains(&cell) || !(level.visited[c] || level.mapped[c]) {
-            let text = "No sabes qué hay ahí.".to_string();
+            let text = tr!("No sabes qué hay ahí.", "You don't know what's there.").to_string();
             self.window = Some(Window::Info { icon: None, title: "?".into(), text, hp: None });
             return;
         }
@@ -334,10 +337,10 @@ impl Ui {
             if let Some(ActorId::Mob(id)) = d.find_char(cell) {
                 let m = d.mob(id).unwrap();
                 let desc = m.stats.get("desc").map_or(String::new(), text);
-                let mut text = format!("{desc}\n\n{}. CA {}, PV {}/{}.", m.state.name(), m.armor_class(), m.ch.hp, m.ch.ht);
+                let mut text = trf!("{desc}\n\n{}. CA {}, PV {}/{}.", "{desc}\n\n{}. AC {}, HP {}/{}.", m.state.name(), m.armor_class(), m.ch.hp, m.ch.ht);
                 if !m.ch.buffs.is_empty() {
                     let names: Vec<String> = m.ch.buffs.iter().map(|b| b.name()).collect();
-                    text += &format!("\nEstados: {}", names.join(", "));
+                    text += &trf!("\nEstados: {}", "\nConditions: {}", names.join(", "));
                 }
                 let hp = Some(m.ch.hp as f32 / m.ch.ht.max(1) as f32);
                 let title = capitalize(&m.ch.name);
@@ -346,8 +349,9 @@ impl Ui {
             }
         }
         let (tile, name, desc) = terrain::info(level.map[c], level.water[c], level.pit[c]);
-        let text = if desc[0].is_empty() { "No hay nada aquí." } else { desc[0] };
-        let window = Window::Info { icon: Some(Icon::Tile(tile)), title: name[0].into(), text: text.into(), hp: None };
+        let li = (game::registry::lang() == "en") as usize;
+        let text = if desc[li].is_empty() { tr!("No hay nada aquí.", "There's nothing here.") } else { desc[li] };
+        let window = Window::Info { icon: Some(Icon::Tile(tile)), title: name[li].into(), text: text.into(), hp: None };
         self.window = Some(window);
     }
 
@@ -387,10 +391,10 @@ impl Ui {
             None => {
                 self.draw_tooltip(atlas, font, out, w, h);
                 let casting = self.casting.and_then(|k| d.local().spell_ids().get(k).cloned());
-                let msg = casting.and_then(|sid| d.spell(&sid).map(|s| format!("Elige el objetivo: {} ({ESC} cancela)", text(&s["name"]))));
+                let msg = casting.and_then(|sid| d.spell(&sid).map(|s| trf!("Elige el objetivo: {} ({} cancela)", "Choose a target: {} ({} cancels)", text(&s["name"]), esc())));
                 let throwing = self.throwing.and_then(|s| d.local().item(s)).map(|it| d.item_title(it));
-                let msg = msg.or_else(|| throwing.map(|t| format!("Elige adonde lanzar: {t} ({ESC} cancela)")));
-                let msg = msg.or_else(|| self.examining.then(|| "Toca una casilla para examinarla".to_string()));
+                let msg = msg.or_else(|| throwing.map(|t| trf!("Elige adonde lanzar: {t} ({} cancela)", "Choose where to throw: {t} ({} cancels)", esc())));
+                let msg = msg.or_else(|| self.examining.then(|| tr!("Toca una casilla para examinarla", "Tap a tile to examine it").to_string()));
                 if let Some(msg) = msg {
                     let msg = msg.as_str();
                     let tw = font.width(msg);
@@ -408,7 +412,7 @@ impl Ui {
         out.push(atlas.rect([0.0, 34.0], [w, font.height() + 4.0], PROMPT_BG));
         font.text(out, &text, 4.0, 36.0, WHITE);
         if !cfg!(target_os = "android") {
-            let hint = "Enter manda, Esc cancela";
+            let hint = tr!("Enter manda, Esc cancela", "Enter sends, Esc cancels");
             font.text(out, hint, w - 4.0 - font.width(hint), 36.0 + font.height() + 6.0, GREY);
             return;
         }
@@ -430,14 +434,14 @@ impl Ui {
         let center = if !d.heroes.iter().any(|h| h.is_alive()) {
             // en el teléfono no hay R ni Esc: la nueva partida está en el menú
             let msg = if cfg!(target_os = "android") {
-                "Has muerto - el menu (arriba a la derecha) tiene Nueva partida"
+                tr!("Has muerto - el menu (arriba a la derecha) tiene Nueva partida", "You died - the menu (top right) has New game")
             } else {
-                "Has muerto - R nueva partida, Esc menu"
+                tr!("Has muerto - R nueva partida, Esc menu", "You died - R new game, Esc menu")
             };
             Some((msg.to_string(), DEAD_TEXT))
         } else if me.is_downed() {
             let [s, f] = me.saves;
-            let msg = if me.stable { "Inconsciente - estable".into() } else { format!("Inconsciente - exitos {s}/3, fallos {f}/3") };
+            let msg = if me.stable { tr!("Inconsciente - estable", "Unconscious - stable").into() } else { trf!("Inconsciente - exitos {s}/3, fallos {f}/3", "Unconscious - successes {s}/3, failures {f}/3") };
             Some((msg, DOWN_TEXT))
         } else {
             None
@@ -463,7 +467,7 @@ impl Ui {
         if let Some(sheet) = chars.look(d, ActorId::Hero(d.hero)).and_then(|l| l.sheet) {
             out.push(piece(atlas, sheet, [1, 0, 11, 15], [10.0, 9.0], [11.0, 15.0], WHITE));
         }
-        self.hot([0.0, 1.0, 30.0, 30.0], UiAction::Open(Window::Hero), Some("Ficha del personaje"));
+        self.hot([0.0, 1.0, 30.0, 30.0], UiAction::Open(Window::Hero), Some(tr!("Ficha del personaje", "Character sheet")));
         let hpw = (64.0 * h.ch.hp.max(0) as f32 / h.ch.ht.max(1) as f32).floor();
         if hpw > 0.0 {
             out.push(piece(atlas, HP_BAR, [0, 0, hpw as u32, 4], [30.0, 3.0], [hpw, 4.0], WHITE));
@@ -479,9 +483,9 @@ impl Ui {
         // BuffIndicator en (32, 11): hambre y los estados del héroe (los que tienen ícono)
         let mut icons: Vec<(u32, String)> = Vec::new();
         if h.is_starving() {
-            icons.push((BUFF_STARVATION, "Famélico".into()));
+            icons.push((BUFF_STARVATION, tr!("Famélico", "Starving").into()));
         } else if h.hunger >= HUNGRY {
-            icons.push((BUFF_HUNGER, "Hambriento".into()));
+            icons.push((BUFF_HUNGER, tr!("Hambriento", "Hungry").into()));
         }
         icons.extend(h.ch.buffs.iter().filter_map(|b| b.icon().map(|i| (i, b.name()))));
         let cols = atlas.rects[BUFFS][2] / BUFF_SIZE;
@@ -541,7 +545,7 @@ impl Ui {
                 }
                 let ini = c.init.to_string();
                 font.text(out, &ini, r[0] + r[2] - font.width(&ini), r[1] + r[3] - font.height(), WHITE);
-                let tip = format!("{}: iniciativa {}", c.name, c.init);
+                let tip = trf!("{}: iniciativa {}", "{}: initiative {}", c.name, c.init);
                 self.hot(r, UiAction::Nothing, Some(&tip));
             } else {
                 font.text(out, "?", (center[0] - font.width("?") / 2.0).floor(), (center[1] - font.height() / 2.0).floor(), GREY);
@@ -555,9 +559,9 @@ impl Ui {
         }
         let me = d.local();
         let label = if cur == Some(ActorId::Hero(d.hero)) {
-            format!("Ronda {} - {} ft{}", s.round, me.ch.moves.max(0) * 5, if me.ch.has_action { " - accion" } else { "" })
+            trf!("Ronda {} - {} ft{}", "Round {} - {} ft{}", s.round, me.ch.moves.max(0) * 5, if me.ch.has_action { tr!(" - accion", " - action") } else { "" })
         } else {
-            format!("Ronda {}", s.round)
+            trf!("Ronda {}", "Round {}", s.round)
         };
         font.text(out, &label, w - 2.0 - font.width(&label), CAROUSEL_Y + CAROUSEL_SLOT + 1.0, GOLDEN);
     }
@@ -568,13 +572,13 @@ impl Ui {
         let me = d.local();
         let bag = if self.window.is_some() { UiAction::Close } else { UiAction::Open(Window::Bag(BagMode::Browse)) };
         out.push(piece(atlas, TOOLBAR, TOOL_BAG, [w - 67.0, y], [23.0, 25.0], WHITE));
-        self.hot([w - 67.0, y, 23.0, 25.0], bag, Some("Mochila (I)"));
+        self.hot([w - 67.0, y, 23.0, 25.0], bag, Some(tr!("Mochila (I)", "Backpack (I)")));
         // 2 accesos rápidos (Toolbar.btnQuick1/2) = teclas 1 y 2. Click = usar (o elegir si está vacío), derecho = elegir
         for (q, x) in [(0usize, w - 44.0), (1, w - 22.0)] {
             out.push(piece(atlas, TOOLBAR, TOOL_QUICK, [x, y], [22.0, 25.0], WHITE));
             let item = me.quick_item(q).and_then(|s| me.item(s));
-            let what = item.map_or("vacío, click derecho para elegir".to_string(), |i| d.item_name(i));
-            let tip = format!("Acceso rápido {}: {what} ({})", q + 1, q + 1);
+            let what = item.map_or(tr!("vacío, click derecho para elegir", "empty, right-click to choose").to_string(), |i| d.item_name(i));
+            let tip = trf!("Acceso rápido {}: {what} ({})", "Quickslot {}: {what} ({})", q + 1, q + 1);
             self.hot.push(Hot {
                 rect: [x, y, 22.0, 25.0],
                 act: UiAction::UseQuick(q),
@@ -589,9 +593,9 @@ impl Ui {
             }
         }
         let tools = [
-            (TOOL_WAIT, 0.0, UiAction::Act(Action::Rest), "Esperar un turno (Espacio)"),
-            (TOOL_SEARCH, 20.0, UiAction::Act(Action::Search), "Buscar (Q)"),
-            (TOOL_INFO, 40.0, UiAction::Examine, "Examinar una casilla"),
+            (TOOL_WAIT, 0.0, UiAction::Act(Action::Rest), tr!("Esperar un turno (Espacio)", "Wait a turn (Space)")),
+            (TOOL_SEARCH, 20.0, UiAction::Act(Action::Search), tr!("Buscar (Q)", "Search (Q)")),
+            (TOOL_INFO, 40.0, UiAction::Examine, tr!("Examinar una casilla", "Examine a tile")),
         ];
         for (region, x, act, tip) in tools {
             let size = [region[2] as f32, region[3] as f32];
@@ -607,11 +611,11 @@ impl Ui {
             let alpha = if used { 0.4 } else { 1.0 };
             out.push(piece(atlas, ICONS, [k as u32 * 16, ICON_CLASS_Y, 16, 16], [x + 3.0, y + 5.0], [16.0, 16.0], [1.0, 1.0, 1.0, alpha]));
             let tip = if me.has_trait("pdri:second_wind") {
-                "Segundo Aliento (F)"
+                tr!("Segundo Aliento (F)", "Second Wind (F)")
             } else if me.spellcasting().is_some() {
-                "Conjuros (F)"
+                tr!("Conjuros (F)", "Spells (F)")
             } else {
-                "Rasgos (F)"
+                tr!("Rasgos (F)", "Features (F)")
             };
             self.hot([x, y, 22.0, 25.0], UiAction::Trait, Some(tip));
         }
@@ -647,7 +651,7 @@ impl Ui {
             _ => Vec::new(),
         };
         if !others.is_empty() && d.local().is_alive() {
-            let msg = format!("Esperando a {}", others.join(", "));
+            let msg = trf!("Esperando a {}", "Waiting for {}", others.join(", "));
             let tw = font.width(&msg);
             let x = ((w - tw - 8.0) / 2.0).floor();
             out.push(atlas.rect([x, 48.0], [tw + 8.0, font.height() + 4.0], PROMPT_BG));
@@ -692,9 +696,9 @@ impl Ui {
         Self::draw_window_tinted(atlas, out, c, BAG_TINT);
         self.hot(c, UiAction::Nothing, None);
         let title = match mode {
-            BagMode::Browse => "Mochila".to_string(),
-            BagMode::Target { .. } => "Elige un objeto".to_string(),
-            BagMode::Quick(q) => format!("Acceso rapido {}: elige un objeto", q + 1),
+            BagMode::Browse => tr!("Mochila", "Backpack").to_string(),
+            BagMode::Target { .. } => tr!("Elige un objeto", "Choose an item").to_string(),
+            BagMode::Quick(q) => trf!("Acceso rapido {}: elige un objeto", "Quickslot {}: choose an item", q + 1),
         };
         font.text(out, &title, c[0], c[1] + 2.0, YELLOW);
         let cell = |col: usize, row: usize| {
@@ -757,7 +761,7 @@ impl Ui {
         let c = [((w - cw) / 2.0).floor(), ((h - ch) / 2.0).floor().max(2.0), cw, ch];
         self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
         Self::draw_window_tinted(atlas, out, c, BAG_TINT);
-        font.text(out, &format!("{} - tu oro: {}", capitalize(&sv.name), me.gold), c[0], c[1] + 2.0, YELLOW);
+        font.text(out, &trf!("{} - tu oro: {}", "{} - your gold: {}", capitalize(&sv.name), me.gold), c[0], c[1] + 2.0, YELLOW);
         // lo elegido puede haberse vendido o comprado
         let sel = self.shop_sel.filter(|&(npc, k)| if npc { k < sv.stock.len() } else { k < me.backpack.len() });
         let mark = |out: &mut Vec<Sprite>, r: [f32; 4]| {
@@ -767,7 +771,7 @@ impl Ui {
         };
         let mut y = c[1] + BAG_TITLE_H;
         if sv.stock.is_empty() {
-            font.text(out, "No le queda nada", c[0], y + 6.0, GREY);
+            font.text(out, tr!("No le queda nada", "Sold out"), c[0], y + 6.0, GREY);
         }
         for (k, (item, _)) in sv.stock.iter().enumerate() {
             let r = [c[0] + (k % cols) as f32 * step, y + (k / cols) as f32 * step, S, S];
@@ -778,7 +782,7 @@ impl Ui {
             self.hot(r, UiAction::ShopSel(true, k), Some(&d.item_name(item)));
         }
         y += r_stock as f32 * step + BAG_GAP;
-        font.text(out, "Tu mochila", c[0], y, GREY);
+        font.text(out, tr!("Tu mochila", "Your backpack"), c[0], y, GREY);
         y += BAG_TITLE_H;
         for k in 0..BACKPACK_SIZE {
             let r = [c[0] + (k % cols) as f32 * step, y + (k / cols) as f32 * step, S, S];
@@ -795,14 +799,14 @@ impl Ui {
         let (line, act) = match sel {
             Some((true, k)) => {
                 let (it, p) = &sv.stock[k];
-                (format!("{}: {p} de oro", d.item_name(it)), Some((format!("COMPRAR ({p})"), (*p > 0 && me.gold >= *p).then_some(UiAction::Act(Action::Buy(k))))))
+                (trf!("{}: {p} de oro", "{}: {p} gold", d.item_name(it)), Some((trf!("COMPRAR ({p})", "BUY ({p})"), (*p > 0 && me.gold >= *p).then_some(UiAction::Act(Action::Buy(k))))))
             }
             Some((false, k)) => {
                 let p = sv.sell.get(k).copied().unwrap_or(0);
-                let what = if p > 0 { format!("te paga {p} de oro") } else { "no le interesa".to_string() };
-                (format!("{}: {what}", d.item_name(&me.backpack[k])), Some((format!("VENDER ({p})"), (p > 0).then_some(UiAction::Act(Action::Sell(k))))))
+                let what = if p > 0 { trf!("te paga {p} de oro", "pays you {p} gold") } else { tr!("no le interesa", "not interested").to_string() };
+                (format!("{}: {what}", d.item_name(&me.backpack[k])), Some((trf!("VENDER ({p})", "SELL ({p})"), (p > 0).then_some(UiAction::Act(Action::Sell(k))))))
             }
-            None => ("Toca un objeto para comprarlo o venderlo".to_string(), None),
+            None => (tr!("Toca un objeto para comprarlo o venderlo", "Tap an item to buy or sell it").to_string(), None),
         };
         for (j, l) in wrap(font, &line, cw).iter().take(2).enumerate() {
             font.text(out, l, c[0], y + j as f32 * LINE_H, WHITE);
@@ -812,7 +816,7 @@ impl Ui {
         if let Some((label, a)) = act {
             self.draw_button(atlas, font, out, [c[0], by, bw, 18.0], &label, a);
         }
-        self.draw_button(atlas, font, out, [c[0] + bw + 2.0, by, bw, 18.0], "CERRAR", Some(UiAction::Act(Action::Bye)));
+        self.draw_button(atlas, font, out, [c[0] + bw + 2.0, by, bw, 18.0], tr!("CERRAR", "CLOSE"), Some(UiAction::Act(Action::Bye)));
     }
 
     /// WndItem: ícono, nombre, descripción con los números de 5e y un botón por acción.
@@ -954,52 +958,52 @@ impl Ui {
         let me = d.local();
         let abil = |range: std::ops::Range<usize>| {
             range
-                .map(|i| format!("{} {}({:+})", ABILITY_NAMES[i], me.abilities[i], me.ability_mod(ABILITIES[i])))
+                .map(|i| format!("{} {}({:+})", dice::ability_names()[i], me.abilities[i], me.ability_mod(ABILITIES[i])))
                 .collect::<Vec<_>>()
                 .join("   ")
         };
         let dmg = me.weapon.as_ref().map_or("1".to_string(), |w| weapon_dice(w).to_string());
-        let saves: Vec<String> = (0..6).map(|i| format!("{}{:+}", ABILITY_NAMES[i], me.save_bonus(ABILITIES[i]))).collect();
+        let saves: Vec<String> = (0..6).map(|i| format!("{}{:+}", dice::ability_names()[i], me.save_bonus(ABILITIES[i]))).collect();
         let mut lines = vec![
-            (format!("{} ({}) nivel {}", me.ch.name, text(&me.cls["dnd_class"]), me.lvl), YELLOW),
+            (trf!("{} ({}) nivel {}", "{} ({}) level {}", me.ch.name, text(&me.cls["dnd_class"]), me.lvl), YELLOW),
             (abil(0..3), WHITE),
             (abil(3..6), WHITE),
-            (format!("PV {}/{}   CA {}   Competencia +{}", me.ch.hp, me.ch.ht, me.armor_class(), me.proficiency()), WHITE),
+            (trf!("PV {}/{}   CA {}   Competencia +{}", "HP {}/{}   AC {}   Proficiency +{}", me.ch.hp, me.ch.ht, me.armor_class(), me.proficiency()), WHITE),
             (
-                format!("Ataque {:+}   Daño {dmg}{:+}   Dado de golpe d{}", me.attack_bonus(), me.attack_mod(), me.cls["hit_die"]),
+                trf!("Ataque {:+}   Daño {dmg}{:+}   Dado de golpe d{}", "Attack {:+}   Damage {dmg}{:+}   Hit die d{}", me.attack_bonus(), me.attack_mod(), me.cls["hit_die"]),
                 WHITE,
             ),
-            (format!("Salvaciones {}", saves.join(" ")), WHITE),
-            (format!("XP {}/{}   Oro {}", me.exp, me.max_exp(), me.gold), WHITE),
+            (trf!("Salvaciones {}", "Saves {}", saves.join(" ")), WHITE),
+            (trf!("XP {}/{}   Oro {}", "XP {}/{}   Gold {}", me.exp, me.max_exp(), me.gold), WHITE),
         ];
         let skills: Vec<String> = d.proficient_skills(d.hero).iter().map(|(n, b)| format!("{n} {b:+}")).collect();
         if !skills.is_empty() {
-            lines.push((format!("Pericias: {}", skills.join(", ")), WHITE));
+            lines.push((trf!("Pericias: {}", "Skills: {}", skills.join(", ")), WHITE));
         }
         let quests = d.quest_lines(d.hero);
         if !quests.is_empty() {
-            lines.push(("Misiones:".to_string(), YELLOW));
+            lines.push((tr!("Misiones:", "Quests:").to_string(), YELLOW));
             lines.extend(quests.into_iter().map(|q| (q, WHITE)));
         }
         let trait_btn = if me.has_trait("pdri:second_wind") {
-            let state = if me.second_wind { "disponible" } else { "usado" };
-            lines.push((format!("Segundo Aliento (F): {state}"), WHITE));
-            Some(("Segundo Aliento", me.second_wind.then_some(UiAction::Act(Action::SecondWind))))
+            let state = if me.second_wind { tr!("disponible", "available") } else { tr!("usado", "used") };
+            lines.push((trf!("Segundo Aliento (F): {state}", "Second Wind (F): {state}"), WHITE));
+            Some((tr!("Segundo Aliento", "Second Wind"), me.second_wind.then_some(UiAction::Act(Action::SecondWind))))
         } else if me.spellcasting().is_some() {
-            lines.push((format!("Conjuros (F): ataque {:+}, CD {}", me.spell_bonus(), me.spell_dc()), WHITE));
-            Some(("Conjuros", Some(UiAction::Open(Window::Spells))))
+            lines.push((trf!("Conjuros (F): ataque {:+}, CD {}", "Spells (F): attack {:+}, DC {}", me.spell_bonus(), me.spell_dc()), WHITE));
+            Some((tr!("Conjuros", "Spells"), Some(UiAction::Open(Window::Spells))))
         } else if me.has_book() {
-            lines.push(("Rasgos (F)".to_string(), WHITE));
-            Some(("Rasgos", Some(UiAction::Open(Window::Spells))))
+            lines.push((tr!("Rasgos (F)", "Features (F)").to_string(), WHITE));
+            Some((tr!("Rasgos", "Features"), Some(UiAction::Open(Window::Spells))))
         } else {
             None
         };
         if me.has_trait("pdri:sneak_attack") {
-            lines.push((format!("Ataque Furtivo: +{}d6 con ventaja y arma sutil", me.sneak_dice()), WHITE));
+            lines.push((trf!("Ataque Furtivo: +{}d6 con ventaja y arma sutil", "Sneak Attack: +{}d6 with advantage and a finesse weapon", me.sneak_dice()), WHITE));
         }
         if !me.ch.buffs.is_empty() {
             let names: Vec<String> = me.ch.buffs.iter().map(|b| b.name()).collect();
-            lines.push((format!("Estados: {}", names.join(", ")), STATES));
+            lines.push((trf!("Estados: {}", "Conditions: {}", names.join(", ")), STATES));
         }
         // en vertical las líneas largas se parten
         let lines: Vec<(String, [f32; 4])> =
@@ -1034,17 +1038,17 @@ impl Ui {
         let sc = me.spellcasting().unwrap_or(&null); // sólo rasgos (Bárbaro, Paladín): sin característica de lanzamiento
         let sw = SPELLS_W.min(w - 16.0);
         let ability = sc["ability"].as_str().unwrap_or("INT");
-        let short = ABILITIES.iter().position(|a| *a == ability).map_or(ability, |k| ABILITY_NAMES[k]);
+        let short = ABILITIES.iter().position(|a| *a == ability).map_or(ability, |k| dice::ability_names()[k]);
         let max = me.max_slots(me.lvl);
-        let slots: Vec<String> = me.slots.iter().zip(&max).enumerate().map(|(k, (n, m))| format!("nv{} {n}/{m}", k + 1)).collect();
+        let slots: Vec<String> = me.slots.iter().zip(&max).enumerate().map(|(k, (n, m))| trf!("nv{} {n}/{m}", "lv{} {n}/{m}", k + 1)).collect();
         let mut head = vec![
-            ("Conjuros".to_string(), YELLOW),
-            (format!("Ataque {:+}   CD {}   ({short})", me.spell_bonus(), me.spell_dc()), WHITE),
-            (format!("Espacios: {}", if slots.is_empty() { "-".to_string() } else { slots.join("  ") }), WHITE),
+            (tr!("Conjuros", "Spells").to_string(), YELLOW),
+            (trf!("Ataque {:+}   CD {}   ({short})", "Attack {:+}   DC {}   ({short})", me.spell_bonus(), me.spell_dc()), WHITE),
+            (trf!("Espacios: {}", "Slots: {}", if slots.is_empty() { "-".to_string() } else { slots.join("  ") }), WHITE),
         ];
         for (sid, n) in &me.free_casts {
             let name = d.spell(sid).map_or(sid.clone(), |s| text(&s["name"]));
-            let what = if me.is_feature(sid) { "usos" } else { "gratis" };
+            let what = if me.is_feature(sid) { tr!("usos", "uses") } else { tr!("gratis", "free") };
             head.push((format!("{name}: {n} {what}"), WHITE));
         }
         let rows: Vec<(usize, String, Vec<String>, bool, bool)> = me
@@ -1054,7 +1058,7 @@ impl Ui {
             .filter_map(|(k, sid)| {
                 let s = d.spell(sid)?;
                 let lvl = s["level"].as_i64().unwrap_or(0);
-                let tag = if lvl == 0 { "truco".to_string() } else { format!("nv {lvl}") };
+                let tag = if lvl == 0 { tr!("truco", "cantrip").to_string() } else { trf!("nv {lvl}", "lv {lvl}") };
                 let desc = s.get("desc").map_or(String::new(), text);
                 let lines = wrap(font, &desc, sw).into_iter().take(2).collect();
                 Some((k, format!("{} ({tag})", text(&s["name"])), lines, d.can_cast(me, sid), s["target"] == "self"))
@@ -1088,12 +1092,12 @@ impl Ui {
         // WndGame: nueva partida sólo si el héroe murió, como el original
         let mut rows: Vec<Vec<(&str, UiAction)>> = Vec::new();
         if !d.local().is_alive() {
-            rows.push(vec![("Nueva partida", UiAction::NewGame)]);
+            rows.push(vec![(tr!("Nueva partida", "New game"), UiAction::NewGame)]);
         }
-        rows.push(vec![("Configuracion", UiAction::Open(Window::Settings))]);
-        rows.push(vec![("Reglas de la partida", UiAction::Open(Window::Rules))]);
-        rows.push(vec![("Menu principal", UiAction::MainMenu), ("Salir", UiAction::Quit)]);
-        rows.push(vec![("Volver al juego", UiAction::Close)]);
+        rows.push(vec![(tr!("Configuracion", "Settings"), UiAction::Open(Window::Settings))]);
+        rows.push(vec![(tr!("Reglas de la partida", "Game rules"), UiAction::Open(Window::Rules))]);
+        rows.push(vec![(tr!("Menu principal", "Main menu"), UiAction::MainMenu), (tr!("Salir", "Quit"), UiAction::Quit)]);
+        rows.push(vec![(tr!("Volver al juego", "Back to game"), UiAction::Close)]);
         let mh = rows.len() as f32 * (MENU_BTN_H + MENU_GAP) - MENU_GAP;
         let c = [((w - MENU_W) / 2.0).floor(), ((h - TOOLBAR_H - mh) / 2.0).floor(), MENU_W, mh];
         self.hot([0.0, 0.0, w, h], UiAction::Close, None); // click afuera cierra
@@ -1115,8 +1119,8 @@ impl Ui {
         let sw = SETTINGS_W.min(w - 16.0);
         let r = d.rules;
         let rows = [
-            ("dot_death_saves", "Caido: el daño por turno (veneno, sangrado, fuego) suma fallos de salvacion", r.dot_death_saves, ["Si (5e)", "No"]),
-            ("save_half", "Salvacion superada contra gas toxico o descarga electrica", r.save_half, ["Mitad (5e)", "Sin efecto"]),
+            ("dot_death_saves", tr!("Caido: el daño por turno (veneno, sangrado, fuego) suma fallos de salvacion", "Downed: damage over time (poison, bleeding, fire) adds death save failures"), r.dot_death_saves, [tr!("Si (5e)", "Yes (5e)"), "No"]),
+            ("save_half", tr!("Salvacion superada contra gas toxico o descarga electrica", "Successful save vs toxic gas or electric shock"), r.save_half, [tr!("Mitad (5e)", "Half (5e)"), tr!("Sin efecto", "No effect")]),
         ];
         let wrapped: Vec<Vec<String>> = rows.iter().map(|row| wrap(font, row.1, sw)).collect();
         let ch = LINE_H + MENU_GAP * 2.0 + wrapped.iter().map(|l| l.len() as f32 * LINE_H + MENU_BTN_H + MENU_GAP * 2.0).sum::<f32>() + MENU_BTN_H;
@@ -1124,7 +1128,7 @@ impl Ui {
         self.hot([0.0, 0.0, w, h], UiAction::Open(Window::Menu), None);
         self.hot(c, UiAction::Nothing, None);
         Self::draw_window(atlas, out, c);
-        let title = "Reglas de la partida";
+        let title = tr!("Reglas de la partida", "Game rules");
         font.text(out, title, c[0] + ((sw - font.width(title)) / 2.0).floor(), c[1], YELLOW);
         let mut y = c[1] + LINE_H + MENU_GAP * 2.0;
         for ((key, _, value, labels), lines) in rows.into_iter().zip(wrapped) {
@@ -1142,7 +1146,7 @@ impl Ui {
             }
             y += MENU_BTN_H + MENU_GAP * 2.0;
         }
-        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], "Volver", Some(UiAction::Open(Window::Menu)));
+        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], tr!("Volver", "Back"), Some(UiAction::Open(Window::Menu)));
     }
 
     /// WndSettings: FPS, pantalla completa y controles (toca uno y presiona la tecla nueva). Cada cambio se aplica y
@@ -1165,12 +1169,12 @@ impl Ui {
             .map(|&(code, name)| (name.to_string(), cfg.language == code, Some(UiAction::SetLanguage(code))))
             .collect();
         let full = vec![
-            ("Si".to_string(), cfg.fullscreen, Some(UiAction::SetFullscreen(true))),
+            (tr!("Si", "Yes").to_string(), cfg.fullscreen, Some(UiAction::SetFullscreen(true))),
             ("No".to_string(), !cfg.fullscreen, Some(UiAction::SetFullscreen(false))),
         ];
         let fps: Vec<(String, bool, Option<UiAction>)> = FPS_OPTIONS
             .iter()
-            .map(|&f| (if f == 0 { "Sin limite".into() } else { f.to_string() }, cfg.max_fps == f, Some(UiAction::SetFps(f))))
+            .map(|&f| (if f == 0 { tr!("Sin limite", "Unlimited").into() } else { f.to_string() }, cfg.max_fps == f, Some(UiAction::SetFps(f))))
             .collect();
         // del zoom que entra hacia abajo (75% y 50% en HD): siempre entero, nítido
         let z = cfg.ui_base.max(1);
@@ -1184,17 +1188,17 @@ impl Ui {
             .iter()
             .map(|&(k, rw, rh)| (format!("{rw}x{rh}"), cfg.resolution == k, Some(UiAction::SetResolution(k))))
             .collect();
-        let mut rows = vec![("Idioma", lang), ("Pantalla completa (F11)", full)];
+        let mut rows = vec![(tr!("Idioma", "Language"), lang), (tr!("Pantalla completa (F11)", "Fullscreen (F11)"), full)];
         if desktop {
-            rows.push(("Resolucion (ventana)", res));
+            rows.push((tr!("Resolucion (ventana)", "Resolution (windowed)"), res));
         }
-        rows.extend([("FPS", fps), ("Escala de la interfaz (en partida)", scales)]);
+        rows.extend([("FPS", fps), (tr!("Escala de la interfaz (en partida)", "UI scale (in game)"), scales)]);
         let mut y = c[1];
         for (label, options) in rows {
             font.text(out, label, c[0], y, YELLOW);
             if label == "FPS" {
                 // ver el contador en la partida: un botón chico en la línea del título (no suma una fila)
-                let t = if cfg.show_fps { "Mostrar: Si" } else { "Mostrar: No" };
+                let t = if cfg.show_fps { tr!("Mostrar: Si", "Show: Yes") } else { tr!("Mostrar: No", "Show: No") };
                 let tw = font.width(t) + 8.0;
                 self.draw_button(atlas, font, out, [c[0] + sw - tw, y - 1.0, tw, LINE_H], t, Some(UiAction::SetShowFps(!cfg.show_fps)));
             }
@@ -1211,8 +1215,8 @@ impl Ui {
             y += MENU_BTN_H + MENU_GAP * 2.0;
         }
         let bw = ((sw - MENU_GAP) / 2.0).floor();
-        self.draw_button(atlas, font, out, [c[0], y, bw, MENU_BTN_H], "Controles", Some(UiAction::Open(Window::Controls)));
-        self.draw_button(atlas, font, out, [c[0] + bw + MENU_GAP, y, bw, MENU_BTN_H], "Volver", Some(back));
+        self.draw_button(atlas, font, out, [c[0], y, bw, MENU_BTN_H], tr!("Controles", "Controls"), Some(UiAction::Open(Window::Controls)));
+        self.draw_button(atlas, font, out, [c[0] + bw + MENU_GAP, y, bw, MENU_BTN_H], tr!("Volver", "Back"), Some(back));
     }
 
     /// Controles: toca una acción y presiona la tecla nueva (Esc cancela). Se guarda al momento.
@@ -1224,7 +1228,7 @@ impl Ui {
         self.hot([0.0, 0.0, w, h], UiAction::Open(Window::Settings), None);
         self.hot(c, UiAction::Nothing, None);
         Self::draw_window(atlas, out, c);
-        font.text(out, "Controles (toca uno y presiona la tecla)", c[0], c[1], YELLOW);
+        font.text(out, tr!("Controles (toca uno y presiona la tecla)", "Controls (tap one and press the key)"), c[0], c[1], YELLOW);
         let y = c[1] + LINE_H;
         let bw = ((sw - MENU_GAP * 2.0) / 3.0).floor();
         for (k, b) in Bind::ALL.into_iter().enumerate() {
@@ -1237,7 +1241,7 @@ impl Ui {
             }
         }
         let y = y + rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP;
-        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], "Volver", Some(UiAction::Open(Window::Settings)));
+        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], tr!("Volver", "Back"), Some(UiAction::Open(Window::Settings)));
     }
 
     /// Lista de personajes (rosterScreen.py): elegir uno para jugar (su partida guardada si sigue vivo), crear uno
@@ -1251,9 +1255,9 @@ impl Ui {
         self.roster_scroll = self.roster_scroll.min(rows.len().saturating_sub(visible));
         out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
         self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
-        font.text(out, "Personajes", 8.0, 3.0, YELLOW);
+        font.text(out, tr!("Personajes", "Characters"), 8.0, 3.0, YELLOW);
         if rows.is_empty() {
-            font.text(out, "Todavia no hay personajes. Crea uno con NUEVO.", 8.0, LIST_Y + 10.0, GREY);
+            font.text(out, tr!("Todavia no hay personajes. Crea uno con NUEVO.", "No characters yet. Create one with NEW."), 8.0, LIST_Y + 10.0, GREY);
         }
         for (row, i) in (self.roster_scroll..rows.len().min(self.roster_scroll + visible)).enumerate() {
             let c = &rows[i];
@@ -1278,15 +1282,15 @@ impl Ui {
         }
         let has = self.roster_sel.is_some_and(|s| s < rows.len());
         let buttons = [
-            ("JUGAR", has.then_some(UiAction::PlayChar)),
-            ("NUEVO", Some(UiAction::Create(Cr::New))),
-            (if self.confirm { "CONFIRMAR" } else { "BORRAR" }, has.then_some(UiAction::DeleteChar)),
+            (tr!("JUGAR", "PLAY"), has.then_some(UiAction::PlayChar)),
+            (tr!("NUEVO", "NEW"), Some(UiAction::Create(Cr::New))),
+            (if self.confirm { tr!("CONFIRMAR", "CONFIRM") } else { tr!("BORRAR", "DELETE") }, has.then_some(UiAction::DeleteChar)),
         ];
         // red LAN: con el personaje elegido
         let lan = [
-            ("CREAR LAN", has.then_some(UiAction::HostLan)),
-            ("UNIRSE", has.then_some(UiAction::OpenJoin)),
-            ("VOLVER", Some(UiAction::Close)),
+            (tr!("CREAR LAN", "HOST LAN"), has.then_some(UiAction::HostLan)),
+            (tr!("UNIRSE", "JOIN"), has.then_some(UiAction::OpenJoin)),
+            (tr!("VOLVER", "BACK"), Some(UiAction::Close)),
         ];
         let bw2 = ((w - 16.0 - 4.0) / 3.0).floor();
         for (k, (label, act)) in lan.into_iter().enumerate() {
@@ -1314,7 +1318,7 @@ impl Ui {
         out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
         self.hot([0.0, 0.0, w, h], UiAction::Create(Cr::Unfocus), None);
         let st = self.create.clone();
-        font.text(out, "Crear personaje", 8.0, 3.0, YELLOW);
+        font.text(out, tr!("Crear personaje", "Create character"), 8.0, 3.0, YELLOW);
 
         // nombre
         let narrow = w < 300.0;
@@ -1322,7 +1326,7 @@ impl Ui {
         let top = if narrow { 27.0 } else { 15.0 };
         out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg(st.focus == Some(Focus::Name))));
         let shown = format!("{}{}", st.name, if st.focus == Some(Focus::Name) { "_" } else { "" });
-        let (t, col) = if shown.is_empty() { ("Nombre: (click para escribir)".to_string(), GREY) } else { (format!("Nombre: {shown}"), WHITE) };
+        let (t, col) = if shown.is_empty() { (tr!("Nombre: (click para escribir)", "Name: (click to type)").to_string(), GREY) } else { (trf!("Nombre: {shown}", "Name: {shown}"), WHITE) };
         font.text(out, &t, r[0] + 2.0, r[1] + 2.0, col);
         self.hot(r, UiAction::Create(Cr::Name), None);
 
@@ -1335,12 +1339,12 @@ impl Ui {
         let c = classes.get(st.class).unwrap_or(&none);
         self.draw_picker(atlas, font, out, class_r, &c.name, &c.status, None, st.class, classes.len(), Cr::Class);
         let s = skins.get(st.skin).unwrap_or(&none);
-        self.draw_picker(atlas, font, out, skin_r, &s.name, "Apariencia", s.sheet, st.skin, skins.len(), Cr::Skin);
+        self.draw_picker(atlas, font, out, skin_r, &s.name, tr!("Apariencia", "Appearance"), s.sheet, st.skin, skins.len(), Cr::Skin);
         let y = top + if narrow { 76.0 } else { 38.0 };
 
         // características
         let step = ((w - 12.0) / 6.0).floor();
-        for (a, name) in ABILITY_NAMES.iter().enumerate() {
+        for (a, name) in dice::ability_names().iter().enumerate() {
             let r = [8.0 + a as f32 * step, y, step - 4.0, 32.0];
             let focused = st.focus == Some(Focus::Stat(a));
             let dragging = st.drag.filter(DragState::moved);
@@ -1360,7 +1364,7 @@ impl Ui {
         }
 
         // tiradas, y el detalle de la elegida a la derecha
-        font.text(out, "Tiradas (4d6, se quita el menor) - arrastralas:", 8.0, y + 37.0, WHITE);
+        font.text(out, tr!("Tiradas (4d6, se quita el menor) - arrastralas:", "Rolls (4d6, drop the lowest) - drag them:"), 8.0, y + 37.0, WHITE);
         let step = ((w - 12.0) / 7.0).floor().min(30.0);
         let cy = y + 47.0;
         for (i, (v, _)) in st.pool.iter().enumerate() {
@@ -1383,7 +1387,7 @@ impl Ui {
                 hy += LINE_H;
             }
         }
-        let help = "Las tiradas mas altas ya van a las caracteristicas de la clase. Arrastra una tirada a una caracteristica (sobra 1), o entre caracteristicas para cambiarlas. Click en una caracteristica para escribir el numero (1-20).";
+        let help = tr!("Las tiradas mas altas ya van a las caracteristicas de la clase. Arrastra una tirada a una caracteristica (sobra 1), o entre caracteristicas para cambiarlas. Click en una caracteristica para escribir el numero (1-20).", "The highest rolls already go to the class's key abilities. Drag a roll onto an ability (1 is left over), or between abilities to swap them. Click an ability to type the number (1-20).");
         for line in wrap(font, help, w - 16.0) {
             if hy + LINE_H > h - BOTTOM_BTN_H - 5.0 {
                 break;
@@ -1395,9 +1399,9 @@ impl Ui {
         // botones
         let ready = dice::valid_scores(&st.scores).is_some();
         let buttons = [
-            ("TIRAR", Some(UiAction::Create(Cr::Roll))),
-            ("LIMPIAR", Some(UiAction::Create(Cr::Clear))),
-            (if ready { "EMPEZAR" } else { "FALTAN STATS" }, ready.then_some(UiAction::Create(Cr::Start))),
+            (tr!("TIRAR", "ROLL"), Some(UiAction::Create(Cr::Roll))),
+            (tr!("LIMPIAR", "CLEAR"), Some(UiAction::Create(Cr::Clear))),
+            (if ready { tr!("EMPEZAR", "START") } else { tr!("FALTAN STATS", "NEED STATS") }, ready.then_some(UiAction::Create(Cr::Start))),
         ];
         let bw = ((w - 16.0 - 4.0) / 3.0).floor();
         for (k, (label, act)) in buttons.into_iter().enumerate() {
@@ -1437,9 +1441,9 @@ impl Ui {
                 self.draw_button(atlas, font, out, r, &ch.to_string(), Some(act(Cr::Type(ch))));
             }
         }
-        let mut last = vec![("BORRAR", Cr::Back), ("LISTO", Cr::Done)];
+        let mut last = vec![(tr!("BORRAR", "DEL"), Cr::Back), (tr!("LISTO", "DONE"), Cr::Done)];
         if space {
-            last.insert(0, ("ESPACIO", Cr::Type(' ')));
+            last.insert(0, (tr!("ESPACIO", "SPACE"), Cr::Type(' ')));
         }
         let y = ktop + rows.len() as f32 * (kh + 2.0);
         let bw = ((w - 8.0 - 2.0 * (last.len() as f32 - 1.0)) / last.len() as f32).floor();
@@ -1470,9 +1474,9 @@ impl Ui {
     fn draw_join(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, games: &[(String, bool)], status: &str) {
         out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
         self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
-        font.text(out, "Unirse a una partida LAN", 8.0, 3.0, YELLOW);
+        font.text(out, tr!("Unirse a una partida LAN", "Join a LAN game"), 8.0, 3.0, YELLOW);
         if games.is_empty() {
-            font.text(out, "Buscando partidas en la red...", 8.0, 18.0, GREY);
+            font.text(out, tr!("Buscando partidas en la red...", "Searching for games on the network..."), 8.0, 18.0, GREY);
         }
         for (i, (label, ok)) in games.iter().enumerate() {
             let r = [8.0, 15.0 + i as f32 * 18.0, w - 16.0, 16.0];
@@ -1480,13 +1484,13 @@ impl Ui {
             font.text(out, label, r[0] + 4.0, r[1] + 4.0, if *ok { WHITE } else { GREY });
             self.hot(r, UiAction::JoinGame(i), None);
         }
-        let help = format!("{status} Juegas con el personaje elegido en la lista. La partida la abre otro con CREAR LAN (misma red Wi-Fi).");
+        let help = trf!("{status} Juegas con el personaje elegido en la lista. La partida la abre otro con CREAR LAN (misma red Wi-Fi).", "{status} You play as the character chosen in the list. Another player opens the game with HOST LAN (same Wi-Fi network).");
         let lines = wrap(font, help.trim(), w - 16.0);
         for (k, l) in lines.iter().enumerate() {
             let y = h - 24.0 - (lines.len() - k) as f32 * LINE_H;
             font.text(out, l, 8.0, y, if k == 0 && !status.is_empty() { YELLOW } else { GREY });
         }
-        self.draw_button(atlas, font, out, [8.0, h - 20.0, w - 16.0, 16.0], "VOLVER", Some(UiAction::OpenRoster));
+        self.draw_button(atlas, font, out, [8.0, h - 20.0, w - 16.0, 16.0], tr!("VOLVER", "BACK"), Some(UiAction::OpenRoster));
     }
 
     /// Sala de espera del host: quién se unió, la IP, EMPEZAR y VOLVER (cierra la partida).
@@ -1494,7 +1498,7 @@ impl Ui {
     fn draw_lobby(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, players: &[(String, bool)], status: &str) {
         out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
         self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
-        font.text(out, "Sala de espera", 8.0, 3.0, YELLOW);
+        font.text(out, tr!("Sala de espera", "Lobby"), 8.0, 3.0, YELLOW);
         font.text(out, status, 8.0, 15.0, GREY);
         for (i, (name, _)) in players.iter().enumerate() {
             let r = [8.0, 28.0 + i as f32 * 14.0, w - 16.0, 12.0];
@@ -1502,14 +1506,14 @@ impl Ui {
             let label = if i == 0 { format!("{name} (host)") } else { name.clone() };
             font.text(out, &label, r[0] + 4.0, r[1] + 2.0, if i == 0 { YELLOW } else { WHITE });
         }
-        let help = "Los demas entran con UNIRSE desde su lista de personajes (misma red Wi-Fi). Tambien pueden entrar con la partida empezada.";
+        let help = tr!("Los demas entran con UNIRSE desde su lista de personajes (misma red Wi-Fi). Tambien pueden entrar con la partida empezada.", "The others join with JOIN from their character list (same Wi-Fi network). They can also join a game in progress.");
         let lines = wrap(font, help, w - 16.0);
         for (k, l) in lines.iter().enumerate() {
             font.text(out, l, 8.0, h - 24.0 - (lines.len() - k) as f32 * LINE_H, GREY);
         }
         let bw = ((w - 16.0 - 2.0) / 2.0).floor();
-        self.draw_button(atlas, font, out, [8.0, h - 20.0, bw, 16.0], "EMPEZAR", Some(UiAction::StartLan));
-        self.draw_button(atlas, font, out, [8.0 + bw + 2.0, h - 20.0, bw, 16.0], "VOLVER", Some(UiAction::OpenRoster));
+        self.draw_button(atlas, font, out, [8.0, h - 20.0, bw, 16.0], tr!("EMPEZAR", "START"), Some(UiAction::StartLan));
+        self.draw_button(atlas, font, out, [8.0 + bw + 2.0, h - 20.0, bw, 16.0], tr!("VOLVER", "BACK"), Some(UiAction::OpenRoster));
     }
 
     /// Pantalla de texto (Mods, Acerca de): párrafos centrados sobre negro; click en cualquier lado vuelve.
@@ -1520,7 +1524,7 @@ impl Ui {
             lines.extend(wrap(font, text, w - 24.0).into_iter().map(|l| (l, *color)));
             lines.push((String::new(), WHITE));
         }
-        let back = if cfg!(target_os = "android") { "Toca para volver" } else { "Esc o click para volver" };
+        let back = if cfg!(target_os = "android") { tr!("Toca para volver", "Tap to go back") } else { tr!("Esc o click para volver", "Esc or click to go back") };
         lines.push((back.into(), GREY));
         let mut y = ((h - lines.len() as f32 * 10.0) / 2.0).floor();
         for (line, color) in lines {
@@ -1562,24 +1566,24 @@ impl Ui {
         }
         let iy = ((h + layout_h) / 2.0).floor() - item;
         // separación: el texto más largo + 8 px de aire (antes "Acerca de" y "Opciones" se tocaban); si no entra, lo que haya
-        let widest = ["Jugar", "Mods", "Acerca de", "Opciones"].iter().map(|l| font.width(l)).fold(0.0, f32::max);
+        let widest = [tr!("Jugar", "Play"), "Mods", tr!("Acerca de", "About"), tr!("Opciones", "Options")].iter().map(|l| font.width(l)).fold(0.0, f32::max);
         let step = (widest + 8.0).max(item).min(((w - 4.0) / 4.0).floor());
         let x0 = (w / 2.0).floor() - step * 2.0;
         for (icon, label, x, act) in [
             // Rankings y Badges del original se reemplazaron por Mods; la configuración (PrefsButton) es un botón más
-            (0u32, "Jugar", x0, UiAction::OpenRoster),
+            (0u32, tr!("Jugar", "Play"), x0, UiAction::OpenRoster),
             (2, "Mods", x0 + step, UiAction::Open(Window::Page(vec![
                 ("Mods".into(), YELLOW),
-                ("No hay mods instalados. El sistema de mods todavia no esta disponible.".into(), WHITE),
-                ("Los mods vienen de fuentes externas: ten cuidado de donde los descargas y revisalos antes de instalarlos.".into(), rgba(190, 190, 190, 255)),
-                ("Los mods que traen codigo pueden cambiar el juego de forma considerable y hacer cualquier cosa en tu equipo: instalalos solo si confias en su origen.".into(), rgba(255, 120, 80, 255)),
+                (tr!("No hay mods instalados. El sistema de mods todavia no esta disponible.", "No mods installed. The mod system isn't available yet.").into(), WHITE),
+                (tr!("Los mods vienen de fuentes externas: ten cuidado de donde los descargas y revisalos antes de instalarlos.", "Mods come from external sources: be careful where you download them from and review them before installing.").into(), rgba(190, 190, 190, 255)),
+                (tr!("Los mods que traen codigo pueden cambiar el juego de forma considerable y hacer cualquier cosa en tu equipo: instalalos solo si confias en su origen.", "Mods that include code can change the game a lot and do anything on your computer: only install them if you trust their source.").into(), rgba(255, 120, 80, 255)),
             ]))),
-            (1, "Acerca de", x0 + step * 2.0, UiAction::Open(Window::Page(vec![
+            (1, tr!("Acerca de", "About"), x0 + step * 2.0, UiAction::Open(Window::Page(vec![
                 (format!("PixelDungeon-RollInitiative v{}", game::VERSION), YELLOW),
-                ("Roguelike basado en Pixel Dungeon de Watabou (GPL v3), con las reglas de D&D 5e y multijugador cooperativo.".into(), WHITE),
-                ("Arte y sonido del original. Todo el proyecto se distribuye como GPL v3.".into(), rgba(190, 190, 190, 255)),
+                (tr!("Roguelike basado en Pixel Dungeon de Watabou (GPL v3), con las reglas de D&D 5e y multijugador cooperativo.", "Roguelike based on Watabou's Pixel Dungeon (GPL v3), with D&D 5e rules and co-op multiplayer.").into(), WHITE),
+                (tr!("Arte y sonido del original. Todo el proyecto se distribuye como GPL v3.", "Art and sound from the original. The whole project is distributed under GPL v3.").into(), rgba(190, 190, 190, 255)),
             ]))),
-            (u32::MAX, "Opciones", x0 + step * 3.0, UiAction::Open(Window::Settings)),
+            (u32::MAX, tr!("Opciones", "Options"), x0 + step * 3.0, UiAction::Open(Window::Settings)),
         ] {
             let ix = x + ((step - 32.0) / 2.0).floor();
             if icon == u32::MAX {
@@ -1592,7 +1596,7 @@ impl Ui {
             self.hot([x, iy, step, item], act, None);
         }
         out.push(piece(atlas, ICONS, ICON_EXIT, [w - 17.0, 1.0], [16.0, 16.0], WHITE));
-        self.hot([w - 18.0, 0.0, 18.0, 18.0], UiAction::Quit, Some("Salir"));
+        self.hot([w - 18.0, 0.0, 18.0, 18.0], UiAction::Quit, Some(tr!("Salir", "Quit")));
         // en vertical la esquina queda bajo la curva de la pantalla del teléfono (se cortaba "v 0.9"): al centro, con
         // margen
         let v = format!("v {}", game::VERSION);

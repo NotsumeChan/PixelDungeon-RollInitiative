@@ -456,15 +456,15 @@ impl HostGame {
 
     fn refuse(msg: &Value, classes: &Map<String, Value>, d: &Dungeon) -> Option<&'static str> {
         if msg["version"] != game::VERSION {
-            return Some("version distinta");
+            return Some(game::tr!("versión distinta", "different version"));
         }
         if msg["hash"] != game::registry::content_hash().as_str() {
-            return Some("contenido distinto (data/ o mods)");
+            return Some(game::tr!("contenido distinto (data/ o mods)", "different content (data/ or mods)"));
         }
         let ok = msg["class"].as_str().is_some_and(|c| classes.contains_key(c))
             && abilities(msg).is_some()
             && (msg["hero"].is_null() || save::portable_ok(d, &msg["hero"]));
-        (!ok).then_some("personaje invalido")
+        (!ok).then_some(game::tr!("personaje inválido", "invalid character"))
     }
 
     pub fn pump(&mut self, d: &mut Dungeon, classes: &Map<String, Value>) {
@@ -498,7 +498,7 @@ impl HostGame {
                         self.by_char.insert(char_id, i);
                     }
                     self.players.insert(cid, i);
-                    d.log(&format!("{name} se une a la partida"));
+                    d.log(&game::trf!("{name} se une a la partida", "{name} joins the game"));
                     self.host.set_players(1 + self.players.len());
                     self.last.clear(); // que reciba el estado ya
                     self.lobby_dirty = true;
@@ -522,7 +522,7 @@ impl HostGame {
                     self.host.kick(cid);
                     if let Some(i) = self.players.remove(&cid) {
                         let name = d.heroes[i].ch.name.clone();
-                        d.log(&format!("{name} se va de la partida"));
+                        d.log(&game::trf!("{name} se va de la partida", "{name} leaves the game"));
                         self.host.set_players(1 + self.players.len());
                         self.lobby_dirty = true;
                     }
@@ -630,7 +630,7 @@ impl ClientGame {
         while let Ok(m) = self.inbox.try_recv() {
             match m["t"].as_str().unwrap_or("") {
                 "state" => latest = Some(m),
-                "refused" => self.refused = Some(m["why"].as_str().unwrap_or("rechazado").to_string()),
+                "refused" => self.refused = Some(m["why"].as_str().unwrap_or(game::tr!("rechazado", "refused")).to_string()),
                 "fx" => {
                     let list = |k: &str| m[k].as_array().cloned().unwrap_or_default();
                     self.fx.extend(list("fx").iter().filter_map(fx_of));

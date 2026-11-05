@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use winit::keyboard::KeyCode;
+use game::tr;
 
 /// Carpeta de la configuración en Android (`AndroidApp::internal_data_path`).
 pub static DIR: OnceLock<PathBuf> = OnceLock::new();
@@ -37,15 +38,15 @@ impl Bind {
 
     pub fn label(self) -> &'static str {
         match self {
-            Bind::Up => "Arriba",
-            Bind::Down => "Abajo",
-            Bind::Left => "Izquierda",
-            Bind::Right => "Derecha",
-            Bind::Wait => "Esperar",
-            Bind::Search => "Buscar",
-            Bind::Bag => "Mochila",
-            Bind::Quick1 => "Rapido 1",
-            Bind::Quick2 => "Rapido 2",
+            Bind::Up => tr!("Arriba", "Up"),
+            Bind::Down => tr!("Abajo", "Down"),
+            Bind::Left => tr!("Izquierda", "Left"),
+            Bind::Right => tr!("Derecha", "Right"),
+            Bind::Wait => tr!("Esperar", "Wait"),
+            Bind::Search => tr!("Buscar", "Search"),
+            Bind::Bag => tr!("Mochila", "Bag"),
+            Bind::Quick1 => tr!("Rapido 1", "Quick 1"),
+            Bind::Quick2 => tr!("Rapido 2", "Quick 2"),
         }
     }
 
