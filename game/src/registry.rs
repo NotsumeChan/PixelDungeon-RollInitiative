@@ -30,6 +30,13 @@ const BUILTIN: [(&str, &str); 3] = [
     ("npcs", include_str!("../../data/mods/mercader-ambulante/npcs.json")),
 ];
 
+/// Scripts de los mods (`<mod>/script.lua`): (mod, código), en orden de carpeta (`script.rs`).
+static SCRIPTS: OnceLock<Vec<(String, String)>> = OnceLock::new();
+
+pub fn scripts() -> &'static [(String, String)] {
+    SCRIPTS.get().map_or(&[], Vec::as_slice)
+}
+
 /// Registros de los mods (`<datos>/mods/<mod>/<registro>.json`), en orden de carpeta: se leen una vez, al arrancar.
 static MODS: OnceLock<Vec<(String, String)>> = OnceLock::new();
 
@@ -38,7 +45,7 @@ static MODS: OnceLock<Vec<(String, String)>> = OnceLock::new();
 pub fn load_mods(dir: &Path) -> Vec<String> {
     let mut mods: Vec<_> = std::fs::read_dir(dir.join("mods")).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
     mods.sort();
-    let (mut out, mut msgs) = (Vec::new(), Vec::new());
+    let (mut out, mut msgs, mut scripts) = (Vec::new(), Vec::new(), Vec::new());
     for m in mods {
         let name = m.file_name().unwrap_or_default().to_string_lossy().into_owned();
         let mut n = 0;
@@ -52,11 +59,16 @@ pub fn load_mods(dir: &Path) -> Vec<String> {
                 Err(e) => msgs.push(format!("mod {name}/{reg}.json: {e}")),
             }
         }
+        if let Ok(src) = std::fs::read_to_string(m.join("script.lua")) {
+            scripts.push((name.clone(), src));
+            n += 1;
+        }
         if n > 0 {
-            msgs.push(format!("mod {name}: {n} registros"));
+            msgs.push(format!("mod {name}: {n} archivos"));
         }
     }
     let _ = MODS.set(out);
+    let _ = SCRIPTS.set(scripts);
     msgs
 }
 
@@ -69,7 +81,7 @@ fn sources() -> impl Iterator<Item = (&'static str, &'static str)> {
 /// FNV-1a de 64 bits: estable entre plataformas y versiones de Rust (no es criptográfico: sólo detecta diferencias).
 pub fn content_hash() -> String {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for (n, text) in sources() {
+    for (n, text) in sources().chain(scripts().iter().map(|(_, s)| ("script", s.as_str()))) {
         for b in n.bytes().chain(text.bytes()) {
             h = (h ^ b as u64).wrapping_mul(0x0100_0000_01b3);
         }

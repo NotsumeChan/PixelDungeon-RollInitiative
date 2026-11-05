@@ -65,6 +65,27 @@
      },
      {
       "text": {
+       "es": "[Apostar 10 de oro] Un dado contra ti.",
+       "en": "[Bet 10 gold] One die against you."
+      },
+      "if": [
+       [
+        "lua",
+        "herrero_puede_apostar",
+        10
+       ]
+      ],
+      "do": [
+       [
+        "lua",
+        "herrero_apuesta",
+        10
+       ]
+      ],
+      "go": "start"
+     },
+     {
+      "text": {
        "es": "[Persuadir] Un troll que forja así merece más clientes.",
        "en": "[Persuade] A troll who forges like this deserves more customers."
       },

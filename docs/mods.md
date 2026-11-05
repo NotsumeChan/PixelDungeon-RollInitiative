@@ -16,6 +16,20 @@ Android la carpeta de datos de la app.
   rompe la partida: probalo.
 - La red compara el hash del contenido, mods incluidos: todos en la LAN tienen que tener los mismos mods.
 
+## Scripts Lua
+
+Un mod puede traer `script.lua` (Lua 5.4) con funciones que los diálogos llaman:
+- condición `["lua", "mi_funcion", args...]`: verdadera salvo que devuelva `nil` o `false`;
+- efecto `["lua", "mi_funcion", args...]`: devuelve una lista de efectos con el formato de los diálogos
+  (`{{"gold", 10}, {"log", {es = "...", en = "..."}}}`); el juego los aplica.
+- Primer argumento `ctx`: `hero` (`name`, `class`, `level`, `hp`, `ht`, `gold`), `npc` (`id`, `name`,
+  `disposition`), `depth`, `flags`. Después, los args del JSON.
+- Todos los scripts comparten el entorno global: nombra tus funciones con un prefijo propio.
+- Sandbox: `math`, `string` y `table`; sin `io`, `os`, `require` ni archivos. Un tope de instrucciones por llamada y
+  de memoria (un bucle infinito da error en la consola). `math.random` sale de la partida: repetible.
+- Usa enteros (`//` para dividir): un `10.0` no vale como cantidad.
+- En la LAN corre sólo en el host; el script entra en el hash del contenido.
+
 ## Mods incluidos
 
 `data/mods/<mod>/` van dentro del juego, después del base y antes de los del usuario (que pueden pisarlos):
@@ -25,5 +39,6 @@ deambula; es un mob con `base` sobre el mercader).
 ## Ejemplo: `mods/ejemplo-herrero/`
 
 Un herrero troll en el piso 3 (desconfiado: actitud -1) con tienda de armas, una misión (matar 3 gnolls) que paga con
-un ítem propio (`herrero:troll_sword`, hecho con `base` sobre la espada) y una tirada de Persuasión. Para probarlo,
+un ítem propio (`herrero:troll_sword`, hecho con `base` sobre la espada), una tirada de Persuasión y una apuesta
+con un dado hecha en Lua (`script.lua`). Para probarlo,
 copia la carpeta a `<datos>/mods/`.

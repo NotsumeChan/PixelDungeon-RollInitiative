@@ -15,6 +15,7 @@ pub mod items;
 pub mod level;
 pub mod mobs;
 pub mod npcs;
+pub mod script;
 pub mod painters;
 pub mod pathfinder;
 pub mod patch;

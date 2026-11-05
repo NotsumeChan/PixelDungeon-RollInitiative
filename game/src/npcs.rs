@@ -330,7 +330,7 @@ impl Dungeon {
     /// Condiciones: ["has", ítem, n], ["gold", n], ["flag", clave, "=" | "!=" | ">=" | "<", valor], ["class", id],
     /// ["level", n], ["disposition", n] (la actitud del NPC es al menos n), ["skill", pericia] (con competencia),
     /// ["quest", misión, "none" | "active" | "ready" (en curso y con los objetivos cumplidos) | "done"],
-    /// ["not", condición].
+    /// ["not", condición], ["lua", función, args...] (`script.rs`: verdadera salvo nil o false).
     fn cond(&self, i: usize, c: &Value) -> bool {
         let h = &self.heroes[i];
         let n = |k: usize| c[k].as_i64().unwrap_or(0);
@@ -366,14 +366,30 @@ impl Dungeon {
             }
             "skill" => h.proficient_skill(c[1].as_str().unwrap_or("")),
             "not" => !self.cond(i, &c[1]),
+            "lua" => !matches!(self.lua_call(i, c, 0), None | Some(Value::Null | Value::Bool(false))),
             _ => false,
         }
+    }
+
+    /// ["lua", función, args...]: la función del script de un mod con el contexto del que habla (`script.rs`).
+    fn lua_call(&self, i: usize, v: &Value, seed: i64) -> Option<Value> {
+        let h = &self.heroes[i];
+        let npc = h.talking.as_ref().map(|t| t.0).or(h.trading).and_then(|id| self.mob(id));
+        let ctx = serde_json::json!({
+            "hero": {"name": h.ch.name, "class": h.class_key, "level": h.lvl, "hp": h.ch.hp, "ht": h.ch.ht, "gold": h.gold},
+            "npc": npc.map(|m| serde_json::json!({"id": m.key, "name": m.ch.name, "disposition": m.disposition})),
+            "depth": self.depth,
+            "flags": self.flags,
+        });
+        let args = v.as_array().and_then(|a| a.get(2..)).unwrap_or(&[]);
+        crate::script::call(v[1].as_str()?, ctx, args, seed)
     }
 
     /// Efectos: ["give", ítem, n], ["take", ítem, n], ["gold", ±n], ["flag", clave, valor], ["add", clave, ±n],
     /// ["log", texto] (sólo para el que habla), ["map"] (el mapa del piso), ["disposition", ±n] (su actitud),
     /// ["shop"] (abre su tienda), ["quest", misión, "start" | "done"], ["place", ítem] (lo deja en unos restos de esqueleto del piso; si no hay,
-    /// en unos nuevos), ["attack"] (lo vuelve hostil), ["end"].
+    /// en unos nuevos), ["attack"] (lo vuelve hostil), ["end"], ["lua", función, args...] (`script.rs`: los efectos que
+    /// devuelva, salvo otro "lua").
     fn apply(&mut self, i: usize, id: u32, e: &Value) {
         let n = |k: usize| e[k].as_i64().unwrap_or(0);
         let key = e[1].as_str().unwrap_or("").to_string();
@@ -451,6 +467,14 @@ impl Dungeon {
                 self.heroes[i].action = Some(Action::Attack(ActorId::Mob(id)));
             }
             "end" => self.heroes[i].talking = None,
+            "lua" => {
+                let seed = i64::from(self.rng.int(i32::MAX));
+                for f in self.lua_call(i, e, seed).and_then(|v| v.as_array().cloned()).unwrap_or_default() {
+                    if f[0] != "lua" {
+                        self.apply(i, id, &f);
+                    }
+                }
+            }
             "shop" => {
                 self.heroes[i].talking = None;
                 self.heroes[i].trading = Some(id);
