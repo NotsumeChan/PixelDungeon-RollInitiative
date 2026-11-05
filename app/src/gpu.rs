@@ -13,6 +13,10 @@ use crate::atlas::Atlas;
 /// Resolución de referencia del original: el zoom de la UI es el mayor entero que deja al menos esto a la vista.
 const BASE_W: u32 = 320;
 const BASE_H: u32 = 180;
+/// Margen a cada costado de la UI en Android apaisado (% del ancho).
+const UI_INSET_PCT: u32 = 3;
+/// Margen arriba y abajo de la UI en Android vertical (% del alto): los bordes curvos se comen la barra y el log.
+const UI_INSET_V_PCT: u32 = 2;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BLACK: wgpu::Color = wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
 const CLEAR: wgpu::Color = wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
@@ -64,6 +68,8 @@ pub struct Gpu {
     fog: wgpu::Texture,
     world: Target,
     ui: Target,
+    /// Escala de la interfaz elegida (1 = el zoom entero que entra; 0,5 = la mitad, mínimo 1).
+    ui_pref: f32,
 }
 
 fn entry(binding: u32, ty: wgpu::BindingType) -> wgpu::BindGroupLayoutEntry {
@@ -255,7 +261,7 @@ impl Gpu {
         );
 
         let z = ui_zoom(config.width, config.height);
-        let ui = Self::target(&device, &blit_layout, &nearest, config.width, config.height, z);
+        let ui = Self::ui_target(&device, &blit_layout, &nearest, config.width, config.height, z);
         let world = Self::target(&device, &blit_layout, &nearest, config.width, config.height, z);
         Self {
             window,
@@ -276,6 +282,7 @@ impl Gpu {
             fog,
             world,
             ui,
+            ui_pref: 1.0,
         }
     }
 
@@ -314,14 +321,44 @@ impl Gpu {
         Target { w: tw, h: th, scale, offset, view, blit_group }
     }
 
-    /// Zoom entero de la UI (pantalla / resolución virtual): base para los zooms de la cámara.
+    /// La capa de UI. En Android deja un margen en los bordes largos (pantallas curvas o la cámara en la pantalla):
+    /// apaisado a los costados, vertical arriba y abajo. La UI se arma más chica y se centra; el mapa sigue ocupando todo.
+    fn ui_target(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, sampler: &wgpu::Sampler, w: u32, h: u32, scale: u32) -> Target {
+        let inset = if cfg!(target_os = "android") && w > h { w * UI_INSET_PCT / 100 } else { 0 };
+        let inset_v = if cfg!(target_os = "android") && h > w { h * UI_INSET_V_PCT / 100 } else { 0 };
+        let mut t = Self::target(device, layout, sampler, w - 2 * inset, h - 2 * inset_v, scale);
+        t.offset.0 += inset;
+        t.offset.1 += inset_v;
+        t
+    }
+
+    /// Zoom entero que entra en la ventana (pantalla / resolución virtual): base de la cámara y de la escala de la UI.
     pub fn ui_zoom(&self) -> u32 {
-        self.ui.scale
+        ui_zoom(self.config.width, self.config.height)
+    }
+
+    /// Factor de la capa de UI con la escala elegida.
+    fn ui_scale(&self, w: u32, h: u32) -> u32 {
+        ((ui_zoom(w, h) as f32 * self.ui_pref).round() as u32).max(1)
+    }
+
+    /// Escala de la interfaz (configuración): rehace la capa de UI.
+    pub fn set_ui_scale(&mut self, pref: f32) {
+        if pref != self.ui_pref {
+            self.ui_pref = pref;
+            let (w, h) = (self.config.width, self.config.height);
+            self.ui = Self::ui_target(&self.device, &self.blit_layout, &self.nearest, w, h, self.ui_scale(w, h));
+        }
     }
 
     /// Tamaño de la UI en pixeles virtuales.
     pub fn ui_size(&self) -> (u32, u32) {
         (self.ui.w, self.ui.h)
+    }
+
+    /// Dónde empieza la capa de UI en la ventana y su factor (pasar del mouse / toque a pixeles de la UI).
+    pub fn ui_view(&self) -> ((u32, u32), u32) {
+        (self.ui.offset, self.ui.scale)
     }
 
     /// Tamaño del mundo visible (pixeles del mundo), dónde empieza en la ventana y su factor.
@@ -348,7 +385,7 @@ impl Gpu {
         self.config.width = w;
         self.config.height = h;
         self.surface.configure(&self.device, &self.config);
-        self.ui = Self::target(&self.device, &self.blit_layout, &self.nearest, w, h, ui_zoom(w, h));
+        self.ui = Self::ui_target(&self.device, &self.blit_layout, &self.nearest, w, h, self.ui_scale(w, h));
         self.world = Self::target(&self.device, &self.blit_layout, &self.nearest, w, h, self.world.scale);
     }
 

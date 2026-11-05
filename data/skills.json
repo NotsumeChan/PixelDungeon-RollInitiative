@@ -1,0 +1,128 @@
+{
+ "pdri:athletics": {
+  "name": {
+   "es": "Atletismo",
+   "en": "Athletics"
+  },
+  "ability": "STR"
+ },
+ "pdri:acrobatics": {
+  "name": {
+   "es": "Acrobacias",
+   "en": "Acrobatics"
+  },
+  "ability": "DEX"
+ },
+ "pdri:sleight_of_hand": {
+  "name": {
+   "es": "Juego de manos",
+   "en": "Sleight of Hand"
+  },
+  "ability": "DEX"
+ },
+ "pdri:stealth": {
+  "name": {
+   "es": "Sigilo",
+   "en": "Stealth"
+  },
+  "ability": "DEX"
+ },
+ "pdri:arcana": {
+  "name": {
+   "es": "Arcanos",
+   "en": "Arcana"
+  },
+  "ability": "INT"
+ },
+ "pdri:history": {
+  "name": {
+   "es": "Historia",
+   "en": "History"
+  },
+  "ability": "INT"
+ },
+ "pdri:investigation": {
+  "name": {
+   "es": "Investigación",
+   "en": "Investigation"
+  },
+  "ability": "INT"
+ },
+ "pdri:nature": {
+  "name": {
+   "es": "Naturaleza",
+   "en": "Nature"
+  },
+  "ability": "INT"
+ },
+ "pdri:religion": {
+  "name": {
+   "es": "Religión",
+   "en": "Religion"
+  },
+  "ability": "INT"
+ },
+ "pdri:animal_handling": {
+  "name": {
+   "es": "Trato con animales",
+   "en": "Animal Handling"
+  },
+  "ability": "WIS"
+ },
+ "pdri:insight": {
+  "name": {
+   "es": "Perspicacia",
+   "en": "Insight"
+  },
+  "ability": "WIS"
+ },
+ "pdri:medicine": {
+  "name": {
+   "es": "Medicina",
+   "en": "Medicine"
+  },
+  "ability": "WIS"
+ },
+ "pdri:perception": {
+  "name": {
+   "es": "Percepción",
+   "en": "Perception"
+  },
+  "ability": "WIS"
+ },
+ "pdri:survival": {
+  "name": {
+   "es": "Supervivencia",
+   "en": "Survival"
+  },
+  "ability": "WIS"
+ },
+ "pdri:deception": {
+  "name": {
+   "es": "Engaño",
+   "en": "Deception"
+  },
+  "ability": "CHA"
+ },
+ "pdri:intimidation": {
+  "name": {
+   "es": "Intimidación",
+   "en": "Intimidation"
+  },
+  "ability": "CHA"
+ },
+ "pdri:performance": {
+  "name": {
+   "es": "Interpretación",
+   "en": "Performance"
+  },
+  "ability": "CHA"
+ },
+ "pdri:persuasion": {
+  "name": {
+   "es": "Persuasión",
+   "en": "Persuasion"
+  },
+  "ability": "CHA"
+ }
+}

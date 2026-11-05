@@ -1,0 +1,911 @@
+{
+ "pdri:wandmaker": {
+  "start": "start",
+  "nodes": {
+   "start": {
+    "text": {
+     "es": "¡Qué sorpresa encontrar a alguien decente en un lugar así, {name}! Vine por un ingrediente raro, pero en estos túneles me pierdo enseguida.",
+     "en": "Oh, what a pleasant surprise to meet a decent person in such a place, {name}! I came for a rare ingredient, but I get lost in these tunnels in no time."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "¿Qué ingrediente buscas?",
+       "en": "What ingredient are you looking for?"
+      },
+      "go": "ingredient",
+      "if": [
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "none"
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "Aquí tienes tu polvo de cadáver.",
+       "en": "Here is your corpse dust."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "ready"
+       ]
+      ],
+      "do": [
+       [
+        "take",
+        "pdri:corpse_dust",
+        1
+       ],
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "done"
+       ],
+       [
+        "give",
+        "pdri:scroll_upgrade",
+        1
+       ],
+       [
+        "give",
+        "pdri:potion_healing",
+        1
+       ],
+       [
+        "disposition",
+        1
+       ]
+      ],
+      "go": "reward"
+     },
+     {
+      "text": {
+       "es": "Sobre tu ingrediente...",
+       "en": "About your ingredient..."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "active"
+       ],
+       [
+        "not",
+        [
+         "quest",
+         "pdri:corpse_dust",
+         "ready"
+        ]
+       ]
+      ],
+      "go": "remind"
+     },
+     {
+      "text": {
+       "es": "¿Algún consejo para las alcantarillas?",
+       "en": "Any advice for the sewers?"
+      },
+      "go": "advice"
+     },
+     {
+      "text": {
+       "es": "¿Tienes algo que me sirva?",
+       "en": "Do you have anything for me?"
+      },
+      "if": [
+       [
+        "flag",
+        "pdri:wandmaker_gift",
+        "=",
+        0
+       ]
+      ],
+      "do": [
+       [
+        "give",
+        "pdri:potion_healing",
+        1
+       ],
+       [
+        "flag",
+        "pdri:wandmaker_gift",
+        1
+       ]
+      ],
+      "go": "gift"
+     },
+     {
+      "text": {
+       "es": "[Observarlo con atención]",
+       "en": "[Study him closely]"
+      },
+      "if": [
+       [
+        "flag",
+        "pdri:wandmaker_insight",
+        "=",
+        0
+       ]
+      ],
+      "check": [
+       "pdri:insight",
+       10
+      ],
+      "go": "insight_ok",
+      "fail": "insight_fail",
+      "do": [
+       [
+        "flag",
+        "pdri:wandmaker_insight",
+        1
+       ]
+      ],
+      "fail_do": [
+       [
+        "flag",
+        "pdri:wandmaker_insight",
+        1
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "[Mentir] Ya tengo tu polvo de cadáver.",
+       "en": "[Lie] I already have your corpse dust."
+      },
+      "if": [
+       [
+        "flag",
+        "pdri:wandmaker_lie",
+        "=",
+        0
+       ],
+       [
+        "not",
+        [
+         "quest",
+         "pdri:corpse_dust",
+         "done"
+        ]
+       ]
+      ],
+      "check": [
+       "pdri:deception",
+       14
+      ],
+      "go": "lie_ok",
+      "fail": "lie_fail",
+      "do": [
+       [
+        "flag",
+        "pdri:wandmaker_lie",
+        1
+       ],
+       [
+        "give",
+        "pdri:scroll_identify",
+        1
+       ]
+      ],
+      "fail_do": [
+       [
+        "flag",
+        "pdri:wandmaker_lie",
+        1
+       ],
+       [
+        "disposition",
+        -1
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "[Coquetear] Para ser un anciano, se conserva muy bien.",
+       "en": "[Flirt] For an old man, you're very well preserved."
+      },
+      "if": [
+       [
+        "flag",
+        "pdri:wandmaker_flirt",
+        "=",
+        0
+       ]
+      ],
+      "check": [
+       "pdri:performance",
+       12
+      ],
+      "go": "flirt_ok",
+      "fail": "flirt_fail",
+      "do": [
+       [
+        "flag",
+        "pdri:wandmaker_flirt",
+        1
+       ],
+       [
+        "disposition",
+        1
+       ]
+      ],
+      "fail_do": [
+       [
+        "flag",
+        "pdri:wandmaker_flirt",
+        1
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "[Atacar]",
+       "en": "[Attack]"
+      },
+      "do": [
+       [
+        "attack"
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "Adiós.",
+       "en": "Goodbye."
+      }
+     }
+    ]
+   },
+   "ingredient": {
+    "text": {
+     "es": "Polvo de cadáver. Se junta de los restos de esqueletos. Si me lo traes, te pago con una de mis mejores varitas.",
+     "en": "Corpse dust. It can be gathered from skeletal remains. Bring it to me and I'll pay you with one of my best wands."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Lo buscaré.",
+       "en": "I'll look for it."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "none"
+       ]
+      ],
+      "do": [
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "start"
+       ],
+       [
+        "place",
+        "pdri:corpse_dust"
+       ]
+      ],
+      "go": "accepted"
+     },
+     {
+      "text": {
+       "es": "Ahora no.",
+       "en": "Not now."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "advice": {
+    "text": {
+     "es": "Las ratas andan en grupos y los gnolls tiran lanzas. Y revisa bien las paredes: estos túneles esconden puertas.",
+     "en": "Rats travel in packs and gnolls throw spears. And check the walls carefully: these tunnels hide doors."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "gift": {
+    "text": {
+     "es": "Toma esta poción. No la desperdicies, que no tengo otra.",
+     "en": "Take this potion. Don't waste it, I don't have another one."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "insight_ok": {
+    "text": {
+     "es": "Sus manos tiemblan cuando habla del ingrediente: no está tan perdido como dice. Busca algo que no quiere nombrar.",
+     "en": "His hands shake when he mentions the ingredient: he isn't as lost as he claims. He's after something he won't name."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "insight_fail": {
+    "text": {
+     "es": "Te sonríe con amabilidad. No logras leer nada más en su cara.",
+     "en": "He smiles kindly. You can't read anything else in his face."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "lie_ok": {
+    "text": {
+     "es": "¡Maravilloso! ¿Lo dejaste en tu campamento? No importa: toma esto por las molestias, y tráemelo cuando puedas.",
+     "en": "Wonderful! You left it at your camp? Never mind: take this for your trouble, and bring it when you can."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "lie_fail": {
+    "text": {
+     "es": "No me tomes por tonto, {name}. Viejo sí, tonto no.",
+     "en": "Don't take me for a fool, {name}. Old, yes; a fool, no."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "flirt_ok": {
+    "text": {
+     "es": "¡Ja! Hace décadas que nadie me decía algo así. Me caes bien.",
+     "en": "Ha! Nobody has said that to me in decades. I like you."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "flirt_fail": {
+    "text": {
+     "es": "Carraspea, incómodo, y se acomoda la túnica.",
+     "en": "He clears his throat, uncomfortable, and straightens his robe."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "accepted": {
+    "text": {
+     "es": "¡Gracias! Busca entre los restos de esqueletos de este piso: alguno tendrá polvo.",
+     "en": "Thank you! Search the skeletal remains on this floor: one of them will have dust."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "remind": {
+    "text": {
+     "es": "¿Nada todavía? Los restos de esqueletos de este piso son tu mejor apuesta.",
+     "en": "Nothing yet? The skeletal remains on this floor are your best bet."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "reward": {
+    "text": {
+     "es": "¡Justo lo que necesitaba! No traigo varitas encima, pero toma esto: te servirá más.",
+     "en": "Just what I needed! I don't carry wands with me, but take this: it will serve you better."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   }
+  }
+ },
+ "pdri:shopkeeper": {
+  "start": "start",
+  "nodes": {
+   "start": {
+    "text": {
+     "es": "Bienvenido, bienvenido. Mercancía fina para aventureros con oro en los bolsillos.",
+     "en": "Welcome, welcome. Fine goods for adventurers with gold in their pockets."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Veamos qué tienes.",
+       "en": "Let's see what you've got."
+      },
+      "do": [
+       [
+        "shop"
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "Véndeme el mapa de este piso (30 de oro).",
+       "en": "Sell me the map of this floor (30 gold)."
+      },
+      "if": [
+       [
+        "gold",
+        30
+       ]
+      ],
+      "do": [
+       [
+        "gold",
+        -30
+       ],
+       [
+        "map"
+       ]
+      ],
+      "go": "thanks"
+     },
+     {
+      "text": {
+       "es": "¿Qué se cuenta por aquí?",
+       "en": "What's the word around here?"
+      },
+      "go": "rumor"
+     },
+     {
+      "text": {
+       "es": "¿Tienes trabajo para mí?",
+       "en": "Do you have work for me?"
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "none"
+       ]
+      ],
+      "go": "job"
+     },
+     {
+      "text": {
+       "es": "Las ratas ya no molestarán.",
+       "en": "The rats won't bother you anymore."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "ready"
+       ]
+      ],
+      "do": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "done"
+       ],
+       [
+        "gold",
+        40
+       ],
+       [
+        "disposition",
+        1
+       ]
+      ],
+      "go": "paid"
+     },
+     {
+      "text": {
+       "es": "Sobre las ratas...",
+       "en": "About the rats..."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "active"
+       ],
+       [
+        "not",
+        [
+         "quest",
+         "pdri:rat_hunt",
+         "ready"
+        ]
+       ]
+      ],
+      "go": "rats_left"
+     },
+     {
+      "text": {
+       "es": "[Regatear] ¿No me haces un precio?",
+       "en": "[Haggle] Can't you give me a better price?"
+      },
+      "if": [
+       [
+        "flag",
+        "pdri:shopkeeper_haggle",
+        "=",
+        0
+       ]
+      ],
+      "check": [
+       "pdri:persuasion",
+       12
+      ],
+      "go": "haggle_ok",
+      "fail": "haggle_fail",
+      "do": [
+       [
+        "flag",
+        "pdri:shopkeeper_haggle",
+        1
+       ],
+       [
+        "disposition",
+        1
+       ],
+       [
+        "give",
+        "pdri:ration",
+        1
+       ]
+      ],
+      "fail_do": [
+       [
+        "flag",
+        "pdri:shopkeeper_haggle",
+        1
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "[Intimidar] Dame tu oro si sabes lo que te conviene.",
+       "en": "[Intimidate] Hand over your gold if you know what's good for you."
+      },
+      "if": [
+       [
+        "flag",
+        "pdri:shopkeeper_threat",
+        "=",
+        0
+       ]
+      ],
+      "check": [
+       "pdri:intimidation",
+       15
+      ],
+      "go": "threat_ok",
+      "fail": "threat_fail",
+      "do": [
+       [
+        "flag",
+        "pdri:shopkeeper_threat",
+        1
+       ],
+       [
+        "gold",
+        15
+       ],
+       [
+        "disposition",
+        -2
+       ]
+      ],
+      "fail_do": [
+       [
+        "flag",
+        "pdri:shopkeeper_threat",
+        1
+       ],
+       [
+        "disposition",
+        -1
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "¿Algo especial para un amigo?",
+       "en": "Anything special for a friend?"
+      },
+      "if": [
+       [
+        "disposition",
+        1
+       ],
+       [
+        "flag",
+        "pdri:shopkeeper_friend",
+        "=",
+        0
+       ]
+      ],
+      "do": [
+       [
+        "flag",
+        "pdri:shopkeeper_friend",
+        1
+       ],
+       [
+        "give",
+        "pdri:dart",
+        5
+       ]
+      ],
+      "go": "friend"
+     },
+     {
+      "text": {
+       "es": "[Atacar]",
+       "en": "[Attack]"
+      },
+      "do": [
+       [
+        "attack"
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "Adiós.",
+       "en": "Goodbye."
+      }
+     }
+    ]
+   },
+   "thanks": {
+    "text": {
+     "es": "Un placer hacer negocios.",
+     "en": "A pleasure doing business."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "rumor": {
+    "text": {
+     "es": "Dicen que un viejo mago anda perdido más abajo, buscando algo entre los huesos.",
+     "en": "They say an old wizard wanders lost further down, looking for something among the bones."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "haggle_ok": {
+    "text": {
+     "es": "Está bien, está bien... Esta ración va por la casa. Pero no se lo digas a nadie.",
+     "en": "Fine, fine... This ration is on the house. But don't tell anyone."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "haggle_fail": {
+    "text": {
+     "es": "Los precios son los precios, amigo.",
+     "en": "Prices are prices, friend."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "threat_ok": {
+    "text": {
+     "es": "¡Toma, toma! Y ahora vete de mi puesto.",
+     "en": "Here, take it! Now get away from my stall."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "threat_fail": {
+    "text": {
+     "es": "¿Me estás amenazando? Llevo veinte años en estos túneles. Cuida tus palabras.",
+     "en": "Are you threatening me? I've spent twenty years in these tunnels. Watch your words."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "friend": {
+    "text": {
+     "es": "Para los amigos, unos dardos. Afilados, como me gustan.",
+     "en": "For friends, some darts. Sharp, just how I like them."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "job": {
+    "text": {
+     "es": "Las ratas me roban la mercadería. Mata cinco y te pago 40 de oro.",
+     "en": "Rats keep stealing my goods. Kill five and I'll pay you 40 gold."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Hecho.",
+       "en": "Deal."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "none"
+       ]
+      ],
+      "do": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "start"
+       ]
+      ],
+      "go": "job_ok"
+     },
+     {
+      "text": {
+       "es": "No, gracias.",
+       "en": "No, thanks."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "job_ok": {
+    "text": {
+     "es": "Vuelve cuando estén muertas.",
+     "en": "Come back when they're dead."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "rats_left": {
+    "text": {
+     "es": "Todavía oigo ratas. Te faltan algunas.",
+     "en": "I still hear rats. You're missing a few."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "paid": {
+    "text": {
+     "es": "Trato es trato. Toma tu oro.",
+     "en": "A deal is a deal. Take your gold."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   }
+  }
+ }
+}

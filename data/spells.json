@@ -106,5 +106,146 @@
    "es": "Acción adicional: tus ataques con armas le hacen +1d6.",
    "en": "Bonus action: your weapon attacks deal +1d6 to it."
   }
+ },
+ "pdri:sacred_flame": {
+  "name": {
+   "es": "Llama sagrada",
+   "en": "Sacred Flame"
+  },
+  "level": 0,
+  "kind": "save",
+  "target": "enemy",
+  "save": "DEX",
+  "damage": "1d8",
+  "fx": "fire",
+  "desc": {
+   "es": "Salvación de DES o 1d8 de daño radiante.",
+   "en": "DEX save or 1d8 radiant damage."
+  }
+ },
+ "pdri:vicious_mockery": {
+  "name": {
+   "es": "Burla cruel",
+   "en": "Vicious Mockery"
+  },
+  "level": 0,
+  "kind": "save",
+  "target": "enemy",
+  "save": "WIS",
+  "damage": "1d4",
+  "desc": {
+   "es": "Salvación de SAB o 1d4 de daño psíquico.",
+   "en": "WIS save or 1d4 psychic damage."
+  }
+ },
+ "pdri:poison_spray": {
+  "name": {
+   "es": "Rociada venenosa",
+   "en": "Poison Spray"
+  },
+  "level": 0,
+  "kind": "save",
+  "target": "enemy",
+  "save": "CON",
+  "damage": "1d12",
+  "desc": {
+   "es": "Salvación de CON o 1d12 de daño de veneno.",
+   "en": "CON save or 1d12 poison damage."
+  }
+ },
+ "pdri:produce_flame": {
+  "name": {
+   "es": "Producir llama",
+   "en": "Produce Flame"
+  },
+  "level": 0,
+  "kind": "attack",
+  "target": "enemy",
+  "damage": "1d8",
+  "fx": "fire",
+  "desc": {
+   "es": "Ataque de conjuro a distancia: 1d8 de fuego.",
+   "en": "Ranged spell attack: 1d8 fire damage."
+  }
+ },
+ "pdri:eldritch_blast": {
+  "name": {
+   "es": "Descarga sobrenatural",
+   "en": "Eldritch Blast"
+  },
+  "level": 0,
+  "kind": "attack",
+  "target": "enemy",
+  "damage": "1d10",
+  "desc": {
+   "es": "Ataque de conjuro a distancia: 1d10 de fuerza.",
+   "en": "Ranged spell attack: 1d10 force damage."
+  }
+ },
+ "pdri:guiding_bolt": {
+  "name": {
+   "es": "Saeta guía",
+   "en": "Guiding Bolt"
+  },
+  "level": 1,
+  "kind": "attack",
+  "target": "enemy",
+  "damage": "4d6",
+  "fx": "missile",
+  "desc": {
+   "es": "Ataque de conjuro a distancia: 4d6 de daño radiante.",
+   "en": "Ranged spell attack: 4d6 radiant damage."
+  }
+ },
+ "pdri:hex": {
+  "name": {
+   "es": "Maleficio",
+   "en": "Hex"
+  },
+  "level": 1,
+  "kind": "mark",
+  "target": "enemy",
+  "buff": [
+   "pdri:hex",
+   null
+  ],
+  "bonus": true,
+  "fx": "mark",
+  "desc": {
+   "es": "Acción adicional: tus ataques le hacen +1d6.",
+   "en": "Bonus action: your attacks deal +1d6 to it."
+  }
+ },
+ "pdri:rage": {
+  "name": {
+   "es": "Furia",
+   "en": "Rage"
+  },
+  "level": 1,
+  "kind": "buff",
+  "target": "self",
+  "buff": [
+   "pdri:rage",
+   10
+  ],
+  "bonus": true,
+  "desc": {
+   "es": "Acción adicional, 10 turnos: +2 al daño cuerpo a cuerpo y la mitad del daño de los ataques.",
+   "en": "Bonus action, 10 turns: +2 melee damage and half damage from attacks."
+  }
+ },
+ "pdri:lay_on_hands": {
+  "name": {
+   "es": "Imposición de manos",
+   "en": "Lay on Hands"
+  },
+  "level": 1,
+  "kind": "heal",
+  "target": "touch",
+  "amount": 5,
+  "desc": {
+   "es": "Curas 5 PV a ti o a un aliado al lado (también si está caído). Usos = tu nivel.",
+   "en": "You or an adjacent ally (even if downed) heal 5 HP. Uses = your level."
+  }
  }
 }

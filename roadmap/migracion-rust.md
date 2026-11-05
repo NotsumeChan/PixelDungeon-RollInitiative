@@ -78,35 +78,271 @@ mundo y UI con zoom entero cada una; agua animada, tiles y niebla con LINEAR en 
 arrastre, zoom con rueda / pellizco; observador con WASD o toque. Orientación vertical (pedido del dueño, sobre todo
 para Android): la app gira con el teléfono y en vertical la UI usa la referencia 180x320.
 
-**Siguiente: R3** (sin empezar a escribir; sólo leídas las referencias). Notas para retomar:
-- Referencias en `python-prototipe`: `game/dice.py`, `pathfinder.py`, `actor.py` (planificador por tiempo + rondas 5e
-  del paso 3 de la fase 5), `char.py`, `hero.py`, `mobs.py`, `dungeon.py`, y de `items.py` sólo `weapon_dice` /
-  `armor_ac`. Copia de lectura rápida: `git archive python-prototipe game data | tar -x -C /tmp/pdri-py` (`/tmp` se
-  borra al reiniciar).
-- Alcance propuesto de R3 (como la fase 3 del prototipo + el combate 5e): `dice.rs`, `pathfinder.rs`, `actor.rs`
-  (tiempo de PD fuera de combate; en combate iniciativa d20 + DES, movimiento `speed_ft / 5` casillas + 1 acción,
-  estados y timers 1 TICK por ronda, fin tras 2 rondas calmas), `char.rs` (PV, CA, ataque d20 vs CA, crítico,
-  daño, muerte, paso con puertas), `hero.rs` (clase de `data/classes.json`, características, competencia, PV de
-  nivel, moverse con pathfinder, atacar cuerpo a cuerpo, esperar, buscar, escaleras, estabilizar aliado caído,
-  salvaciones contra la muerte, regeneración, XP y niveles), `mobs.rs` (IA SLEEPING / WANDERING / HUNTING, stats de
-  `data/mobs.json` convertidos a 5e con `mob_ac` / `mob_attack_bonus`, bestiario, respawner, XP repartida +1 al
-  último golpe), `dungeon.rs` (pisos visitados, varios héroes, `pending` de los dados).
-- Equipo mínimo en R3: sólo el arma y la armadura iniciales de la clase (leídas de `data/items.json` por
-  `registry`) para la tirada de ataque, el daño y la CA. Inventario, hambre, estados, conjuros, trampas y armas a
-  distancia van en R5.
-- Render en R3: personajes con el primer frame de su hoja (las animaciones son R4), HUD mínimo (PV, CA, ronda y
-  turno, últimas líneas del log). Sin la animación de dados todavía: `pending` se resuelve en el acto.
-- Determinismo: las tiradas del rng de la partida en el mismo orden que el prototipo (no hay comparación automática
-  en R3 porque depende del input; se prueba a mano).
+**Estado R3** ✏️ escrito (2026-11-04), pendiente de prueba del dueño: `dice`, `pathfinder`, `actor` (planificador +
+rondas 5e), `char`, `items` (arma y armadura iniciales), `hero` (clase de `data/classes.json`, ataque 5e, buscar,
+escaleras arriba y abajo, estabilizar, salvaciones contra la muerte, regeneración, XP y niveles), `mobs` (IA SLEEPING /
+WANDERING / HUNTING, bestiario, respawner, XP repartida) y `dungeon` (pisos visitados, varios héroes, `pending`). La
+app juega con el héroe: click / toque con pathfinder, WASD, espacio = esperar, Q o tocarse = buscar, R / C = partida /
+clase; personajes con el primer frame de su hoja; HUD con PV, CA, XP, ronda y turno, y el log.
+Verificado headless (simulación descartable, no queda en el repo): 40 partidas sin pánicos ni bucles, combates, bajada
+hasta el piso 4 y muertes por salvaciones; los pisos siguen idénticos a `main` (16 seeds x piso comparados).
+Para probar: que los mobs despierten y persigan, el orden de iniciativa y el movimiento por turno en combate, caer a 0
+PV y las salvaciones, subir de nivel, subir y bajar de piso (los pisos guardan sus mobs), el balance (el héroe muere
+seguido si no descansa).
+Pendientes de R3 que dependen de R4/R5: el dado animado (`pending` se resuelve en el acto), botones táctiles para
+esperar / buscar, apariencias de pociones al empezar (gasta rng en el prototipo), loot, trampas, hambre.
 
-**Pendiente del dueño** (al cerrar la sesión del 2026-11-03):
-- `git push origin main` (R1, R2 y la orientación vertical están sólo en local).
-- Probar R2 en el teléfono y en la PC (`cargo run --release`): niebla en bordes de paredes, agua, zoom nítido.
-- Instalar el APK con la orientación vertical: quedó armado en `target/android/pdri.apk` pero el teléfono se
-  desconectó (`adb install -r target/android/pdri.apk`). Si adb sigue cortándose: otro cable/puerto o depuración
-  inalámbrica (`adb pair` / `adb connect`).
-- Respaldar `~/.pddnd-signing/` (sin la clave no se pueden publicar actualizaciones del APK) y, si se quiere firmar
-  en CI, cargar los secretos `PDRI_KEYSTORE_B64` y `PDRI_KEYSTORE_PASS` en GitHub.
+**Estado R4** ✏️ escrito (2026-11-04), pendiente de prueba del dueño:
+- Personajes animados (`app/sprites.rs`): quieto, correr, atacar, operar y morir, girando hacia donde van; el héroe
+  usa la fila de su armadura; cadáveres que se desvanecen; textos flotantes (daño, esquiva, caer, subir de nivel...);
+  casillas revisadas al buscar; hojas del pasto; Zzz y ! sobre los mobs.
+- Dados animados (`app/dice_fx.rs`): d20 de ataque, daño y salvaciones (grande en el centro); el daño se aplica
+  cuando el dado muestra el número (`pending` ya no se resuelve en el acto).
+- UI (`app/ui.rs`) con los assets originales: panel de estado (avatar -> ficha, PV, XP, nivel, piso, menú, ocupado),
+  carrusel de iniciativa, barra con esperar / buscar / examinar, log, tooltips, ventanas de examinar (terreno o mob),
+  ficha 5e y menú (Esc).
+Para probar: que el daño caiga cuando se ve el dado, el carrusel al pasar los turnos, examinar terreno y mobs, la
+ficha, los tooltips con el mouse, y en el teléfono que los botones se puedan tocar.
+Quedan para R5 (dependen de ítems y estados): mochila, accesos rápidos, íconos de estados, partículas de trampas y
+conjuros, configuración. El indicador de ocupado titila en vez de girar (el lote no rota sprites).
+
+**Estado R5a** ✏️ escrito (2026-11-04), pendiente de prueba del dueño: ítems (`game/items.rs`: generador, montones,
+apariencias sin identificar, nombres e info con los números de 5e), montones en el piso, cofres / tumbas / restos,
+loot de los mobs, mochila de 19, oro, accesos rápidos (1 / 2, click derecho para elegir), comer, beber, leer (con
+objetivo: identificar, mejorar), equipar / quitar / soltar con maldiciones, hambre, y en la UI la mochila, la ventana
+del ítem y el ícono de hambre. Verificado: misma seed = mismas apariencias, mobs y montones que el prototipo (5 seeds x
+2 clases). **Versión 0.4.0** (ver `roadmap/versiones.md`).
+Para probar: recoger y abrir cofres, identificar una poción bebiéndola, leer identificar / mejorar eligiendo el
+objetivo, equipar algo maldito, los accesos rápidos, pasar hambre.
+
+**Estado R5b** ✏️ escrito (2026-11-04), pendiente de prueba del dueño: estados como datos (`game/buffs.rs`:
+veneno, sangrado, quemadura, parálisis con salvación cada turno, lisiado), salvaciones de 5e con el dado grande,
+las 8 trampas con sus salvaciones (`game/traps.rs`), reglas de la partida (`dot_death_saves`, `save_half`, por
+ahora fijas), íconos de estados en el panel. Para probar: pisar trampas (ocultas y vistas), paralizarse, apagar el
+fuego en el agua, que un mob paralizado no se mueva. Faltan las nubes de gas (Blob) y las partículas.
+
+Arreglos tras la prueba del dueño (2026-11-04): los sprites recorren cada paso (no cortan paredes); atacar fuera de
+combate inicia el combate con iniciativa y sorpresa (un mob que muere de un golpe igual tira iniciativa); la mochila,
+menos brillante.
+
+**R5e (en parte)** ✏️: configuración en `Local.config` desde el menú: tope de FPS, pantalla completa (F11) y controles
+configurables. Falta el idioma (estructura de traducción).
+
+**Estado R5c** ✏️ escrito (2026-11-04), pendiente de prueba del dueño: rasgos de clase (Segundo Aliento, Ataque
+Furtivo, Enemigo predilecto) y conjuros del Mago (Descarga de fuego, Rayo de escarcha, Proyectil mágico, Dormir) y del
+Explorador (Marca del cazador, Curar heridas) como datos, con espacios por nivel, trucos que escalan, línea de tiro y
+cobertura (`game/spells.rs`, `game/ballistica.rs`), libro de conjuros (F) y el rasgo desde la ficha. Para probar: cada
+conjuro y rasgo, que el daño espere al dado, Dormir sobre varios mobs, la Marca del cazador sumando 1d6, Ataque
+Furtivo con daga contra un mob dormido. Faltan los proyectiles y partículas de los conjuros.
+
+Arreglos tras la prueba del dueño (2026-11-04, 2a tanda): el acceso rápido de un arma arrojadiza ya no la suelta
+(abre su ventana hasta que exista lanzar); pantalla de título (Jugar con elección de clase, Acerca de, configuración)
+y "Menú principal" en el menú de la partida.
+
+Menús como el prototipo (3a tanda): título con Jugar / Mods / Acerca de, menú de pausa con Reglas de la partida y
+Menú principal | Salir, configuración con idioma (sólo español por ahora), FPS, pantalla completa, escala de la
+interfaz y controles aparte; nombres nítidos en los ítems sin sprite. Pendiente que pidió el dueño: Jugar -> lista de
+personajes y creación con dados (necesita el guardado de personajes, R5).
+
+**Guardado y personajes (R5)** ✏️ (2026-11-04): partidas por personaje en JSON (`game/save.rs`, regenera los niveles
+con la seed y guarda lo que cambió, combate en curso incluido), lista de personajes (`game/characters.rs` y la
+ventana de la app: JUGAR / NUEVO / BORRAR), autoguardado al cambiar de piso, al menú principal, al salir y en Android
+al pasar al fondo; si el héroe muere se borra. Misma carpeta de datos que el prototipo. Para probar: guardar en el piso
+2, salir, volver a entrar y seguir; borrar con confirmación; morir y ver que la partida no queda. 
+
+**Creación de personaje (R5)** ✏️ (2026-11-04), pendiente de prueba del dueño: NUEVO abre la creación con el layout
+de `createScreen.py`: nombre, clase, 7 tiradas 4d6 (sin el menor) que se asignan tocando la tirada y luego la
+característica, o escribiendo el número (1-20); TIRAR / LIMPIAR / EMPEZAR, Esc vuelve a la lista. En Android aparece el
+teclado en pantalla al tocar el nombre o una característica. Sin arrastrar (el prototipo arrastraba): click-click hace
+lo mismo. **Versión 0.5.0.** Para probar: tirar, asignar, mover una tirada de una característica a otra, escribir un
+número, LIMPIAR, empezar sin nombre (usa el de la clase), en el teléfono el teclado y la creación en vertical.
+
+Arreglos en la creación (pedido del dueño, 2026-11-05) ✏️: botones de abajo de la lista de personajes y de la
+creación más altos (24 en vez de 16, para el dedo); NUEVO ya tira los dados y las tiradas más altas van a las
+características de la clase (`ability_priority` en `classes.json`: Guerrero FUE-CON, Mago INT-CON, Pícaro DES-CON,
+Explorador DES-SAB); TIRAR reparte igual y cambiar de clase reacomoda si no se tocó nada a mano. Para probar: tocar los
+botones en el teléfono, NUEVO con cada clase, cambiar de clase antes y después de mover una tirada.
+
+**Clases y apariencias** (pedido del dueño, 2026-11-05): las 12 clases básicas de 5e, y la apariencia aparte de la
+clase. ✏️ 0.9.2: los 4 héroes de PD son skins (`data/skins.json`, ids = los de sus clases de antes: un personaje viejo
+se ve igual), elegidas en la creación con un selector con flechas, guardadas en el personaje y el héroe y mandadas en
+el `hello` de la LAN; las clases salen de `data/classes.json` (las de un mod aparecen solas). Para probar: crear un
+personaje con otra skin que su clase (p. ej. Mago con la Cazadora) y verlo en el mapa, la lista y la LAN; un
+personaje de antes sigue igual.
+✏️ 0.9.3: las 8 clases que faltan, con lo de nivel 1 de 5e:
+- Bárbaro d12: Furia (acción adicional, 10 turnos: +2 al daño cuerpo a cuerpo y la mitad del daño de los ataques;
+  2 usos, +1 cada 3 niveles) y Defensa sin armadura (CON).
+- Bardo d8 (CAR): Burla cruel, Curar heridas, Dormir.
+- Clérigo d8 (SAB): Llama sagrada, Saeta guía, Curar heridas.
+- Druida d8 (SAB): Producir llama, Rociada venenosa, Curar heridas.
+- Monje d8: Artes marciales (FUE o DES con armas simples o sin armas; puño 1d4) y Defensa sin armadura (SAB).
+- Paladín d10: Imposición de manos (5 PV por uso, usos = nivel).
+- Hechicero d6 (CAR): Descarga de fuego, Rociada venenosa, Proyectil mágico, Dormir.
+- Brujo d8 (CAR, magia de pacto): Descarga sobrenatural y Maleficio.
+
+Cada una con sus salvaciones, competencias de armas, armaduras y pericias, equipo inicial y orden de
+características. Los rasgos se ven y se usan desde el libro (F / el botón de la barra).
+Ponytail, para después: Inspiración bárdica, Sentido divino, Canalizar divinidad, golpe extra del Monje, Forma
+salvaje, Castigo divino, invocaciones del Brujo, metamagia; la Furia no exige FUE ni corta los conjuros.
+Para probar: crear una de cada una, su CA sin armadura (Bárbaro y Monje), la Furia (daño +2 y la mitad del daño
+recibido, el estado en la ficha), los conjuros de salvación (el dado verde o rojo del mob), Imposición de manos a un
+aliado caído, que el Brujo tenga 1 espacio en nivel 1 y 2 en nivel 2.
+
+**Estado R6** ✏️ escrito (2026-11-04), pendiente de prueba del dueño (PC + teléfono): red LAN en `app/src/net.rs`
+(`docs/app/net.md`), sólo std. Lista de personajes -> CREAR LAN (juegas con el elegido y la partida queda abierta; el
+log muestra la IP) o UNIRSE (lista de partidas de la red; tocar una entra con el personaje elegido). Host autoritativo
+que manda el estado completo; el cliente manda acciones validadas. Descubrimiento: el cliente pregunta por broadcast y
+el host contesta directo, así el teléfono encuentra la PC sin MulticastLock. Hash del contenido y versión: si no
+coinciden, no se entra. Tests de red: 4, por loopback incluida una partida real (`cargo test -p app --lib net`).
+Para probar (demo): en la PC abrir los puertos si ufw está activo (`sudo ufw allow 47810/udp` y
+`sudo ufw allow 47811/tcp`), instalar el APK nuevo en el teléfono (`android/build.sh` + `adb install -r ...`), PC:
+CREAR LAN; teléfono (misma Wi-Fi): UNIRSE, tocar la partida. Mirar: que aparezca la partida, entrar, moverse y pelear
+los dos (en combate cada uno en su turno), bajar de piso por separado, que el teléfono se vaya y vuelva (vuelve a su
+héroe), y que el host cierre (el teléfono vuelve a Unirse con el aviso).
+Arreglos tras la primera prueba del dueño (PC + teléfono, 2026-11-04): sala de espera al crear (EMPEZAR / VOLVER;
+el cliente ve quién está), lista de quién falta elegir acción y "Esperando a ...", teclado en pantalla para el nombre
+en Android, botón del rasgo de clase en la barra, avisos del log sólo para quien hizo la acción, margen a los costados
+en Android apaisado, ventanas que entran en vertical, VOLVER en la lista de personajes, Salir en el título, mostrar FPS
+como opción y el botón Atrás de Android como Esc. Para probar: todo eso en el teléfono, en vertical y apaisado.
+Pedido del dueño, después: **chat de texto** en la partida LAN (mensaje `chat` cliente -> host -> todos; en el
+teléfono, con el teclado en pantalla).
+
+Segunda tanda (2026-11-04): el teléfono ve animaciones, números de daño y dados (el host le manda los efectos y
+dados de su piso); al cargar una partida para jugar solo, los héroes que quedaron de una sesión LAN se sacan (eran
+las "copias" que aparecían sin hotseat).
+
+**Personaje portátil (R6, paso 5)** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: UNIRSE manda el nivel, XP,
+oro y equipo de la partida del personaje (`save::portable`); el host los valida (rangos básicos, ítems que existen,
+equipo en su ranura; si no, "personaje invalido") y su héroe entra con eso, descansado y con los PV al máximo. Al
+cambiar de piso, salir, ir al menú o cortarse la conexión, el cliente pasa su héroe a su partida de un jugador (o a
+una nueva); si murió en la LAN, la partida se borra como al jugar solo. Tests de red: 6. Para probar: un personaje de
+nivel 2+ con equipo entra así a la partida de la PC; subir de nivel o juntar algo en la LAN, salir y JUGAR solo con
+ese personaje: lo tiene (en el piso donde había quedado su partida); un personaje nuevo que entra a la LAN y sale
+queda "en partida".
+
+**Chat de texto (R6, paso 8)** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: en una partida LAN, Enter (o
+el botón "Chat" de la barra, en el teléfono con el teclado en pantalla) abre una línea arriba; Enter / LISTO manda y
+Esc cancela. El mensaje sale en el log de todos como "<nombre>: <texto>" (hasta 40 caracteres). Para probar: escribir
+desde la PC y desde el teléfono y verlo en los dos; Esc / Atrás cancela; que Enter no abra el chat jugando solo.
+
+Pendientes de R6: aplicar el estado sin rearmar la partida
+(hoy regenera los pisos en cada estado: puede trabar un poco en el teléfono), el teléfono como host (para recibir
+los "discover" por broadcast puede necesitar MulticastLock: por ahora la partida se crea en la PC), escribir la IP a
+mano si el router bloquea los broadcasts.
+
+**Hotseat (cierre de R5, 0.8)** ✏️ (2026-11-04), pendiente de prueba del dueño: `[dev] hotseat = true` en
+`Local.config` suma un segundo héroe igual al personaje ("<nombre> 2"). Tab cambia de héroe; la UI pasa sola al que
+le toca en combate (o al que sigue en pie si el local cae) y el log avisa "Turno de ..."; con los héroes en pisos
+distintos se cambia con Tab. Con 2+ héroes se ve el nombre sobre cada uno. **Versión 0.8.0** (paridad con el
+prototipo, con la excepción de partículas y proyectil en vuelo). Para probar: crear un personaje nuevo con hotseat
+(una partida guardada de antes sigue con un héroe), combate con los dos y el cambio automático, Tab, un héroe en otro
+piso, un héroe caído (el otro lo estabiliza), guardar y volver a entrar.
+
+**Cierre de la 0.7** ✏️ (2026-11-04), pendiente de prueba del dueño: arrastrar en la creación de personaje como el
+prototipo (tirada -> característica, característica -> característica las cambia, afuera la quita; con mouse o dedo),
+idioma del contenido en la configuración (Español / English: nombres y descripciones de los JSON; los textos del
+código siguen en español, como el prototipo) y `[dev] dice_log = true` en `Local.config` para el log de tiradas
+detallado. **Versión 0.7.0**, con una excepción a la regla de versiones: faltan las partículas y el proyectil en
+vuelo (pulido visual). Para probar: arrastrar en la PC y con el dedo, un click sigue eligiendo; cambiar a English y
+ver ítems / mobs / clases; `dice_log`.
+Nota: "arrastrar ítems en la mochila" no existía en el prototipo (su drag and drop de la 0.6 era sólo en la
+creación); se saca de pendientes.
+
+**Estado R5d** ✏️ escrito (2026-11-04), pendiente de prueba del dueño: armas a distancia. LANZAR (primera acción de las
+arrojadizas y del acceso rápido; se elige la casilla como un conjuro), el arco con flechas (tocar un mob a tiro
+dispara; sin flechas o fuera de alcance, cuerpo a cuerpo con 1d4), el bumerán vuelve a la mochila, los dardos ponen su
+estado al acertar (`on_hit`), cobertura de un aliado en medio (-2), desventaja más allá del alcance normal o con un
+enemigo al lado, Ataque Furtivo a distancia. Lanzar o disparar fuera de combate lo inicia. Para probar: lanzar dardos
+(los fallados quedan en el suelo, los acertados se pierden), un dardo de curare (parálisis), el bumerán, el arco con y
+sin flechas, el aviso de cobertura con un aliado en medio, y el acceso rápido de una arrojadiza. Falta el proyectil en
+vuelo (pulido, con las partículas).
+Arreglo: en el título, "Acerca de" y "Opciones" ya no se tocan (separación por el texto más largo).
+
+**Configuración (pedido del dueño, 2026-11-04)** ✏️: la resolución de la ventana (`resolution` de `Local.config`, que
+Rust ignoraba) es una opción de la configuración en escritorio: 640x480 / 1280x720 / 1920x1080, se aplica al momento.
+El botón de configuración de arriba a la izquierda del título pasó al dashboard ("Opciones", con el mismo ícono al
+doble). Para probar: cambiar la resolución en ventana y en pantalla completa, y el título en vertical (4 botones).
+
+## Para retomar (al cerrar la segunda sesión del 2026-11-04)
+
+**Dónde está todo.** Rama `dev` (26 commits por encima de `main`, sin pushear: `git push -u origin dev`). `main`
+sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide las fases. **Versión 0.8.0**
+(`Cargo.toml` del workspace y `android/AndroidManifest.xml`; regla e historial en `roadmap/versiones.md`; la 0.7 y la
+0.8 se marcaron con una excepción: faltan partículas y proyectil en vuelo). El APK de la última tanda está instalado
+en el teléfono del dueño y el binario de escritorio compilado (`cargo run --release`).
+
+**Hecho en esta sesión** (todo ✏️ escrito y compilado, falta la prueba del dueño salvo lo que dice "probado"):
+creación de personaje con dados (con arrastrar y teclado en pantalla en Android), resolución de la ventana en la
+configuración, Opciones en el dashboard, armas a distancia (R5d), idioma del contenido, `[dev] dice_log`, hotseat,
+y la red LAN (R6): CREAR LAN con sala de espera / UNIRSE, host autoritativo, efectos y dados en el cliente, lista de
+quién falta elegir, avisos privados del log, Atrás de Android = Esc, Salir que cierra el proceso en Android, margen a
+los costados en Android apaisado, ventanas que entran en vertical, mostrar FPS como opción. El dueño probó la red
+con la PC y el teléfono: la partida aparece y se puede entrar (lo reportado se arregló en las dos tandas de arreglos
+de "Estado R6").
+
+**Siguiente, en este orden:**
+1. **Que el dueño pruebe la última tanda** (PC + teléfono, vertical y apaisado): sala de espera, lista de quién
+   falta, efectos y dados en el teléfono, teclado en pantalla, botón del rasgo, Salir y volver a abrir en Android,
+   que no aparezcan copias de personajes. Lo que falle, primero.
+2. ✏️ **R6, personaje portátil** (escrito el 2026-11-05, ver su "Estado" arriba): falta la prueba del dueño.
+   **Versión 0.9.0** (2026-11-05, ver `roadmap/versiones.md`): la PC y el teléfono tienen que tener la misma para
+   jugar en LAN.
+3. ✏️ **Chat de texto** (escrito el 2026-11-05, ver su "Estado" arriba): falta la prueba del dueño.
+4. Resto de R6: aplicar el estado sin rearmar la partida (el cliente regenera los pisos en cada estado: puede trabar
+   en el teléfono), el teléfono como host (MulticastLock para recibir los "discover"), escribir la IP a mano.
+5. ✏️ **Idioma de los textos del código** (0.9.11, 2026-11-05): `tr!` / `trf!` (`game/src/registry.rs`), todo el
+   código traducido al inglés; falta la prueba del dueño. Lo que arma el host (log, dados) llega en su idioma.
+6. Pulido: partículas y proyectiles en vuelo, nubes de gas.
+7. **Publicar desde `main`** (pedido del dueño): GitHub Actions que, al llegar algo a `main`, compile Linux, Windows y
+   el APK y los publique como **Release** (tag `v<versión>` de `Cargo.toml`, los 3 archivos adjuntos). Hoy
+   `.github/workflows/build.yml` ya compila los 3 en cada push, pero sólo deja *artifacts* (vencen a los 90 días, no
+   son descargas públicas). Falta: un job o workflow para `push` a `main` que junte los 3 y use
+   `softprops/action-gh-release` (o `gh release create`), con `permissions: contents: write`; no repetir un tag que
+   ya existe (subir la versión antes del merge). El APK tiene que ir firmado con la clave del dueño: cargar los
+   secretos `PDRI_KEYSTORE_B64` y `PDRI_KEYSTORE_PASS` (ver "Pendiente del dueño"); sin ellos el CI firma con una
+   clave descartable y ese APK no sirve para actualizar el instalado. Al dueño le da igual si compila GitHub o si
+   compila su PC y sube los archivos (`gh release create v0.x.0 target/release/pdri target/android/pdri.apk ...`;
+   el `.exe` de Windows sale más fácil de GitHub). Preferir GitHub: no depende de la PC encendida.
+
+8. **NPCs** (pedido del dueño, 2026-11-05): plan y pasos en `roadmap/npcs.md`. N1 (motor de diálogos), N2 (pericias y tiradas sociales), N3 (misiones) y N4 (inventario y tienda) ✏️ escritos.
+9. **Movimiento en PC** (pedido del dueño, 2026-11-05): opción en Configuración -> Controles para mover al héroe
+   sólo con el mouse o sólo con el teclado (hoy valen los dos a la vez), y una línea punteada en el mapa con el camino
+   hasta el destino elegido (el del pathfinder, hasta que el héroe llega o se cancela). La línea, también en el
+   teléfono.
+10. **Luz y visión 5e** (pedido del dueño, 2026-11-05): cada piso o zona con su nivel de luz (luz brillante a cielo
+   abierto de día, penumbra, oscuridad en cuevas) y el campo de visión según 5e en vez del radio fijo de PD
+   (`fov::MAX_DISTANCE`). Luz brillante: se ve hasta donde llega la vista. Penumbra: zona ligeramente oscura,
+   desventaja en Percepción (Sabiduría) con la vista (y al buscar). Oscuridad: muy oscura, no se ve más allá de la luz
+   propia. Fuentes de luz con radio en pies -> casillas (5 ft = 1): antorcha 20 ft de luz brillante + 20 ft de
+   penumbra, linterna, el conjuro Luz; visión en la oscuridad (60 ft, la oscuridad cuenta como penumbra) si una
+   clase, raza o mod la da. Como datos: `light` por piso o por sala, `light` en ítems (radio brillante y de
+   penumbra) y `darkvision` en clases y mobs (los mobs también ven según la luz: sigilo en lo oscuro). La niebla de
+   la GPU ya tiene "visible / vista": sumar la penumbra como un tono intermedio.
+
+**Pendientes conocidos (pulido):** partículas de trampas y conjuros y proyectiles en vuelo (`screens/particles.py`),
+nubes de gas que se expanden (Blob), el indicador de ocupado gira en el original (acá titila: `Sprite` no rota),
+mimic, habilidades especiales de los mobs (Swarm, Skeleton, Thief), FLEEING, descansos (hoy se recupera todo al
+llegar a un piso nuevo). En vertical, el dueño dijo que "cuesta interactuar": se arregló lo que se salía de la
+pantalla; si sigue, pedirle qué pantalla.
+
+**Cómo se trabaja (acordado con el dueño):** el dueño prueba el juego a mano; no correr simulaciones, bots ni
+comparaciones de partidas, sólo compilar (`cargo clippy --workspace --all-targets` y
+`cargo ndk -t arm64-v8a check -p app --lib`) y los tests de red (`cargo test -p app --lib net`, los únicos
+automáticos; usan los puertos del juego). Commits en `dev`, cortos, a nombre del dueño, sin coautoría, con `#R<n>`;
+el dueño pushea. Subir la versión al cerrar lo que la cambie. `Local.config` cambia cuando el dueño prueba opciones:
+no commitearlo. Lo que el dueño tiene que revisar queda anotado en el "Estado" de cada paso.
+
+**Pendiente del dueño** (actualizado al cerrar la segunda sesión del 2026-11-04):
+- `git push -u origin dev`, probar y, cuando cierre cada fase, `merge: dev -> main`.
+- Red LAN: con ufw activo en la PC, abrir los puertos (`sudo ufw allow 47810/udp` y `sudo ufw allow 47811/tcp`).
+  La partida se crea en la PC (CREAR LAN) y el teléfono entra con UNIRSE, en la misma Wi-Fi.
+- Probar en la PC (`cargo run --release`) y en el teléfono (`android/build.sh` y
+  `adb install -r target/android/pdri.apk`; si adb se corta: otro cable/puerto o `adb pair` / `adb connect`). Qué
+  mirar: el "Estado" de cada paso, arriba.
+- Respaldar `~/.pddnd-signing/` (sin la clave no se pueden publicar actualizaciones del APK) y, para publicar desde
+  `main` (punto 7 de "Siguiente"), cargar los secretos `PDRI_KEYSTORE_B64` (`base64 -w0 release.jks`) y
+  `PDRI_KEYSTORE_PASS` en GitHub.
+- Decidir si `Local.config` sigue versionado (cambia al probar opciones) o va al `.gitignore`.
 - Opcional: borrar `~/pddnd-android/` (prueba de buildozer; el SDK/NDK de `~/.buildozer` sí lo usa
   `android/build.sh`) y `~/pddnd-backup-20261103-1116/`.
 

@@ -1,0 +1,133 @@
+{
+ "pdri:wandering_merchant": {
+  "start": "start",
+  "nodes": {
+   "start": {
+    "text": {
+     "es": "¡Eh, {name}! Justo pasaba por aquí. ¿Te interesa algo? Mañana estaré en otro piso.",
+     "en": "Hey, {name}! I was just passing by. Interested in anything? Tomorrow I'll be on another floor."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Veamos qué traes.",
+       "en": "Let's see what you've got."
+      },
+      "do": [
+       [
+        "shop"
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "¿Qué viste más abajo?",
+       "en": "What did you see further down?"
+      },
+      "go": "rumor"
+     },
+     {
+      "text": {
+       "es": "[Perspicacia] ¿De dónde sacas todo esto?",
+       "en": "[Insight] Where do you get all this?"
+      },
+      "if": [
+       [
+        "flag",
+        "pdri:wandering_insight",
+        "=",
+        0
+       ]
+      ],
+      "check": [
+       "pdri:insight",
+       12
+      ],
+      "go": "insight_ok",
+      "fail": "insight_fail",
+      "do": [
+       [
+        "flag",
+        "pdri:wandering_insight",
+        1
+       ],
+       [
+        "disposition",
+        1
+       ]
+      ],
+      "fail_do": [
+       [
+        "flag",
+        "pdri:wandering_insight",
+        1
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "[Atacar]",
+       "en": "[Attack]"
+      },
+      "do": [
+       [
+        "attack"
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "Adiós.",
+       "en": "Goodbye."
+      }
+     }
+    ]
+   },
+   "rumor": {
+    "text": {
+     "es": "Abajo los túneles se ponen feos. Lleva pociones y no te pelees con todo lo que se mueve.",
+     "en": "Down below the tunnels get nasty. Carry potions and don't fight everything that moves."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "insight_ok": {
+    "text": {
+     "es": "Je... de los que no volvieron. Alguien tiene que aprovecharlo. Para ti, buen precio.",
+     "en": "Heh... from those who didn't make it back. Someone has to put it to use. For you, a good price."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "insight_fail": {
+    "text": {
+     "es": "Secretos del oficio, amigo.",
+     "en": "Trade secrets, friend."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   }
+  }
+ }
+}

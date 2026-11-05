@@ -1,0 +1,36 @@
+{
+ "pdri:corpse_dust": {
+  "name": {
+   "es": "Polvo de cadáver",
+   "en": "Corpse dust"
+  },
+  "desc": {
+   "es": "El fabricante de varitas busca polvo de cadáver entre los restos de esqueletos.",
+   "en": "The wandmaker is looking for corpse dust among skeletal remains."
+  },
+  "objectives": [
+   [
+    "has",
+    "pdri:corpse_dust",
+    1
+   ]
+  ]
+ },
+ "pdri:rat_hunt": {
+  "name": {
+   "es": "Ratas en la despensa",
+   "en": "Rats in the pantry"
+  },
+  "desc": {
+   "es": "El mercader paga por cinco ratas muertas.",
+   "en": "The shopkeeper pays for five dead rats."
+  },
+  "objectives": [
+   [
+    "kill",
+    "pdri:rat",
+    5
+   ]
+  ]
+ }
+}

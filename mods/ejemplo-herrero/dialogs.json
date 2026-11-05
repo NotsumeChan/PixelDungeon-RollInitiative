@@ -1,0 +1,220 @@
+{
+ "herrero:blacksmith": {
+  "start": "start",
+  "nodes": {
+   "start": {
+    "text": {
+     "es": "¿Qué quieres, {name}? Estoy ocupado.",
+     "en": "What do you want, {name}? I'm busy."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Muéstrame tus armas.",
+       "en": "Show me your weapons."
+      },
+      "do": [
+       [
+        "shop"
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "¿Necesitas ayuda?",
+       "en": "Need a hand?"
+      },
+      "if": [
+       [
+        "quest",
+        "herrero:gnolls",
+        "none"
+       ]
+      ],
+      "go": "job"
+     },
+     {
+      "text": {
+       "es": "Los gnolls están muertos.",
+       "en": "The gnolls are dead."
+      },
+      "if": [
+       [
+        "quest",
+        "herrero:gnolls",
+        "ready"
+       ]
+      ],
+      "do": [
+       [
+        "quest",
+        "herrero:gnolls",
+        "done"
+       ],
+       [
+        "give",
+        "herrero:troll_sword",
+        1
+       ],
+       [
+        "disposition",
+        1
+       ]
+      ],
+      "go": "paid"
+     },
+     {
+      "text": {
+       "es": "[Apostar] Un dado contra ti.",
+       "en": "[Bet] One die against you."
+      },
+      "if": [
+       [
+        "lua",
+        "herrero_puede_apostar",
+        10
+       ]
+      ],
+      "do": [
+       [
+        "lua",
+        "herrero_apuesta",
+        10
+       ]
+      ],
+      "go": "start"
+     },
+     {
+      "text": {
+       "es": "[Persuadir] Un troll que forja así merece más clientes.",
+       "en": "[Persuade] A troll who forges like this deserves more customers."
+      },
+      "if": [
+       [
+        "flag",
+        "herrero:flattered",
+        "=",
+        0
+       ]
+      ],
+      "check": [
+       "pdri:persuasion",
+       13
+      ],
+      "go": "flatter_ok",
+      "fail": "flatter_fail",
+      "do": [
+       [
+        "flag",
+        "herrero:flattered",
+        1
+       ],
+       [
+        "disposition",
+        1
+       ]
+      ],
+      "fail_do": [
+       [
+        "flag",
+        "herrero:flattered",
+        1
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "[Atacar]",
+       "en": "[Attack]"
+      },
+      "do": [
+       [
+        "attack"
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "Adiós.",
+       "en": "Goodbye."
+      }
+     }
+    ]
+   },
+   "job": {
+    "text": {
+     "es": "Los gnolls me roban el carbón. Mata tres y te forjo algo bueno.",
+     "en": "Gnolls keep stealing my coal. Kill three and I'll forge you something good."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Hecho.",
+       "en": "Deal."
+      },
+      "do": [
+       [
+        "quest",
+        "herrero:gnolls",
+        "start"
+       ]
+      ],
+      "go": "start"
+     },
+     {
+      "text": {
+       "es": "No, gracias.",
+       "en": "No, thanks."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "paid": {
+    "text": {
+     "es": "Toma. No la rompas.",
+     "en": "Here. Don't break it."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "flatter_ok": {
+    "text": {
+     "es": "Hmpf. Por fin alguien con ojo. Te haré mejor precio.",
+     "en": "Hmpf. Finally someone with an eye for it. I'll give you a better price."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "flatter_fail": {
+    "text": {
+     "es": "Las palabras no afilan el acero.",
+     "en": "Words don't sharpen steel."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   }
+  }
+ }
+}

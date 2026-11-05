@@ -139,6 +139,37 @@ impl Rng {
         0
     }
 
+    /// El estado (guardado de partidas).
+    pub fn state(&self) -> (Vec<u32>, usize) {
+        (self.mt.to_vec(), self.i)
+    }
+
+    pub fn from_state(mt: &[u32], i: usize) -> Option<Self> {
+        Some(Self { mt: mt.try_into().ok()?, i: i.min(N) })
+    }
+
+    /// `_randbelow` de CPython (getrandbits con rechazo): [0, n).
+    pub fn below(&mut self, n: u32) -> u32 {
+        if n == 0 {
+            return 0;
+        }
+        let k = 32 - n.leading_zeros();
+        loop {
+            let r = self.next_u32() >> (32 - k);
+            if r < n {
+                return r;
+            }
+        }
+    }
+
+    /// `random.shuffle` de CPython: misma seed = misma permutación que el prototipo.
+    pub fn shuffle<T>(&mut self, v: &mut [T]) {
+        for i in (1..v.len()).rev() {
+            let j = self.below(i as u32 + 1) as usize;
+            v.swap(i, j);
+        }
+    }
+
     /// element(seq) como índice: None (sin gastar rng) si está vacía.
     pub fn pick(&mut self, len: usize) -> Option<usize> {
         if len == 0 { None } else { Some(self.int(len as i32) as usize) }

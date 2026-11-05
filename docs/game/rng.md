@@ -17,3 +17,6 @@ misma seed dé el mismo piso que el prototipo, es **MT19937 con el seeding de CP
 
 - `as i32` trunca hacia 0, igual que `int()` de Python.
 - Falta `shuffle` (`_randbelow` con `getrandbits`): lo usa la partida para las apariencias de pociones (R5).
+
+`below(n)` (`_randbelow` de CPython: getrandbits con rechazo) y `shuffle` (`random.shuffle` de CPython): misma
+permutación que el prototipo.

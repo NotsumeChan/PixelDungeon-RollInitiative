@@ -10,8 +10,10 @@ se reintenta si falla) -> `decorate` -> `build_flag_maps` (agua cosida y bordes 
 
 - Trampas de portado resueltas: el `random()` de `split` se tira siempre que se llega a esa rama; las puertas
   REGULAR se pintan dos veces (una por sala) y gastan rng las dos; `secret_doors` no se reinicia entre reintentos.
-- Quedan para después: visión, cambios de terreno en juego, montones de ítems y celdas al azar para mobs/ítems
-  (llegan con R2-R5).
+- Celdas al azar (R3): `pick_room` (random_room con otro rng; `random_room` la usa con una copia del del nivel, mismas
+  tiradas), `random_respawn_cell` (sala STANDARD, fuera de la vista y libre; -1 tras 10 intentos) y
+  `random_destination` (cualquier sala, destino de los mobs que deambulan).
+- Quedan para después: montones de ítems y `random_drop_cell` (R5).
 
 **Comparar con el prototipo** (lo hace el dueño, a mano):
 
@@ -20,3 +22,6 @@ git worktree add ../pdri-py python-prototipe          # una vez
 diff <(cd ../pdri-py && python -m game.level 1234 3) <(cargo run -q -p game --example level -- 1234 3)
 ```
 Sin salida = mismo piso.
+
+Montones de ítems (R5a): `heaps` (por celda, ordenados), `drop` (se apila en el montón que haya) y
+`random_drop_cell` (sala STANDARD, transitable).

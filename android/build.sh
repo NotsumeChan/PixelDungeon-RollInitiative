@@ -22,7 +22,11 @@ rm -rf "$OUT"
 mkdir -p "$OUT/apk/lib"
 cargo ndk -t arm64-v8a -o "$OUT/apk/lib" build --release -p app --lib
 "$BT/aapt2" link -o "$OUT/unsigned.apk" --manifest android/AndroidManifest.xml -I "$JAR"
-(cd "$OUT/apk" && zip -qr ../unsigned.apk lib)
+# MainActivity (selector de archivos para los mods): javac + d8 -> classes.dex
+mkdir -p "$OUT/java"
+javac -source 11 -target 11 -nowarn -cp "$JAR" -d "$OUT/java" android/java/io/github/notsumechan/pdri/MainActivity.java
+"$BT/d8" --min-api 26 --lib "$JAR" --output "$OUT/apk" $(find "$OUT/java" -name '*.class')
+(cd "$OUT/apk" && zip -qr ../unsigned.apk lib classes.dex)
 "$BT/zipalign" -f -p 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 PDRI_PASS=$(prop storePassword) "$BT/apksigner" sign \
     --ks "$(prop storeFile)" --ks-key-alias "$(prop keyAlias)" --ks-pass env:PDRI_PASS \

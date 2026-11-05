@@ -19,3 +19,11 @@ Tres pasadas por frame:
 - `CurrentSurfaceTexture::Outdated/Lost` reconfigura la superficie y salta el frame.
 - wgpu 30: `Instance::new` por valor y con display handle, vertex buffers como `Option`, `present` está en `Queue`,
   `PipelineLayoutDescriptor` lleva `immediate_size`, `RenderPipelineDescriptor` lleva `multiview_mask`.
+
+`ui_view()`: dónde empieza la capa de UI en la ventana y su factor, para pasar el mouse / toque a pixeles de la
+UI.
+
+`ui_zoom()` = el zoom entero que entra en la ventana (base de la cámara); `set_ui_scale(pref)` rehace la capa de UI con `max(1, round(zoom * pref))`.
+
+`ui_target`: en Android vertical deja `UI_INSET_V_PCT` (2%) arriba y abajo; apaisado, un margen de `UI_INSET_PCT` (3%) a cada costado (pantallas con
+bordes redondeados o la cámara); el mapa sigue ocupando toda la pantalla.

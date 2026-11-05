@@ -6,3 +6,5 @@ license.workspace = true
 
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
+# scripts de los mods (Lua 5.4 compilado con el juego: también en Android)
+mlua = { version = "0.10", features = ["lua54", "vendored", "serialize"] }

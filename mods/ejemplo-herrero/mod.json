@@ -1,0 +1,35 @@
+{
+ "name": {
+  "es": "Herrero troll (ejemplo)",
+  "en": "Troll blacksmith (example)"
+ },
+ "desc": {
+  "es": "Mod de ejemplo: un herrero en el piso 3 con tienda, misión y una apuesta en Lua.",
+  "en": "Example mod: a blacksmith on floor 3 with a shop, a quest and a bet in Lua."
+ },
+ "author": "PixelDungeon-RollInitiative",
+ "version": "1.0",
+ "settings": [
+  {
+   "id": "bet",
+   "name": {
+    "es": "Apuesta (oro)",
+    "en": "Bet (gold)"
+   },
+   "type": "int",
+   "default": 10,
+   "min": 5,
+   "max": 50,
+   "step": 5
+  },
+  {
+   "id": "gamble",
+   "name": {
+    "es": "Permitir apuestas",
+    "en": "Allow betting"
+   },
+   "type": "bool",
+   "default": true
+  }
+ ]
+}
