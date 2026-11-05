@@ -25,5 +25,5 @@ UI.
 
 `ui_zoom()` = el zoom entero que entra en la ventana (base de la cámara); `set_ui_scale(pref)` rehace la capa de UI con `max(1, round(zoom * pref))`.
 
-`ui_target`: en Android apaisado la capa de UI deja un margen de `UI_INSET_PCT` (3%) a cada costado (pantallas con
+`ui_target`: en Android vertical deja `UI_INSET_V_PCT` (2%) arriba y abajo; apaisado, un margen de `UI_INSET_PCT` (3%) a cada costado (pantallas con
 bordes redondeados o la cámara); el mapa sigue ocupando toda la pantalla.

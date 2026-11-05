@@ -15,6 +15,8 @@ const BASE_W: u32 = 320;
 const BASE_H: u32 = 180;
 /// Margen a cada costado de la UI en Android apaisado (% del ancho).
 const UI_INSET_PCT: u32 = 3;
+/// Margen arriba y abajo de la UI en Android vertical (% del alto): los bordes curvos se comen la barra y el log.
+const UI_INSET_V_PCT: u32 = 2;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BLACK: wgpu::Color = wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
 const CLEAR: wgpu::Color = wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
@@ -319,12 +321,14 @@ impl Gpu {
         Target { w: tw, h: th, scale, offset, view, blit_group }
     }
 
-    /// La capa de UI. En Android apaisado deja un margen a los costados (pantallas con bordes redondeados o la cámara
-    /// en la pantalla): la UI se arma más angosta y se centra; el mapa sigue ocupando todo.
+    /// La capa de UI. En Android deja un margen en los bordes largos (pantallas curvas o la cámara en la pantalla):
+    /// apaisado a los costados, vertical arriba y abajo. La UI se arma más chica y se centra; el mapa sigue ocupando todo.
     fn ui_target(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, sampler: &wgpu::Sampler, w: u32, h: u32, scale: u32) -> Target {
         let inset = if cfg!(target_os = "android") && w > h { w * UI_INSET_PCT / 100 } else { 0 };
-        let mut t = Self::target(device, layout, sampler, w - 2 * inset, h, scale);
+        let inset_v = if cfg!(target_os = "android") && h > w { h * UI_INSET_V_PCT / 100 } else { 0 };
+        let mut t = Self::target(device, layout, sampler, w - 2 * inset, h - 2 * inset_v, scale);
         t.offset.0 += inset;
+        t.offset.1 += inset_v;
         t
     }
 
