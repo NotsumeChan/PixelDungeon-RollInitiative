@@ -32,7 +32,11 @@ un bonus para el último golpe; sólo LAN en la 1.0; cada jugador guarda su pers
   colas, mensajes JSON por línea (`hello`, `refused`, `action`, `state`), host autoritativo (`HostGame`) que suma o
   saca héroes y aplica acciones validadas; cliente (`ClientGame`) que recibe el estado completo. Se prueba con la UI
   del paso 6. Pendiente: aplicar el estado sin rearmar la Dungeon, que viajen dados y efectos, mandar diferencias.
-- Siguiente: paso 5 (personaje portátil) y 6 (UI), juntos: sin la 6 no se puede probar la red.
+- Pasos 6 y 7 ✏️ escritos en Rust (R6, ver `roadmap/migracion-rust.md`).
+- Paso 5 ✏️ escrito (2026-11-05), pendiente de prueba del dueño: el cliente manda en el `hello` el nivel, XP, oro y
+  equipo de su partida (`save::portable`); el host lo valida y se lo pone a su héroe. No hay mensaje de vuelta: el
+  cliente ve su héroe en cada estado y lo guarda en su partida al cambiar de piso, salir o cortarse
+  (`docs/app/net.md`).
 
 ## Pasos (en este orden; 1 a 3 se prueban sin red)
 1. **Varios héroes en `game/`**: `Dungeon.heroes` (+ el héroe local para la UI). Cada héroe con su piso; cada piso con

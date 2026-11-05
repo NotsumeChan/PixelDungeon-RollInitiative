@@ -12,7 +12,7 @@ use crate::buffs::Buff;
 use crate::char::Char;
 use crate::characters::{now, write_atomic};
 use crate::dungeon::{Dungeon, Floor, Rules};
-use crate::hero::Hero;
+use crate::hero::{Hero, BACKPACK_SIZE};
 use crate::items::{Heap, HeapKind, Item};
 use crate::level::Level;
 use crate::mobs::{Mob, State};
@@ -104,6 +104,67 @@ fn hero_v(h: &Hero) -> Value {
            "second_wind": h.second_wind, "slots": h.slots, "free_casts": h.free_casts,
            "marked": h.marked.map(actor_v), "dead": h.dead, "saves": h.saves, "stable": h.stable,
            "char": char_v(&h.ch)})
+}
+
+// --- personaje portátil (R6) ---
+
+/// Lo que viaja con el personaje entre partidas: nivel, XP, oro y equipo. El piso, la posición, los estados y los PV
+/// son de cada partida (entra descansado y con los PV al máximo).
+pub fn portable(h: &Hero) -> Value {
+    json!({"lvl": h.lvl, "exp": h.exp, "gold": h.gold,
+           "weapon": h.weapon.as_ref().map(item_v), "armor": h.armor.as_ref().map(item_v),
+           "backpack": h.backpack.iter().map(item_v).collect::<Vec<_>>(), "quick": h.quickslots})
+}
+
+struct Portable {
+    lvl: i32,
+    exp: i32,
+    gold: i32,
+    weapon: Option<Item>,
+    armor: Option<Item>,
+    backpack: Vec<Item>,
+    quick: [Option<String>; 2],
+}
+
+/// Frontera de confianza (lo manda otro jugador): rangos básicos, ítems que existen, pilas sólo de lo apilable y
+/// cada pieza de equipo en su ranura.
+fn parse_portable(d: &Dungeon, v: &Value) -> Option<Portable> {
+    let lvl = v["lvl"].as_i64().filter(|l| (1..=20).contains(l))? as i32;
+    let exp = v["exp"].as_i64().filter(|e| (0..5 + 5 * i64::from(lvl)).contains(e))? as i32; // Hero::max_exp
+    let gold = v["gold"].as_i64().filter(|g| (0..=1_000_000).contains(g))? as i32;
+    let item = |v: &Value| {
+        unitem(d, v).filter(|i| (1..=999).contains(&i.quantity) && (i.stackable() || i.quantity == 1) && (-20..=20).contains(&i.level))
+    };
+    let equip = |k: &str| -> Option<Option<Item>> {
+        if v[k].is_null() { Some(None) } else { item(&v[k]).filter(|i| i.category() == k).map(Some) }
+    };
+    let backpack = v["backpack"].as_array().filter(|b| b.len() <= BACKPACK_SIZE)?.iter().map(item).collect::<Option<_>>()?;
+    let q = v["quick"].as_array().filter(|q| q.len() == 2)?;
+    let quick = [0, 1].map(|k| q[k].as_str().filter(|s| s.len() <= 64).map(str::to_string));
+    Some(Portable { lvl, exp, gold, weapon: equip("weapon")?, armor: equip("armor")?, backpack, quick })
+}
+
+pub fn portable_ok(d: &Dungeon, v: &Value) -> bool {
+    parse_portable(d, v).is_some()
+}
+
+/// Aplica `portable` al héroe `i` (None = no validó y el héroe queda como estaba). Los niveles se suben como al ganar
+/// XP (nunca se bajan); después descansa y queda con los PV al máximo.
+pub fn set_portable(d: &mut Dungeon, i: usize, v: &Value) -> Option<()> {
+    let p = parse_portable(d, v)?;
+    let h = d.heroes.get_mut(i)?;
+    while h.lvl < p.lvl {
+        h.gain_level();
+    }
+    h.exp = p.exp;
+    h.gold = p.gold;
+    h.weapon = p.weapon;
+    h.armor = p.armor;
+    h.backpack = p.backpack;
+    h.quickslots = p.quick;
+    h.recover();
+    h.ch.hp = h.ch.ht;
+    Some(())
 }
 
 fn floor_v(f: &Floor) -> Value {

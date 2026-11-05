@@ -180,8 +180,16 @@ Segunda tanda (2026-11-04): el teléfono ve animaciones, números de daño y dad
 dados de su piso); al cargar una partida para jugar solo, los héroes que quedaron de una sesión LAN se sacan (eran
 las "copias" que aparecían sin hotseat).
 
-Pendientes de R6: personaje portátil (paso 5: el cliente entra con nivel 1 y equipo inicial y al irse no se guarda su
-progreso), aplicar el estado sin rearmar la partida
+**Personaje portátil (R6, paso 5)** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: UNIRSE manda el nivel, XP,
+oro y equipo de la partida del personaje (`save::portable`); el host los valida (rangos básicos, ítems que existen,
+equipo en su ranura; si no, "personaje invalido") y su héroe entra con eso, descansado y con los PV al máximo. Al
+cambiar de piso, salir, ir al menú o cortarse la conexión, el cliente pasa su héroe a su partida de un jugador (o a
+una nueva); si murió en la LAN, la partida se borra como al jugar solo. Tests de red: 6. Para probar: un personaje de
+nivel 2+ con equipo entra así a la partida de la PC; subir de nivel o juntar algo en la LAN, salir y JUGAR solo con
+ese personaje: lo tiene (en el piso donde había quedado su partida); un personaje nuevo que entra a la LAN y sale
+queda "en partida".
+
+Pendientes de R6: aplicar el estado sin rearmar la partida
 (hoy regenera los pisos en cada estado: puede trabar un poco en el teléfono), el teléfono como host (para recibir
 los "discover" por broadcast puede necesitar MulticastLock: por ahora la partida se crea en la PC), escribir la IP a
 mano si el router bloquea los broadcasts.
@@ -240,9 +248,8 @@ de "Estado R6").
 1. **Que el dueño pruebe la última tanda** (PC + teléfono, vertical y apaisado): sala de espera, lista de quién
    falta, efectos y dados en el teléfono, teclado en pantalla, botón del rasgo, Salir y volver a abrir en Android,
    que no aparezcan copias de personajes. Lo que falle, primero.
-2. **R6, personaje portátil** (paso 5 de `roadmap/fase5-red.md`): al unirse, el cliente manda su personaje con nivel,
-   XP y equipo (hoy entra con nivel 1 y el equipo inicial) y al irse el host le devuelve el estado y el cliente lo
-   guarda. Con eso y la prueba del dueño, **0.9**.
+2. ✏️ **R6, personaje portátil** (escrito el 2026-11-05, ver su "Estado" arriba): falta la prueba del dueño. Con
+   eso, **0.9**.
 3. **Chat de texto** en la partida LAN (pedido del dueño; paso 8 de `fase5-red.md`).
 4. Resto de R6: aplicar el estado sin rearmar la partida (el cliente regenera los pisos en cada estado: puede trabar
    en el teléfono), el teléfono como host (MulticastLock para recibir los "discover"), escribir la IP a mano.

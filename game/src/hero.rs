@@ -364,6 +364,19 @@ impl Hero {
         self.ability_mod("DEX").max(0)
     }
 
+    /// Sube un nivel (5e): promedio del dado de golpe + CON (mínimo 1) de PV máximos, percepción y espacios de
+    /// conjuro. Devuelve los PV ganados (los actuales los suma quien llama).
+    pub(crate) fn gain_level(&mut self) -> i32 {
+        self.lvl += 1;
+        let gain = (self.hit_die() / 2 + 1 + self.ability_mod("CON")).max(1);
+        self.ch.ht += gain;
+        if self.lvl < 10 {
+            self.update_awareness();
+        }
+        self.level_up_spells();
+        gain
+    }
+
     pub fn max_exp(&self) -> i32 {
         5 + self.lvl * 5
     }
@@ -605,17 +618,10 @@ impl Dungeon {
         while self.heroes[i].exp >= self.heroes[i].max_exp() {
             let h = &mut self.heroes[i];
             h.exp -= h.max_exp();
-            h.lvl += 1;
-            // 5e: promedio del dado de golpe + CON (mínimo 1) por nivel
-            let gain = (h.hit_die() / 2 + 1 + h.ability_mod("CON")).max(1);
-            h.ch.ht += gain;
+            let gain = h.gain_level();
             if h.ch.hp > 0 {
                 h.ch.hp += gain; // caído (XP repartida) no se levanta por subir de nivel
             }
-            if h.lvl < 10 {
-                h.update_awareness();
-            }
-            h.level_up_spells();
             let msg = format!("Subes a nivel {}: +{gain} PV, competencia +{}", h.lvl, h.proficiency());
             self.tell(i, &msg);
             self.status(ActorId::Hero(i), "sube de nivel", Tone::Pos);

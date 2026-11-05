@@ -505,7 +505,9 @@ impl App {
                     self.lan_status = "Elige un personaje en la lista.".into();
                     return;
                 };
-                match net::ClientGame::connect(g.addr, &c) {
+                // personaje portátil: entra con lo de su partida (si tiene una con el héroe vivo)
+                let run = save::load_run(&data_dir(), characters::id(&c)).filter(|d| d.heroes.iter().any(|h| h.is_alive()));
+                match net::ClientGame::connect(g.addr, &c, run.map(|d| save::portable(d.local()))) {
                     Ok(cg) => {
                         self.net = Net::Client(cg);
                         self.character = Some(c);
@@ -805,6 +807,7 @@ impl App {
                 self.world.d.dice_events.append(&mut c.dice);
                 if c.closed || c.refused.is_some() {
                     let why = c.refused.clone().map_or("Se corto la conexion con el host.".to_string(), |w| format!("El host no te dejo entrar: {w}."));
+                    self.autosave(); // antes de Net::Off: guarda su héroe, no la partida del host
                     self.net = Net::Off;
                     self.awaiting = false;
                     self.lan_status = why;
@@ -916,14 +919,33 @@ impl App {
         self.title = false;
     }
 
-    /// Guarda la partida del personaje en juego (si murió, se borra el guardado).
+    /// Guarda la partida del personaje en juego (si murió, se borra el guardado). En una partida LAN ajena, la partida
+    /// es del host: lo que viaja con el personaje (nivel, XP, oro, equipo) vuelve a su partida de un jugador (o a una
+    /// nueva si no tenía).
     fn autosave(&mut self) {
-        // el cliente no guarda: la partida es del host
-        if self.title || matches!(self.net, Net::Client(_)) {
+        if self.title {
             return;
         }
         let Some(c) = &self.character else { return };
-        if let Err(e) = save::save_run(&data_dir(), &mut self.world.d, characters::id(c)) {
+        let (dir, id) = (data_dir(), characters::id(c));
+        let r = if matches!(self.net, Net::Client(_)) {
+            let h = self.world.d.local();
+            if !h.is_alive() {
+                save::delete_run(&dir, id);
+                return;
+            }
+            let p = save::portable(h);
+            let mut run = save::load_run(&dir, id).filter(|d| d.heroes.iter().any(|h| h.is_alive())).unwrap_or_else(|| {
+                let class = c["class"].as_str().unwrap_or(CLASSES[0]);
+                World::new(new_seed(), class, characters::abilities(c), c["name"].as_str().unwrap_or(""), false).d
+            });
+            let me = run.hero;
+            save::set_portable(&mut run, me, &p);
+            save::save_run(&dir, &mut run, id)
+        } else {
+            save::save_run(&dir, &mut self.world.d, id)
+        };
+        if let Err(e) = r {
             log::warn!("no se pudo guardar la partida: {e}");
         }
     }

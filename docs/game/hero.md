@@ -3,7 +3,8 @@
 `game/hero.py` (Hero.java + HeroClass.java + Regeneration.java), con las reglas de 5e. La clase sale de
 `data/classes.json`: dado de golpe, competencias, arma y armadura iniciales, `awareness_base`, `speed_ft`.
 
-- PV: nivel 1 = dado de golpe al máximo + CON; por nivel, promedio + CON (mínimo 1). XP para subir: `5 + nivel * 5`.
+- PV: nivel 1 = dado de golpe al máximo + CON; por nivel, promedio + CON (mínimo 1; `gain_level`, que usan la XP y el
+  personaje portátil). XP para subir: `5 + nivel * 5`.
 - Ataque: d20 + mod (FUE, o la mejor de FUE/DES con arma sutil) + competencia si la clase la tiene. Desventaja con
   arma o armadura que pide más FUE, o armadura sin competencia. CA = `armor_ac`.
 - `Action` (Hero.curAction), se repite turno a turno: `Move`, `Attack`, `Help` (estabilizar a un aliado caído),

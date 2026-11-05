@@ -372,9 +372,8 @@ pub struct HostGame {
     host: Host,
     /// id de cliente -> índice de su héroe en `d.heroes`.
     players: BTreeMap<u32, usize>,
-    /// id del personaje -> su héroe: si se reconecta en la misma sesión vuelve al mismo.
-    /// ponytail: el personaje entra con nivel 1 y el equipo inicial; el personaje portátil (paso 5) y sacar al héroe
-    /// de la partida al irse llegan después
+    /// id del personaje -> su héroe: si se reconecta en la misma sesión vuelve al mismo (con lo que tenía acá, no con
+    /// lo que manda). ponytail: al irse su héroe queda en la partida (descansando)
     by_char: BTreeMap<String, usize>,
     last: String,
     sent: Instant,
@@ -419,14 +418,16 @@ impl HostGame {
         self.players.values().any(|&i| i == j)
     }
 
-    fn refuse(msg: &Value, classes: &Map<String, Value>) -> Option<&'static str> {
+    fn refuse(msg: &Value, classes: &Map<String, Value>, d: &Dungeon) -> Option<&'static str> {
         if msg["version"] != game::VERSION {
             return Some("version distinta");
         }
         if msg["hash"] != game::registry::content_hash().as_str() {
             return Some("contenido distinto (data/ o mods)");
         }
-        let ok = msg["class"].as_str().is_some_and(|c| classes.contains_key(c)) && abilities(msg).is_some();
+        let ok = msg["class"].as_str().is_some_and(|c| classes.contains_key(c))
+            && abilities(msg).is_some()
+            && (msg["hero"].is_null() || save::portable_ok(d, &msg["hero"]));
         (!ok).then_some("personaje invalido")
     }
 
@@ -434,7 +435,7 @@ impl HostGame {
         while let Ok((cid, msg)) = self.host.inbox.try_recv() {
             match msg["t"].as_str().unwrap_or("") {
                 "hello" if !self.players.contains_key(&cid) => {
-                    if let Some(why) = Self::refuse(&msg, classes) {
+                    if let Some(why) = Self::refuse(&msg, classes, d) {
                         self.host.send(cid, &json!({"t": "refused", "why": why}));
                         self.host.kick(cid);
                         continue;
@@ -447,6 +448,8 @@ impl HostGame {
                         None => {
                             let i = d.add_hero(msg["class"].as_str().unwrap_or(""), abilities(&msg).unwrap_or_default());
                             d.heroes[i].ch.name = name.clone();
+                            // personaje portátil: nivel, XP, oro y equipo (ya validado en `refuse`)
+                            save::set_portable(d, i, &msg["hero"]);
                             d.depth = d.local().depth; // add_hero entra al piso 1: vuelve el piso del host
                             d.view_changed = true;
                             i
@@ -545,8 +548,8 @@ pub struct ClientGame {
 }
 
 impl ClientGame {
-    /// `c` = el personaje (characters.json).
-    pub fn connect(addr: SocketAddr, c: &Value) -> std::io::Result<Self> {
+    /// `c` = el personaje (characters.json); `hero` = `save::portable` de su héroe (None = entra con nivel 1).
+    pub fn connect(addr: SocketAddr, c: &Value, hero: Option<Value>) -> std::io::Result<Self> {
         let stream = TcpStream::connect_timeout(&addr, Duration::from_secs(3))?;
         stream.set_nodelay(true)?;
         let (tx, inbox) = channel();
@@ -554,7 +557,7 @@ impl ClientGame {
         let mut g = Self { stream, inbox, refused: None, closed: false, lobby: None, fx: Vec::new(), dice: Vec::new() };
         g.send(&json!({"t": "hello", "version": game::VERSION, "hash": game::registry::content_hash(),
                        "name": c["name"], "char": characters::id(c), "class": c["class"],
-                       "abilities": characters::abilities(c)}));
+                       "abilities": characters::abilities(c), "hero": hero}));
         Ok(g)
     }
 
@@ -667,7 +670,13 @@ mod tests {
         let mut host = HostGame::new("prueba").unwrap();
         host.start();
         let c = characters::new_character("Cliente", "pdri:mage", game::dice::DEFAULT_SCORES);
-        let mut cl = ClientGame::connect(SocketAddr::from(([127, 0, 0, 1], TCP_PORT)), &c).unwrap();
+        // personaje portátil: entra con el nivel, el oro y el equipo de su partida
+        let solo = Dungeon::new_with(2, "pdri:mage", game::dice::DEFAULT_SCORES);
+        let mut p = save::portable(solo.local());
+        p["lvl"] = json!(3);
+        p["gold"] = json!(50);
+        let ht1 = solo.local().ch.ht;
+        let mut cl = ClientGame::connect(SocketAddr::from(([127, 0, 0, 1], TCP_PORT)), &c, Some(p)).unwrap();
         let t0 = Instant::now();
         let got = loop {
             host.pump(&mut d, &classes);
@@ -681,6 +690,9 @@ mod tests {
         assert_eq!(d.heroes.len(), 2);
         assert_eq!((got.hero, got.heroes.len()), (1, 2));
         assert_eq!(got.heroes[1].ch.name, "Cliente");
+        let h = &d.heroes[1];
+        assert_eq!((h.lvl, h.gold, h.backpack.len()), (3, 50, solo.local().backpack.len()));
+        assert!(h.ch.ht > ht1 && h.ch.hp == h.ch.ht);
         cl.send_action(Action::Search);
         while d.heroes[1].action != Some(Action::Search) {
             host.pump(&mut d, &classes);
@@ -701,6 +713,25 @@ mod tests {
         let s = &d.floor().scheduler;
         assert!(s.actors.iter().all(|e| !matches!(e.0, ActorId::Hero(1) | ActorId::Regen(1) | ActorId::Hunger(1))));
         assert!(s.contains(ActorId::Hero(0)));
+    }
+
+    #[test]
+    fn personaje_portatil_invalido() {
+        let d = Dungeon::new_with(1, "pdri:warrior", game::dice::DEFAULT_SCORES);
+        let ok = save::portable(d.local());
+        assert!(save::portable_ok(&d, &ok));
+        let bad = |k: &str, v: Value| {
+            let mut p = ok.clone();
+            p[k] = v;
+            !save::portable_ok(&d, &p)
+        };
+        assert!(bad("lvl", json!(99)));
+        assert!(bad("exp", json!(10_000)));
+        assert!(bad("gold", json!(-1)));
+        assert!(bad("weapon", ok["armor"].clone())); // armadura en la ranura del arma
+        assert!(bad("backpack", json!(vec![ok["armor"].clone(); 20]))); // más que la mochila
+        assert!(bad("backpack", json!([["pdri:no_existe", 1, 0, false, true, true]])));
+        assert!(bad("quick", json!([])));
     }
 
     #[test]

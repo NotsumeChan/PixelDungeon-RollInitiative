@@ -8,13 +8,15 @@ render; el juego llama a `pump` una vez por frame.
   TCP. Así el teléfono encuentra la partida de la PC sin MulticastLock (recibir broadcasts en Android lo pide; recibir
   unicast no). Una partida sin respuesta en 3 s sale de la lista.
 - **Conexión**: TCP al puerto 47811, un JSON por línea (máx. 8 MB; más largo o basura corta la conexión).
-  Cliente -> host: `hello` (versión, hash, nombre, id del personaje, clase, características) y `action`.
+  Cliente -> host: `hello` (versión, hash, nombre, id del personaje, clase, características, `hero` =
+  `save::portable` de su partida o null) y `action`.
   Host -> cliente: `state` (`you` = su índice en `heroes`, `save` = `save::dump`) y `refused` (motivo).
 - **Acciones como datos** (`action_v` / `action_of`): `Action` <-> JSON con celdas, índices de ítems y ids. Frontera de
   confianza: lo que no se entiende o no valida (`valid`: celdas en rango, ítems que existen, sólo atacar mobs, ayudar a
   otro héroe que existe, conjuros que tiene) se ignora; el juego vuelve a validar al actuar.
-- **`HostGame`**: `hello` válido (misma versión y contenido, clase cargada, características 1-20) suma un héroe al piso
-  1 con el nombre del personaje; si el mismo personaje se reconecta en la sesión, vuelve a su héroe. `action` va a SU
+- **`HostGame`**: `hello` válido (misma versión y contenido, clase cargada, características 1-20, `hero` que valida
+  `save::portable_ok`) suma un héroe al piso 1 con el nombre del personaje y su nivel, XP, oro y equipo
+  (`save::set_portable`); si el mismo personaje se reconecta en la sesión, vuelve a su héroe (con lo de acá). `action` va a SU
   héroe. Al irse, su héroe queda (la app lo hace descansar). Manda el estado completo como mucho cada 50 ms y sólo si
   cambió.
 - **`ClientGame`**: manda `hello` al conectar; `pump` devuelve la partida armada (`save::load`) con el último estado.
@@ -23,8 +25,11 @@ render; el juego llama a `pump` una vez por frame.
   línea por TCP, y una partida real por loopback (el cliente entra, recibe su héroe, su acción llega a su héroe y al
   irse queda libre). `cargo test -p app --lib net` (usa los puertos del juego).
 
-Pendiente (ponytail): el personaje entra con nivel 1 y equipo inicial (personaje portátil, paso 5), al irse su héroe
-no sale de la partida, el cliente rearma la partida entera en cada estado (regenera los pisos) y no ve los dados ni
+Personaje portátil (paso 5): el host no devuelve nada al irse; el cliente ya tiene su héroe en cada estado. La app
+(`autosave` en `lib.rs`) lo pasa a la partida de un jugador del personaje (o a una nueva) al cambiar de piso, al salir,
+al menú, al pasar al fondo y cuando se corta la conexión (antes de `Net::Off`). Si su héroe murió, se borra su partida.
+
+Pendiente (ponytail): al irse su héroe no sale de la partida, el cliente rearma la partida entera en cada estado (regenera los pisos) y no ve los dados ni
 los efectos del host (ve el resultado en el log), estado completo en vez de diferencias.
 
 Sala de espera: `HostGame` empieza sin correr la partida (`started = false`): suma a los que se unen y les manda
