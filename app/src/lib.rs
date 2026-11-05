@@ -595,6 +595,20 @@ impl App {
                 }
                 self.ui.create.apply(c, new_seed());
             }
+            UiAction::Chat(cr) => match cr {
+                ui::Cr::New => self.ui.chat = Some(String::new()),
+                ui::Cr::Type(ch) => self.ui.chat_type(&ch.to_string()),
+                ui::Cr::Back => _ = self.ui.chat.as_mut().and_then(String::pop),
+                ui::Cr::Done => {
+                    let text = self.ui.chat.take().unwrap_or_default();
+                    match &mut self.net {
+                        Net::Host(h) => h.chat(&mut self.world.d, &text),
+                        Net::Client(c) => c.send_chat(&text),
+                        Net::Off => {}
+                    }
+                }
+                _ => self.ui.chat = None,
+            },
             UiAction::MainMenu => {
                 self.autosave();
                 self.net = Net::Off; // cierra la partida LAN (los clientes ven que se cortó)
@@ -756,6 +770,7 @@ impl App {
             KeyCode::F11 => self.ui_action(UiAction::SetFullscreen(!self.config.fullscreen)),
             // rasgo de clase: Segundo Aliento, o el libro de conjuros
             KeyCode::KeyF if free => self.ui_action(UiAction::Trait),
+            KeyCode::Enter | KeyCode::NumpadEnter if free && bind.is_none() && self.ui.lan => self.ui_action(UiAction::Chat(ui::Cr::New)),
             _ => match bind {
                 Some(Bind::Wait) if free => self.ui_action(UiAction::Act(Action::Rest)),
                 Some(Bind::Search) if free => self.ui_action(UiAction::Act(Action::Search)),
@@ -775,6 +790,7 @@ impl App {
         if let Some(b) = &self.browser {
             self.lan_games = b.games();
         }
+        self.ui.lan = !matches!(self.net, Net::Off);
         match &mut self.net {
             Net::Off => {}
             Net::Host(h) => h.pump(&mut self.world.d, &self.classes),
@@ -1106,6 +1122,21 @@ impl ApplicationHandler for App {
                 };
                 if let Some(code) = code {
                     let down = event.state == ElementState::Pressed;
+                    // chat de la partida LAN: mientras se escribe, las teclas son texto
+                    if down && !self.title && self.ui.chat.is_some() {
+                        let cr = match code {
+                            KeyCode::Escape => Some(ui::Cr::Unfocus),
+                            KeyCode::Enter | KeyCode::NumpadEnter => Some(ui::Cr::Done),
+                            KeyCode::Backspace => Some(ui::Cr::Back),
+                            _ => None,
+                        };
+                        match (cr, &event.logical_key) {
+                            (Some(cr), _) => self.ui_action(UiAction::Chat(cr)),
+                            (None, Key::Character(t)) => self.ui.chat_type(t),
+                            _ => {}
+                        }
+                        return;
+                    }
                     // creación de personaje: el nombre o el número que se está escribiendo
                     if down && self.creating() && code != KeyCode::Escape {
                         let text = match &event.logical_key {

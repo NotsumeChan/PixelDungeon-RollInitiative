@@ -96,3 +96,7 @@ Tanda del 2026-11-04 (pedidos del dueño tras probar en el teléfono):
 - Vertical (180 de ancho): la mochila usa 5 columnas, la ventana del ítem y la ficha no pasan del ancho (la ficha
   parte las líneas largas), la lista de personajes usa 3 líneas por fila, y en la creación el nombre va debajo del
   título. Creación en Android: teclado en pantalla al tocar el nombre o una característica.
+
+Chat de la partida LAN (`Ui::chat`, `UiAction::Chat`): Enter o el botón "Chat" de la barra (sólo en red, `Ui::lan`)
+abre la línea de arriba; Enter / LISTO manda, Esc cancela. En Android, el mismo teclado en pantalla de la creación
+(`draw_keys`).

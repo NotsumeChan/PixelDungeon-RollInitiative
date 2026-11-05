@@ -188,6 +188,8 @@ pub enum UiAction {
     StartLan,
     /// Rasgo de clase: Segundo Aliento o el libro de conjuros (F o el botón de la barra).
     Trait,
+    /// Chat de la partida LAN: abrir (`Cr::New`), escribir, borrar, mandar (`Cr::Done`), cancelar (`Cr::Unfocus`).
+    Chat(Cr),
     SetUiScale(f32),
 }
 
@@ -269,6 +271,9 @@ pub struct Ui {
     pub create: Create,
     /// Por héroe: ¿la partida espera que elija qué hacer? (la lista de quién falta, con 2+ héroes).
     pub waiting: Vec<bool>,
+    /// En una partida LAN (muestra el botón del chat) y el mensaje que se está escribiendo.
+    pub lan: bool,
+    pub chat: Option<String>,
     hot: Vec<Hot>,
     car_cur: Option<ActorId>,
     car_off: f32,
@@ -277,7 +282,18 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+    }
+
+    /// Escribe en el mensaje del chat (si se está escribiendo uno).
+    pub fn chat_type(&mut self, text: &str) {
+        if let Some(c) = &mut self.chat {
+            for ch in text.chars().filter(|c| !c.is_control()) {
+                if c.chars().count() < crate::net::CHAT_MAX {
+                    c.push(ch);
+                }
+            }
+        }
     }
 
     /// La acción de la zona de más arriba bajo `p` (pixeles de la UI), o None si el click es para el mapa.
@@ -347,6 +363,7 @@ impl Ui {
             Some(Window::Create | Window::Page(_) | Window::Roster | Window::Join | Window::Lobby) => self.window = None, // sólo en el título
             Some(Window::Rules) => self.draw_rules(atlas, font, d, out, w, h),
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
+            None if self.chat.is_some() => self.draw_chat(atlas, font, out, w, h),
             None => {
                 self.draw_tooltip(atlas, font, out, w, h);
                 let casting = self.casting.and_then(|k| d.local().spell_ids().get(k).cloned());
@@ -363,6 +380,19 @@ impl Ui {
                 }
             }
         }
+    }
+
+    /// El mensaje que se está escribiendo, arriba (en el teléfono, el teclado en pantalla abajo).
+    fn draw_chat(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32) {
+        let text = format!("Chat: {}_", self.chat.as_deref().unwrap_or(""));
+        out.push(atlas.rect([0.0, 34.0], [w, font.height() + 4.0], PROMPT_BG));
+        font.text(out, &text, 4.0, 36.0, WHITE);
+        if !cfg!(target_os = "android") {
+            let hint = "Enter manda, Esc cancela";
+            font.text(out, hint, w - 4.0 - font.width(hint), 36.0 + font.height() + 6.0, GREY);
+            return;
+        }
+        self.draw_keys(atlas, font, out, w, h, &["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"], true, UiAction::Chat);
     }
 
     fn draw_log(&self, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
@@ -545,6 +575,10 @@ impl Ui {
             out.push(piece(atlas, ICONS, [k as u32 * 16, ICON_CLASS_Y, 16, 16], [x + 3.0, y + 5.0], [16.0, 16.0], [1.0, 1.0, 1.0, alpha]));
             let tip = if me.has_trait("pdri:second_wind") { "Segundo Aliento (F)" } else { "Conjuros (F)" };
             self.hot([x, y, 22.0, 25.0], UiAction::Trait, Some(tip));
+        }
+        // chat de la partida LAN (Enter): en el teléfono no hay teclado
+        if self.lan && self.window.is_none() && self.chat.is_none() {
+            self.draw_button(atlas, font, out, [85.0, y + 3.0, 30.0, 19.0], "Chat", Some(UiAction::Chat(Cr::New)));
         }
     }
 
@@ -1223,27 +1257,33 @@ impl Ui {
         // teclado en pantalla: Android (NativeActivity) no le pasa a la app las letras del teclado del sistema
         if let (true, Some(f)) = (cfg!(target_os = "android"), st.focus) {
             let rows: &[&str] = if f == Focus::Name { &["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"] } else { &["1234567890"] };
-            let (kw, kh) = (((w - 8.0) / 10.0).floor(), 18.0);
-            let total = (rows.len() + 1) as f32 * (kh + 2.0) + 2.0;
-            let ktop = h - total;
-            out.push(atlas.rect([0.0, ktop - 2.0], [w, total + 2.0], [0.0, 0.0, 0.0, 0.94]));
-            self.hot([0.0, ktop - 2.0, w, total + 2.0], UiAction::Nothing, None);
-            for (ri, row) in rows.iter().enumerate() {
-                let x0 = ((w - row.len() as f32 * kw) / 2.0).floor();
-                for (ci, ch) in row.chars().enumerate() {
-                    let r = [x0 + ci as f32 * kw + 1.0, ktop + ri as f32 * (kh + 2.0), kw - 2.0, kh];
-                    self.draw_button(atlas, font, out, r, &ch.to_string(), Some(UiAction::Create(Cr::Type(ch))));
-                }
+            self.draw_keys(atlas, font, out, w, h, rows, f == Focus::Name, UiAction::Create);
+        }
+    }
+
+    /// Teclado en pantalla abajo: las filas, ESPACIO (si `space`), BORRAR y LISTO; cada tecla es `act(Cr::...)`.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_keys(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, rows: &[&str], space: bool, act: fn(Cr) -> UiAction) {
+        let (kw, kh) = (((w - 8.0) / 10.0).floor(), 18.0);
+        let total = (rows.len() + 1) as f32 * (kh + 2.0) + 2.0;
+        let ktop = h - total;
+        out.push(atlas.rect([0.0, ktop - 2.0], [w, total + 2.0], [0.0, 0.0, 0.0, 0.94]));
+        self.hot([0.0, ktop - 2.0, w, total + 2.0], UiAction::Nothing, None);
+        for (ri, row) in rows.iter().enumerate() {
+            let x0 = ((w - row.len() as f32 * kw) / 2.0).floor();
+            for (ci, ch) in row.chars().enumerate() {
+                let r = [x0 + ci as f32 * kw + 1.0, ktop + ri as f32 * (kh + 2.0), kw - 2.0, kh];
+                self.draw_button(atlas, font, out, r, &ch.to_string(), Some(act(Cr::Type(ch))));
             }
-            let mut last = vec![("BORRAR", Cr::Back), ("LISTO", Cr::Done)];
-            if f == Focus::Name {
-                last.insert(0, ("ESPACIO", Cr::Type(' ')));
-            }
-            let y = ktop + rows.len() as f32 * (kh + 2.0);
-            let bw = ((w - 8.0 - 2.0 * (last.len() as f32 - 1.0)) / last.len() as f32).floor();
-            for (k, (label, cr)) in last.into_iter().enumerate() {
-                self.draw_button(atlas, font, out, [4.0 + k as f32 * (bw + 2.0), y, bw, kh], label, Some(UiAction::Create(cr)));
-            }
+        }
+        let mut last = vec![("BORRAR", Cr::Back), ("LISTO", Cr::Done)];
+        if space {
+            last.insert(0, ("ESPACIO", Cr::Type(' ')));
+        }
+        let y = ktop + rows.len() as f32 * (kh + 2.0);
+        let bw = ((w - 8.0 - 2.0 * (last.len() as f32 - 1.0)) / last.len() as f32).floor();
+        for (k, (label, cr)) in last.into_iter().enumerate() {
+            self.draw_button(atlas, font, out, [4.0 + k as f32 * (bw + 2.0), y, bw, kh], label, Some(act(cr)));
         }
     }
 

@@ -189,6 +189,11 @@ nivel 2+ con equipo entra así a la partida de la PC; subir de nivel o juntar al
 ese personaje: lo tiene (en el piso donde había quedado su partida); un personaje nuevo que entra a la LAN y sale
 queda "en partida".
 
+**Chat de texto (R6, paso 8)** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: en una partida LAN, Enter (o
+el botón "Chat" de la barra, en el teléfono con el teclado en pantalla) abre una línea arriba; Enter / LISTO manda y
+Esc cancela. El mensaje sale en el log de todos como "<nombre>: <texto>" (hasta 40 caracteres). Para probar: escribir
+desde la PC y desde el teléfono y verlo en los dos; Esc / Atrás cancela; que Enter no abra el chat jugando solo.
+
 Pendientes de R6: aplicar el estado sin rearmar la partida
 (hoy regenera los pisos en cada estado: puede trabar un poco en el teléfono), el teléfono como host (para recibir
 los "discover" por broadcast puede necesitar MulticastLock: por ahora la partida se crea en la PC), escribir la IP a
@@ -250,7 +255,7 @@ de "Estado R6").
    que no aparezcan copias de personajes. Lo que falle, primero.
 2. ✏️ **R6, personaje portátil** (escrito el 2026-11-05, ver su "Estado" arriba): falta la prueba del dueño. Con
    eso, **0.9**.
-3. **Chat de texto** en la partida LAN (pedido del dueño; paso 8 de `fase5-red.md`).
+3. ✏️ **Chat de texto** (escrito el 2026-11-05, ver su "Estado" arriba): falta la prueba del dueño.
 4. Resto de R6: aplicar el estado sin rearmar la partida (el cliente regenera los pisos en cada estado: puede trabar
    en el teléfono), el teléfono como host (MulticastLock para recibir los "discover"), escribir la IP a mano.
 5. **Idioma de los textos del código** (hoy en español, como el prototipo; el contenido ya se elige es / en).

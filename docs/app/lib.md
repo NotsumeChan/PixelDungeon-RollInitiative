@@ -74,3 +74,7 @@ pasa letras a una NativeActivity; la creación de personaje tiene teclado en pan
 
 Android: al terminar el bucle (Salir) `android_main` cierra el proceso (`process::exit`): si no, Android lo deja vivo y
 al volver a abrir la app queda trabada esperando un bucle que ya terminó.
+
+Chat LAN: mientras `ui.chat` está abierto, las teclas son texto (Esc cancela, Enter manda, Borrar); `UiAction::Chat`
+lo manda al host (`HostGame::chat`) o al host remoto (`ClientGame::send_chat`). Enter abre el chat sólo en red y si no
+está asignado a otra acción.

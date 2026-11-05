@@ -9,7 +9,7 @@ render; el juego llama a `pump` una vez por frame.
   unicast no). Una partida sin respuesta en 3 s sale de la lista.
 - **Conexión**: TCP al puerto 47811, un JSON por línea (máx. 8 MB; más largo o basura corta la conexión).
   Cliente -> host: `hello` (versión, hash, nombre, id del personaje, clase, características, `hero` =
-  `save::portable` de su partida o null) y `action`.
+  `save::portable` de su partida o null), `action` y `chat` (`text`).
   Host -> cliente: `state` (`you` = su índice en `heroes`, `save` = `save::dump`) y `refused` (motivo).
 - **Acciones como datos** (`action_v` / `action_of`): `Action` <-> JSON con celdas, índices de ítems y ids. Frontera de
   confianza: lo que no se entiende o no valida (`valid`: celdas en rango, ítems que existen, sólo atacar mobs, ayudar a
@@ -39,3 +39,7 @@ Sala de espera: `HostGame` empieza sin correr la partida (`started = false`): su
 Efectos y dados: el host manda `{"t": "fx", "fx": [...], "dice": [...]}` con lo que pasó en el piso de cada jugador
 (animaciones de ataque, números flotantes, muertes, casillas revisadas, dados), en el acto. El cliente los pasa a su
 partida y los ve igual que el host. Validados: animaciones conocidas, celdas en rango, dados con rangos razonables.
+
+Chat (paso 8): el cliente manda `{"t": "chat", "text": ...}`; el host lo limpia (`chat_text`: sin caracteres de
+control, hasta `CHAT_MAX` = 40, vacío no) y lo pone en el log de todos como `<nombre>: <texto>` (`say`). No hay
+mensaje propio de vuelta: el log ya viaja en el estado. El host escribe con `HostGame::chat`.

@@ -37,6 +37,8 @@ un bonus para el último golpe; sólo LAN en la 1.0; cada jugador guarda su pers
   equipo de su partida (`save::portable`); el host lo valida y se lo pone a su héroe. No hay mensaje de vuelta: el
   cliente ve su héroe en cada estado y lo guarda en su partida al cambiar de piso, salir o cortarse
   (`docs/app/net.md`).
+- Paso 8 ✏️ escrito (2026-11-05), pendiente de prueba del dueño: chat de texto (Enter o el botón "Chat"; en el
+  teléfono, el teclado en pantalla). Va al log de todos con el nombre.
 
 ## Pasos (en este orden; 1 a 3 se prueban sin red)
 1. **Varios héroes en `game/`**: `Dungeon.heroes` (+ el héroe local para la UI). Cada héroe con su piso; cada piso con

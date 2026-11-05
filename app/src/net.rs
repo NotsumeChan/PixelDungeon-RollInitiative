@@ -32,6 +32,23 @@ const DISCOVER_EVERY: Duration = Duration::from_secs(1);
 /// ponytail: estado completo; con mapas grandes o internet, mandar sólo diferencias
 const STATE_EVERY: Duration = Duration::from_millis(50);
 const NAME_MAX: usize = 16;
+/// Lo que entra en una línea del log junto con el nombre.
+pub const CHAT_MAX: usize = 40;
+
+/// Un mensaje de chat limpio (sin caracteres de control, recortado); None si queda vacío.
+fn chat_text(s: &str) -> Option<String> {
+    let t: String = s.chars().filter(|c| !c.is_control()).take(CHAT_MAX).collect();
+    let t = t.trim();
+    (!t.is_empty()).then(|| t.to_string())
+}
+
+/// El chat va al log de todos con el nombre del héroe (el log viaja en el estado).
+fn say(d: &mut Dungeon, i: usize, text: &str) {
+    if let Some(t) = chat_text(text) {
+        let name = d.heroes[i].ch.name.clone();
+        d.log(&format!("{name}: {t}"));
+    }
+}
 
 fn line(msg: &Value) -> Vec<u8> {
     let mut v = serde_json::to_vec(msg).unwrap_or_default();
@@ -413,6 +430,11 @@ impl HostGame {
         std::iter::once(d.local().ch.name.clone()).chain(self.players.values().map(|&i| d.heroes[i].ch.name.clone())).collect()
     }
 
+    /// Chat del host.
+    pub fn chat(&self, d: &mut Dungeon, text: &str) {
+        say(d, d.hero, text);
+    }
+
     /// ¿Hay un cliente conectado manejando al héroe `j`?
     pub fn controls(&self, j: usize) -> bool {
         self.players.values().any(|&i| i == j)
@@ -470,6 +492,13 @@ impl HostGame {
                         && valid(d, i, a)
                     {
                         d.heroes[i].action = Some(a);
+                    }
+                }
+                "chat" => {
+                    if let Some(&i) = self.players.get(&cid)
+                        && let Some(t) = msg["text"].as_str()
+                    {
+                        say(d, i, t);
                     }
                 }
                 "leave" => {
@@ -569,6 +598,13 @@ impl ClientGame {
 
     pub fn send_action(&mut self, a: Action) {
         self.send(&json!({"t": "action", "a": action_v(a)}));
+    }
+
+    /// Le llega a todos (y a uno mismo) en el próximo estado, en el log.
+    pub fn send_chat(&mut self, text: &str) {
+        if let Some(t) = chat_text(text) {
+            self.send(&json!({"t": "chat", "text": t}));
+        }
     }
 
     /// La partida del último estado y quién falta elegir (por héroe).
@@ -699,6 +735,15 @@ mod tests {
             assert!(t0.elapsed() < Duration::from_secs(5), "no llegó la acción");
             std::thread::sleep(Duration::from_millis(20));
         }
+        // chat: llega al log del host con el nombre; vacío o sólo espacios no se manda
+        cl.send_chat("  ");
+        cl.send_chat("hola\n");
+        while !d.messages.iter().any(|m| m.1 == "Cliente: hola") {
+            host.pump(&mut d, &classes);
+            assert!(t0.elapsed() < Duration::from_secs(5), "no llegó el chat");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert!(!d.messages.iter().any(|m| m.1 == "Cliente: "));
         // una acción a nombre de otro héroe no se acepta
         cl.send_action(Action::Help(7));
         drop(cl);
