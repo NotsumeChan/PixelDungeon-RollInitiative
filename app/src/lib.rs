@@ -444,7 +444,8 @@ impl App {
             return;
         }
         let me = d.hero;
-        if cell == d.local().ch.pos {
+        // tocarse = buscar, salvo que haya algo en el suelo: entonces recoger (o abrir el cofre / tumba de abajo)
+        if cell == d.local().ch.pos && !d.level().heaps.contains_key(&cell) {
             d.heroes[me].action = Some(Action::Search);
         } else {
             d.handle(me, cell, true);

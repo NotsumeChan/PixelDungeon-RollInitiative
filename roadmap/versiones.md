@@ -17,6 +17,7 @@ fila en la tabla y su commit. El número del medio sube con los objetivos del "P
 | 0.5.0 | R5 | Creación de personaje con dados (4d6, 7 tiradas, asignar o escribir), lista de personajes y guardado; ya estaban el combate 5e y la ficha |
 | 0.8.0 | R5 | Hotseat (`[dev] hotseat`: 2 héroes en la misma PC, Tab, cambio automático al que le toca, nombres sobre los héroes): paridad con `python-prototipe`. La misma excepción que la 0.7 (partículas y proyectil en vuelo) |
 | 0.7.0 | R5, R5d | Arrastrar en la creación (cierra la 0.6), armas a distancia, idioma del contenido, log de tiradas de desarrollador (`[dev] dice_log`). Excepción a la regla: faltan las partículas y el proyectil en vuelo (pulido visual, pendiente) |
+| 0.9.6 | arreglos | Tocarse a uno mismo parado sobre un ítem lo recoge (o abre el cofre / tumba de abajo) en vez de buscar; sin nada en el suelo sigue buscando |
 | 0.9.5 | arreglos | El log (y el chat) parte las líneas largas al ancho de la pantalla; en vertical los dados chicos van arriba del log y ya no lo tapan |
 | 0.9.4 | arreglos | Diálogo: la actitud del NPC va debajo del nombre (se pisaban). Dado grande: con un texto largo (pericias, conjuros) la escala baja hasta que entra en la pantalla |
 | 0.9.3 | clases | Las 12 clases básicas de 5e: Bárbaro (Furia, Defensa sin armadura), Bardo, Clérigo, Druida (conjuros de CAR / SAB), Monje (Artes marciales, Defensa sin armadura), Paladín (Imposición de manos), Hechicero y Brujo (magia de pacto); conjuros de salvación, rasgos con usos por descanso |
