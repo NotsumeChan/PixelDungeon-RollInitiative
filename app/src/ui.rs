@@ -1495,8 +1495,15 @@ impl Ui {
         }
         out.push(piece(atlas, ICONS, ICON_EXIT, [w - 17.0, 1.0], [16.0, 16.0], WHITE));
         self.hot([w - 18.0, 0.0, 18.0, 18.0], UiAction::Quit, Some("Salir"));
+        // en vertical la esquina queda bajo la curva de la pantalla del teléfono (se cortaba "v 0.9"): al centro, con
+        // margen
         let v = format!("v {}", game::VERSION);
-        font.text(out, &v, w - font.width(&v) - 1.0, h - font.height() - 1.0, GREY);
+        let (vx, vy) = if h > w {
+            (((w - font.width(&v)) / 2.0).floor(), h - font.height() - 6.0)
+        } else {
+            (w - font.width(&v) - 1.0, h - font.height() - 1.0)
+        };
+        font.text(out, &v, vx, vy, GREY);
         match self.window.clone() {
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
