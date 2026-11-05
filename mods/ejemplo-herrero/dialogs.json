@@ -65,8 +65,8 @@
      },
      {
       "text": {
-       "es": "[Apostar 10 de oro] Un dado contra ti.",
-       "en": "[Bet 10 gold] One die against you."
+       "es": "[Apostar] Un dado contra ti.",
+       "en": "[Bet] One die against you."
       },
       "if": [
        [

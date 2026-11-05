@@ -7,19 +7,6 @@ use std::path::Path;
 /// Tope de lo que se descomprime (un zip bomba no llena el teléfono).
 const MAX_BYTES: u64 = 16 * 1024 * 1024;
 
-/// Las carpetas de `<datos>/mods`, en orden (el de carga).
-pub fn installed(dir: &Path) -> Vec<String> {
-    let mut v: Vec<String> = std::fs::read_dir(dir.join("mods"))
-        .into_iter()
-        .flatten()
-        .flatten()
-        .filter(|e| e.path().is_dir())
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .collect();
-    v.sort();
-    v
-}
-
 /// Sólo letras, números, `-` y `_` (el nombre de la carpeta del mod).
 fn clean(s: &str) -> String {
     let s: String = s.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_').collect();

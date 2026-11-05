@@ -137,8 +137,10 @@ pub enum Window {
     Rules,
     /// Controles (desde la configuración).
     Controls,
-    /// Mods instalados (`Ui::mods`) e IMPORTAR ZIP (`mods.rs`).
+    /// Lista de mods (activar / desactivar, ajustes) e IMPORTAR ZIP (`mods.rs`).
     Mods,
+    /// Ajustes de un mod (índice en `registry::mods()`): las `settings` de su mod.json.
+    ModConfig(usize),
     /// Pantalla de texto del título (Acerca de): centrada sobre negro; click o Esc vuelve.
     Page(Vec<(String, [f32; 4])>),
     /// Lista de personajes (Jugar): JUGAR / NUEVO / BORRAR, CREAR LAN / UNIRSE.
@@ -151,6 +153,10 @@ pub enum Window {
     Create,
 }
 
+/// Íconos de los mods (`registry::mods()` -> hoja del atlas; sin ícono, el de Mods del título). Lo pone la app al
+/// armar el atlas.
+pub static MOD_ICONS: std::sync::OnceLock<Vec<Option<usize>>> = std::sync::OnceLock::new();
+
 /// Lo que hace un click en la UI; lo aplica la app.
 #[derive(Clone)]
 pub enum UiAction {
@@ -162,6 +168,10 @@ pub enum UiAction {
     ImportMod,
     /// Aceptar el aviso de responsabilidad de los mods (una sola vez: `Config::mods_ack`).
     AckMods,
+    /// Activar / desactivar un mod (carpeta): se aplica al reiniciar.
+    ToggleMod(String),
+    /// Una opción de un mod: (índice en `registry::mods()`, opción, valor nuevo).
+    ModSetting(usize, String, serde_json::Value),
     Act(Action),
     /// Activa / cancela examinar: el próximo click en el mapa examina esa casilla.
     Examine,
@@ -278,8 +288,7 @@ pub struct Ui {
     pub throwing: Option<Slot>,
     /// En la pantalla de título (la configuración vuelve al título, no al menú de la partida).
     pub in_title: bool,
-    /// Pantalla de Mods: las carpetas instaladas y el aviso de la última importación.
-    pub mods: Vec<String>,
+    /// Pantalla de Mods: el aviso de la última importación.
     pub mods_msg: String,
     /// Lista de personajes: el elegido, el primero que se ve y si BORRAR espera confirmación.
     pub roster_sel: Option<usize>,
@@ -305,7 +314,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods: Vec::new(), mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// Escribe en el mensaje del chat (si se está escribiendo uno).
@@ -393,7 +402,7 @@ impl Ui {
             Some(Window::Item(slot)) => self.draw_item(atlas, font, d, out, w, h, slot),
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             Some(Window::Spells) => self.draw_spells(atlas, font, d, out, w, h),
-            Some(Window::Create | Window::Page(_) | Window::Mods | Window::Roster | Window::Join | Window::Lobby) => self.window = None, // sólo en el título
+            Some(Window::Create | Window::Page(_) | Window::Mods | Window::ModConfig(_) | Window::Roster | Window::Join | Window::Lobby) => self.window = None, // sólo en el título
             Some(Window::Rules) => self.draw_rules(atlas, font, d, out, w, h),
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
             None if self.chat.is_some() => self.draw_chat(atlas, font, out, w, h),
@@ -1544,36 +1553,114 @@ impl Ui {
     }
 
     /// Pantalla de Mods. La primera vez, sólo las advertencias y ACEPTO / VOLVER (aceptar se guarda y no vuelve a
-    /// aparecer); después, los instalados, el aviso de la última importación e IMPORTAR ZIP / VOLVER.
+    /// aparecer); después, la lista (ícono, nombre, incluido / versión / autor, AJUSTES si tiene opciones y ON / OFF),
+    /// el aviso de la última importación o de reiniciar, e IMPORTAR ZIP / VOLVER.
     fn draw_mods(&mut self, atlas: &Atlas, font: &Font, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32) {
         out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
         self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
-        let mut paras: Vec<(String, [f32; 4])> = vec![("Mods".into(), YELLOW)];
+        let mut paras: Vec<(String, [f32; 4])> = Vec::new();
+        let mut y = 6.0;
+        font.text(out, "Mods", ((w - font.width("Mods")) / 2.0).floor(), y, YELLOW);
+        y += 14.0;
         if !cfg.mods_ack {
             paras.push((tr!("Los mods vienen de fuentes externas: ten cuidado de donde los descargas y revisalos antes de instalarlos.", "Mods come from external sources: be careful where you download them from and review them before installing.").into(), WHITE));
             paras.push((tr!("Los scripts de los mods corren aislados, pero pueden cambiar el juego de forma considerable: instalalos solo si confias en su origen.", "Mod scripts run sandboxed, but they can change the game a lot: only install them if you trust their source.").into(), rgba(255, 120, 80, 255)));
             paras.push((tr!("Instalar mods es tu responsabilidad. Acepta para continuar (no se vuelve a preguntar).", "Installing mods is your responsibility. Accept to continue (you won't be asked again).").into(), GOLDEN));
+            y = ((h - 28.0 - 60.0) / 2.0).floor().max(y);
         } else {
-            let builtin = game::registry::BUILTIN_MODS.map(|m| trf!("{m} (incluido)", "{m} (built-in)"));
-            paras.push((trf!("Instalados: {}", "Installed: {}", builtin.into_iter().chain(self.mods.iter().cloned()).collect::<Vec<_>>().join(", ")), WHITE));
+            let rw = (w - 16.0).min(240.0);
+            let x = ((w - rw) / 2.0).floor();
+            let disabled = cfg.disabled_mods();
+            let mut pending = false;
+            for (k, m) in game::registry::mods().iter().enumerate() {
+                let on = !disabled.contains(&m.folder);
+                pending |= on != m.enabled;
+                match MOD_ICONS.get().and_then(|v| v.get(k).copied().flatten()) {
+                    Some(s) => {
+                        let [_, _, iw, ih] = atlas.rects[s];
+                        out.push(piece(atlas, s, [0, 0, iw, ih], [x, y], [16.0, 16.0], WHITE));
+                    }
+                    None => out.push(piece(atlas, DASHBOARD, [64, 0, 32, 32], [x, y], [16.0, 16.0], WHITE)),
+                }
+                let name = if m.manifest["name"].is_null() { m.folder.clone() } else { text(&m.manifest["name"]) };
+                let mut sub: Vec<String> = Vec::new();
+                if m.builtin {
+                    sub.push(tr!("incluido", "built-in").into());
+                }
+                for k in ["version", "author"] {
+                    if let Some(v) = m.manifest[k].as_str() {
+                        sub.push(if k == "version" { format!("v{v}") } else { v.to_string() });
+                    }
+                }
+                font.text(out, &name, x + 20.0, y, if on { WHITE } else { GREY });
+                font.text(out, &sub.join(" - "), x + 20.0, y + 9.0, GREY);
+                self.draw_button(atlas, font, out, [x + rw - 28.0, y, 28.0, 16.0], if on { "ON" } else { "OFF" }, Some(UiAction::ToggleMod(m.folder.clone())));
+                if m.manifest["settings"].as_array().is_some_and(|s| !s.is_empty()) {
+                    self.draw_button(atlas, font, out, [x + rw - 72.0, y, 42.0, 16.0], tr!("AJUSTES", "CONFIG"), Some(UiAction::Open(Window::ModConfig(k))));
+                }
+                y += 20.0;
+            }
+            y += 4.0;
+            if pending {
+                paras.push((tr!("Reinicia el juego para aplicar los cambios.", "Restart the game to apply the changes.").into(), GOLDEN));
+            }
+            if !self.mods_msg.is_empty() {
+                paras.push((self.mods_msg.clone(), GOLDEN));
+            }
         }
-        if cfg.mods_ack && !self.mods_msg.is_empty() {
-            paras.push((self.mods_msg.clone(), GOLDEN));
-        }
-        let mut lines: Vec<(String, [f32; 4])> = Vec::new();
-        for (text, color) in paras {
-            lines.extend(wrap(font, &text, w - 24.0).into_iter().map(|l| (l, color)));
-            lines.push((String::new(), WHITE));
-        }
-        let mut y = ((h - 28.0 - lines.len() as f32 * 10.0) / 2.0).floor().max(4.0);
-        for (line, color) in lines {
-            font.text(out, &line, ((w - font.width(&line)) / 2.0).floor(), y, color);
-            y += 10.0;
+        for (t, color) in paras {
+            for l in wrap(font, &t, w - 24.0) {
+                font.text(out, &l, ((w - font.width(&l)) / 2.0).floor(), y, color);
+                y += 10.0;
+            }
+            y += 4.0;
         }
         let bw = ((w - 18.0) / 2.0).floor().min(90.0);
         let x = ((w - bw * 2.0 - 2.0) / 2.0).floor();
-        self.draw_button(atlas, font, out, [x, h - BOTTOM_BTN_H - 4.0, bw, BOTTOM_BTN_H], if cfg.mods_ack { tr!("IMPORTAR ZIP", "IMPORT ZIP") } else { tr!("ACEPTO", "I ACCEPT") }, Some(if cfg.mods_ack { UiAction::ImportMod } else { UiAction::AckMods }));
+        let (label, act) = if cfg.mods_ack { (tr!("IMPORTAR ZIP", "IMPORT ZIP"), UiAction::ImportMod) } else { (tr!("ACEPTO", "I ACCEPT"), UiAction::AckMods) };
+        self.draw_button(atlas, font, out, [x, h - BOTTOM_BTN_H - 4.0, bw, BOTTOM_BTN_H], label, Some(act));
         self.draw_button(atlas, font, out, [x + bw + 2.0, h - BOTTOM_BTN_H - 4.0, bw, BOTTOM_BTN_H], tr!("VOLVER", "BACK"), Some(UiAction::Close));
+    }
+
+    /// Ajustes de un mod: cada opción de su mod.json (`int`: - valor +, entre `min` y `max` de a `step`; `bool`: Si /
+    /// No). Se guardan en Local.config y cambian en caliente.
+    fn draw_mod_config(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, k: usize) {
+        out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
+        self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
+        let Some(m) = game::registry::mods().get(k) else { return };
+        let name = if m.manifest["name"].is_null() { m.folder.clone() } else { text(&m.manifest["name"]) };
+        let rw = (w - 16.0).min(240.0);
+        let x = ((w - rw) / 2.0).floor();
+        let mut y = 6.0;
+        font.text(out, &name, ((w - font.width(&name)) / 2.0).floor(), y, YELLOW);
+        y += 12.0;
+        if !m.manifest["desc"].is_null() {
+            for l in wrap(font, &text(&m.manifest["desc"]), rw) {
+                font.text(out, &l, x, y, GREY);
+                y += 10.0;
+            }
+        }
+        y += 6.0;
+        for s in m.manifest["settings"].as_array().into_iter().flatten() {
+            let Some(id) = s["id"].as_str() else { continue };
+            let v = game::registry::setting(&m.folder, id).unwrap_or_else(|| s["default"].clone());
+            font.text(out, &text(&s["name"]), x, y + 4.0, WHITE);
+            let set = |v: serde_json::Value| Some(UiAction::ModSetting(k, id.to_string(), v));
+            if s["type"] == "bool" {
+                let b = v.as_bool().unwrap_or(false);
+                self.draw_button(atlas, font, out, [x + rw - 40.0, y, 40.0, 16.0], if b { tr!("Si", "Yes") } else { "No" }, set((!b).into()));
+            } else {
+                let (n, step) = (v.as_i64().unwrap_or(0), s["step"].as_i64().unwrap_or(1).max(1));
+                let (lo, hi) = (s["min"].as_i64().unwrap_or(i64::MIN), s["max"].as_i64().unwrap_or(i64::MAX));
+                let t = n.to_string();
+                self.draw_button(atlas, font, out, [x + rw - 76.0, y, 20.0, 16.0], "-", set((n - step).clamp(lo, hi).into()));
+                font.text(out, &t, x + rw - 38.0 - (font.width(&t) / 2.0).floor(), y + 4.0, YELLOW);
+                self.draw_button(atlas, font, out, [x + rw - 20.0, y, 20.0, 16.0], "+", set((n + step).clamp(lo, hi).into()));
+            }
+            y += 20.0;
+        }
+        let bw = ((w - 18.0) / 2.0).floor().min(90.0);
+        self.draw_button(atlas, font, out, [((w - bw) / 2.0).floor(), h - BOTTOM_BTN_H - 4.0, bw, BOTTOM_BTN_H], tr!("VOLVER", "BACK"), Some(UiAction::Open(Window::Mods)));
     }
 
     /// Pantalla de título (TitleScene.java): arcos de fondo que se desplazan (el de adelante al doble), el banner con
@@ -1648,6 +1735,7 @@ impl Ui {
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
             Some(Window::Page(paras)) => self.draw_page(atlas, font, out, w, h, &paras),
             Some(Window::Mods) => self.draw_mods(atlas, font, cfg, out, w, h),
+            Some(Window::ModConfig(k)) => self.draw_mod_config(atlas, font, out, w, h, k),
             Some(Window::Info { icon, title, text, hp }) => self.draw_info(atlas, font, chars, d, out, w, h, icon, &title, &text, hp),
             Some(Window::Create) => self.draw_create(atlas, font, out, w, h, classes, skins),
             Some(Window::Roster) => self.draw_roster(atlas, font, out, w, h, roster),

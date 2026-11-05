@@ -215,6 +215,31 @@ impl Config {
         RESOLUTIONS.iter().find(|r| r.0 == self.resolution).map_or((1280, 720), |r| (r.1, r.2))
     }
 
+    /// `[mods] disabled`: los mods desactivados (carpetas separadas por coma). Se aplica al reiniciar.
+    pub fn disabled_mods(&self) -> Vec<String> {
+        self.get("mods", "disabled").map(|v| v.split(',').map(str::trim).filter(|s| !s.is_empty()).map(String::from).collect()).unwrap_or_default()
+    }
+
+    pub fn toggle_mod(&mut self, m: &str) {
+        let mut d = self.disabled_mods();
+        match d.iter().position(|x| x == m) {
+            Some(i) => _ = d.remove(i),
+            None => d.push(m.to_string()),
+        }
+        self.set("mods", "disabled", &d.join(","));
+        self.save();
+    }
+
+    /// `[mod:<carpeta>] <opción>`: una opción de un mod (JSON: número o true/false).
+    pub fn mod_setting(&self, m: &str, id: &str) -> Option<String> {
+        self.get(&format!("mod:{m}"), id)
+    }
+
+    pub fn set_mod_setting(&mut self, m: &str, id: &str, v: &str) {
+        self.set(&format!("mod:{m}"), id, v);
+        self.save();
+    }
+
     pub fn set_mods_ack(&mut self) {
         self.mods_ack = true;
         self.set("general", "mods_ack", "true");

@@ -3,7 +3,7 @@
 //! `"base": "<id>"` copia esa otra entrada y aplica sus campos encima.
 //! El orden de las entradas se conserva (serde_json con `preserve_order`): decide tiradas, como el dict de Python.
 use std::path::Path;
-use std::sync::OnceLock;
+use std::sync::{LazyLock, OnceLock, RwLock};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde_json::{Map, Value};
@@ -23,34 +23,95 @@ const BASE: [(&str, &str); 11] = [
     ("quests", include_str!("../../data/quests.json")),
 ];
 
-/// Mods que vienen con el juego (`data/mods/`): después del juego base y antes de los del usuario, que pueden pisarlos.
-/// Los nombres de los mods incluidos (para la pantalla de Mods).
-pub const BUILTIN_MODS: [&str; 1] = ["mercader-ambulante"];
+/// (carpeta, `mod.json`, [(registro, json)]) de un mod incluido.
+type Builtin = (&'static str, &'static str, &'static [(&'static str, &'static str)]);
 
-const BUILTIN: [(&str, &str); 3] = [
-    ("mobs", include_str!("../../data/mods/mercader-ambulante/mobs.json")),
-    ("dialogs", include_str!("../../data/mods/mercader-ambulante/dialogs.json")),
-    ("npcs", include_str!("../../data/mods/mercader-ambulante/npcs.json")),
-];
+/// Mods que vienen con el juego (`data/mods/<mod>/`): (carpeta, `mod.json`, registros). Van antes de los del usuario
+/// (que pueden pisarlos) y se desactivan como cualquier otro.
+static BUILTIN: [Builtin; 1] = [(
+    "mercader-ambulante",
+    include_str!("../../data/mods/mercader-ambulante/mod.json"),
+    &[
+        ("mobs", include_str!("../../data/mods/mercader-ambulante/mobs.json")),
+        ("dialogs", include_str!("../../data/mods/mercader-ambulante/dialogs.json")),
+        ("npcs", include_str!("../../data/mods/mercader-ambulante/npcs.json")),
+    ],
+)];
 
-/// Scripts de los mods (`<mod>/script.lua`): (mod, código), en orden de carpeta (`script.rs`).
+/// Tope del `icon.png` de un mod.
+const ICON_MAX: usize = 64 * 1024;
+
+/// Un mod de la lista (incluido o de `<datos>/mods`): su carpeta, si se cargó, su `mod.json` (`name`, `desc`,
+/// `author`, `version`, `settings`; opcional) y su `icon.png`.
+pub struct ModInfo {
+    pub folder: String,
+    pub builtin: bool,
+    pub enabled: bool,
+    pub manifest: Value,
+    pub icon: Option<Vec<u8>>,
+}
+
+static INFOS: OnceLock<Vec<ModInfo>> = OnceLock::new();
+
+/// Todos los mods (también los desactivados), en orden de carga.
+pub fn mods() -> &'static [ModInfo] {
+    INFOS.get().map_or(&[], Vec::as_slice)
+}
+
+/// Opciones de los mods (`settings` de su `mod.json`): mod -> {id: valor}. Las pone la app (de Local.config o el
+/// `default`) y las leen los scripts (`ctx.settings`) y `npcs.json` (`"scale"`). Cambian en caliente.
+static SETTINGS: LazyLock<RwLock<Map<String, Value>>> = LazyLock::new(Default::default);
+
+pub fn set_setting(m: &str, id: &str, v: Value) {
+    if let Ok(mut s) = SETTINGS.write()
+        && let Some(o) = s.entry(m).or_insert_with(|| Value::Object(Map::new())).as_object_mut()
+    {
+        o.insert(id.to_string(), v);
+    }
+}
+
+pub fn settings() -> Value {
+    SETTINGS.read().map(|s| Value::Object(s.clone())).unwrap_or_default()
+}
+
+pub fn setting(m: &str, id: &str) -> Option<Value> {
+    SETTINGS.read().ok()?.get(m)?.get(id).cloned()
+}
+
+/// Scripts de los mods (`<mod>/script.lua`): (mod, código), en orden de carga (`script.rs`).
 static SCRIPTS: OnceLock<Vec<(String, String)>> = OnceLock::new();
 
 pub fn scripts() -> &'static [(String, String)] {
     SCRIPTS.get().map_or(&[], Vec::as_slice)
 }
 
-/// Registros de los mods (`<datos>/mods/<mod>/<registro>.json`), en orden de carpeta: se leen una vez, al arrancar.
+/// Registros de los mods activos (los incluidos y los de `<datos>/mods`), en orden de carga.
 static MODS: OnceLock<Vec<(String, String)>> = OnceLock::new();
 
-/// Lee los mods de `dir/mods` (carpetas en orden alfabético; sólo los archivos de registros conocidos). Un JSON que no
-/// es un objeto se salta. Devuelve una línea por mod leído o archivo salteado (para el log). Llamar antes de `load`.
-pub fn load_mods(dir: &Path) -> Vec<String> {
-    let mut mods: Vec<_> = std::fs::read_dir(dir.join("mods")).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
-    mods.sort();
-    let (mut out, mut msgs, mut scripts) = (Vec::new(), Vec::new(), Vec::new());
-    for m in mods {
+/// Lee los mods, una vez y antes de `load`: los incluidos y después `dir/mods` (carpetas en orden alfabético), salvo
+/// los de `disabled` (que igual quedan en `mods()` para la lista). Por mod: los registros conocidos (un JSON que no es
+/// un objeto se salta), `script.lua`, `mod.json` e `icon.png`. Devuelve una línea por mod (para el log).
+pub fn load_mods(dir: &Path, disabled: &[String]) -> Vec<String> {
+    let (mut out, mut msgs, mut scripts, mut infos) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for (folder, manifest, regs) in &BUILTIN {
+        let enabled = !disabled.iter().any(|d| d == folder);
+        if enabled {
+            out.extend(regs.iter().map(|(r, t)| (r.to_string(), t.to_string())));
+        }
+        infos.push(ModInfo { folder: folder.to_string(), builtin: true, enabled, manifest: serde_json::from_str(manifest).unwrap_or_default(), icon: None });
+    }
+    let mut dirs: Vec<_> = std::fs::read_dir(dir.join("mods")).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
+    dirs.sort();
+    for m in dirs {
         let name = m.file_name().unwrap_or_default().to_string_lossy().into_owned();
+        let enabled = !disabled.contains(&name);
+        let manifest = std::fs::read_to_string(m.join("mod.json")).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+        let icon = std::fs::read(m.join("icon.png")).ok().filter(|b| b.len() <= ICON_MAX);
+        infos.push(ModInfo { folder: name.clone(), builtin: false, enabled, manifest, icon });
+        if !enabled {
+            msgs.push(format!("mod {name}: desactivado"));
+            continue;
+        }
         let mut n = 0;
         for (reg, _) in BASE {
             let Ok(text) = std::fs::read_to_string(m.join(format!("{reg}.json"))) else { continue };
@@ -66,23 +127,25 @@ pub fn load_mods(dir: &Path) -> Vec<String> {
             scripts.push((name.clone(), src));
             n += 1;
         }
-        if n > 0 {
-            msgs.push(format!("mod {name}: {n} archivos"));
-        }
+        msgs.push(format!("mod {name}: {n} archivos"));
     }
     let _ = MODS.set(out);
     let _ = SCRIPTS.set(scripts);
+    let _ = INFOS.set(infos);
     msgs
 }
 
-/// Un archivo que puede traer un mod: `<registro>.json` o `script.lua`.
+/// Un archivo que puede traer un mod: `<registro>.json`, `script.lua`, `mod.json` o `icon.png`.
 pub fn is_mod_file(name: &str) -> bool {
-    name == "script.lua" || name.strip_suffix(".json").is_some_and(|r| BASE.iter().any(|(n, _)| *n == r))
+    matches!(name, "script.lua" | "mod.json" | "icon.png") || name.strip_suffix(".json").is_some_and(|r| BASE.iter().any(|(n, _)| *n == r))
 }
 
-/// El juego base, los mods incluidos y después los del usuario: lo último pisa a lo anterior.
-fn sources() -> impl Iterator<Item = (&'static str, &'static str)> {
-    BASE.into_iter().chain(BUILTIN).chain(MODS.get().into_iter().flatten().map(|(n, t)| (n.as_str(), t.as_str())))
+/// El juego base y los mods activos: lo último pisa a lo anterior. Sin `load_mods` (los tests), base + incluidos.
+fn sources() -> Box<dyn Iterator<Item = (&'static str, &'static str)>> {
+    match MODS.get() {
+        Some(m) => Box::new(BASE.into_iter().chain(m.iter().map(|(n, t)| (n.as_str(), t.as_str())))),
+        None => Box::new(BASE.into_iter().chain(BUILTIN.iter().flat_map(|(_, _, r)| r.iter().copied()))),
+    }
 }
 
 /// Hash del contenido (los JSON de los registros, en orden): un cliente con otro contenido no entra a la partida.

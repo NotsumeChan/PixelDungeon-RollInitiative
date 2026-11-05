@@ -3,7 +3,7 @@
 **Instalar**: la primera vez, la pantalla de Mods pide aceptar el aviso de responsabilidad (`mods_ack` en
 Local.config: no vuelve a aparecer). Mods -> IMPORTAR ZIP abre el selector de archivos del sistema (Windows, Linux y Android); el juego
 descomprime el zip en `<datos>/mods/<mod>/` (el nombre es la carpeta de adentro del zip, o el del zip). Sólo copia los
-`<registro>.json` y `script.lua` (en la raíz del zip o en una carpeta; tope 16 MB); reinicia el juego para cargarlo.
+`<registro>.json`, `script.lua`, `mod.json` e `icon.png` (en la raíz del zip o en una carpeta; tope 16 MB); reinicia el juego para cargarlo.
 En escritorio también se puede copiar la carpeta a mano.
 
 Un mod es una carpeta dentro de `<datos>/mods/` con archivos de registro con el mismo nombre que los de `data/`
@@ -22,6 +22,15 @@ Android la carpeta de datos de la app.
   rompe la partida: probalo.
 - La red compara el hash del contenido, mods incluidos: todos en la LAN tienen que tener los mismos mods.
 
+## mod.json, ícono y ajustes
+
+`mod.json` (opcional): `name` y `desc` (textos), `author`, `version` y `settings`, las opciones que el jugador cambia
+en Mods -> AJUSTES: `[{"id", "name", "type": "int" | "bool", "default", "min", "max", "step"}]`. Se guardan en
+Local.config (`[mod:<carpeta>]`) y cambian en caliente: los scripts las leen en `ctx.settings["<carpeta>"]` y
+`npcs.json` puede escalar una probabilidad con `{"scale": ["<carpeta>", "<opción>"]}` (la opción en %).
+`icon.png` (opcional, hasta 64x64): el ícono de la lista. En Mods, ON / OFF activa o desactiva un mod (también los
+incluidos; `[mods] disabled` en Local.config): se aplica al reiniciar.
+
 ## Scripts Lua
 
 Un mod puede traer `script.lua` (Lua 5.4) con funciones que los diálogos llaman:
@@ -29,7 +38,7 @@ Un mod puede traer `script.lua` (Lua 5.4) con funciones que los diálogos llaman
 - efecto `["lua", "mi_funcion", args...]`: devuelve una lista de efectos con el formato de los diálogos
   (`{{"gold", 10}, {"log", {es = "...", en = "..."}}}`); el juego los aplica.
 - Primer argumento `ctx`: `hero` (`name`, `class`, `level`, `hp`, `ht`, `gold`), `npc` (`id`, `name`,
-  `disposition`), `depth`, `flags`. Después, los args del JSON.
+  `disposition`), `depth`, `flags`, `settings` (los ajustes de los mods). Después, los args del JSON.
 - Todos los scripts comparten el entorno global: nombra tus funciones con un prefijo propio.
 - Sandbox: `math`, `string` y `table`; sin `io`, `os`, `require` ni archivos. Un tope de instrucciones por llamada y
   de memoria (un bucle infinito da error en la consola). `math.random` sale de la partida: repetible.

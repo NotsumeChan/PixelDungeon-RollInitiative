@@ -62,7 +62,8 @@ const NEAR: i32 = 3;
 impl Dungeon {
     /// Los NPCs de un piso nuevo (`data/npcs.json`: piso -> [[mob, probabilidad, opciones]]; `"*"`, en cualquier piso).
     /// La probabilidad es un número o una lista por profundidad (piso 1, 2, ...; después de la lista, 0). Opciones:
-    /// `{"near": "exit"}` lo pone a `NEAR` casillas o menos de la bajada. Con un rng propio: no gasta el del nivel, así
+    /// `{"near": "exit"}` lo pone a `NEAR` casillas o menos de la bajada; `{"scale": [mod, opción]}` multiplica la
+    /// probabilidad por esa opción del mod (en %). Con un rng propio: no gasta el del nivel, así
     /// los pisos, sus mobs y sus ítems salen iguales que sin NPCs.
     pub(crate) fn create_npcs(&mut self) {
         let table: Vec<Value> = [self.depth.to_string(), "*".to_string()]
@@ -78,7 +79,13 @@ impl Dungeon {
                 v => v.as_f64(),
             };
             let (Some(key), Some(p)) = (e[0].as_str(), p) else { continue };
-            if !self.mobs_data.contains_key(key) || rng.float() >= p {
+            // `"scale": [mod, opción]`: la probabilidad por la opción del mod en % (`registry::settings`)
+            let scale = e[2]["scale"]
+                .as_array()
+                .and_then(|s| crate::registry::setting(s.first()?.as_str()?, s.get(1)?.as_str()?))
+                .and_then(|v| v.as_f64())
+                .map_or(1.0, |v| v / 100.0);
+            if !self.mobs_data.contains_key(key) || rng.float() >= p * scale {
                 continue;
             }
             if e[2]["near"] == "exit" {
@@ -403,6 +410,7 @@ impl Dungeon {
             "npc": npc.map(|m| serde_json::json!({"id": m.key, "name": m.ch.name, "disposition": m.disposition})),
             "depth": self.depth,
             "flags": self.flags,
+            "settings": crate::registry::settings(),
         });
         let args = v.as_array().and_then(|a| a.get(2..)).unwrap_or(&[]);
         crate::script::call(v[1].as_str()?, ctx, args, seed)

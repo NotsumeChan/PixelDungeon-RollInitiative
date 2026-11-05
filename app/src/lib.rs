@@ -293,15 +293,28 @@ fn new_seed() -> i64 {
 
 impl App {
     fn new() -> Self {
-        let sheets: Vec<&[u8]> = SHEETS.iter().copied().chain(CHAR_SHEETS.iter().map(|c| c.1)).collect();
-        let atlas = Atlas::build(&sheets);
-        let font = Font::new(&atlas, FONT);
-        let now = Instant::now();
-        for m in game::registry::load_mods(&data_dir()) {
+        let config = Config::load();
+        for m in game::registry::load_mods(&data_dir(), &config.disabled_mods()) {
             log::info!("{m}"); // Android: logcat
             eprintln!("{m}");
         }
-        let config = Config::load();
+        // opciones de los mods: las de Local.config o el `default` de su mod.json
+        for m in game::registry::mods() {
+            for s in m.manifest["settings"].as_array().into_iter().flatten() {
+                let Some(id) = s["id"].as_str() else { continue };
+                let v = config.mod_setting(&m.folder, id).and_then(|v| serde_json::from_str(&v).ok()).unwrap_or_else(|| s["default"].clone());
+                game::registry::set_setting(&m.folder, id, v);
+            }
+        }
+        // los íconos de los mods van al final del atlas (`ui::MOD_ICONS`: mod -> hoja)
+        let icons: Vec<Option<&[u8]>> = game::registry::mods().iter().map(|m| m.icon.as_deref().filter(|b| atlas::icon_ok(b))).collect();
+        let first = SHEETS.len() + CHAR_SHEETS.len();
+        let mut next = first;
+        let _ = ui::MOD_ICONS.set(icons.iter().map(|i| i.map(|_| (next, next += 1).0)).collect());
+        let sheets: Vec<&[u8]> = SHEETS.iter().copied().chain(CHAR_SHEETS.iter().map(|c| c.1)).chain(icons.iter().flatten().copied()).collect();
+        let atlas = Atlas::build(&sheets);
+        let font = Font::new(&atlas, FONT);
+        let now = Instant::now();
         game::registry::set_lang(config.language);
         Self {
             atlas,
@@ -463,18 +476,19 @@ impl App {
             Ok(name) => game::trf!("Mod \"{name}\" instalado: reinicia el juego para cargarlo.", "Mod \"{name}\" installed: restart the game to load it."),
             Err(e) => game::trf!("No se pudo importar: {e}", "Couldn't import: {e}"),
         };
-        self.ui.mods = mods::installed(&data_dir());
     }
 
     fn ui_action(&mut self, act: UiAction) {
         match act {
             UiAction::Nothing => {}
             UiAction::Close => self.ui.window = None,
-            UiAction::Open(w) => {
-                if matches!(w, ui::Window::Mods) {
-                    self.ui.mods = mods::installed(&data_dir());
+            UiAction::Open(w) => self.ui.window = Some(w),
+            UiAction::ToggleMod(m) => self.config.toggle_mod(&m),
+            UiAction::ModSetting(k, id, v) => {
+                if let Some(m) = game::registry::mods().get(k) {
+                    self.config.set_mod_setting(&m.folder, &id, &v.to_string());
+                    game::registry::set_setting(&m.folder, &id, v);
                 }
-                self.ui.window = Some(w);
             }
             UiAction::AckMods => self.config.set_mods_ack(),
             UiAction::ImportMod => {

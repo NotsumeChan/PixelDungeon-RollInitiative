@@ -12,6 +12,11 @@ pub struct Atlas {
 }
 
 /// PNG -> RGBA8 (paleta, gris, 16 bits y sin alfa se normalizan).
+/// Un PNG que se puede usar de ícono de mod (se decodifica y mide 64x64 o menos).
+pub fn icon_ok(bytes: &[u8]) -> bool {
+    png::Decoder::new(std::io::Cursor::new(bytes)).read_info().is_ok_and(|r| r.info().width <= 64 && r.info().height <= 64)
+}
+
 pub fn decode(bytes: &[u8]) -> (u32, u32, Vec<u8>) {
     let mut dec = png::Decoder::new(std::io::Cursor::new(bytes));
     dec.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16 | png::Transformations::ALPHA);
