@@ -156,10 +156,7 @@ impl Dungeon {
             State::Sleeping => self.mob_sleeping(id, in_fov),
             State::Wandering => self.mob_wandering(id, in_fov, just_alerted),
             State::Hunting => self.mob_hunting(id, in_fov),
-            State::Passive => {
-                self.mob_mut(id).unwrap().enemy_seen = false;
-                self.spend(ActorId::Mob(id), TICK);
-            }
+            State::Passive => self.mob_passive(id, pos),
         }
     }
 
@@ -200,15 +197,35 @@ impl Dungeon {
             m.target = target;
             return;
         }
-        let m = self.mob_mut(id).unwrap();
-        m.enemy_seen = false;
-        let (target, speed) = (m.target, m.ch.base_speed);
-        let speed = speed * self.buff_speed(ActorId::Mob(id));
+        self.mob_mut(id).unwrap().enemy_seen = false;
+        self.mob_roam(id);
+    }
+
+    /// Camina hacia su destino; al llegar (o si no puede), elige otro al azar.
+    fn mob_roam(&mut self, id: u32) {
+        let m = self.mob(id).unwrap();
+        let (target, speed) = (m.target, m.ch.base_speed * self.buff_speed(ActorId::Mob(id)));
         if target != -1 && self.mob_get_closer(id, target) {
             self.spend(ActorId::Mob(id), 1.0 / speed);
         } else {
             let dest = self.random_destination();
             self.mob_mut(id).unwrap().target = dest;
+            self.spend(ActorId::Mob(id), TICK);
+        }
+    }
+
+    /// Un NPC tranquilo se queda quieto; con `"wander": true` (el mercader ambulante) deambula por el piso, salvo con un
+    /// héroe al lado o hablando o comerciando con él.
+    fn mob_passive(&mut self, id: u32, pos: i32) {
+        let m = self.mob_mut(id).unwrap();
+        m.enemy_seen = false;
+        let wander = m.stats["wander"].as_bool() == Some(true);
+        let busy = self.heroes.iter().any(|h| {
+            h.is_alive() && (adjacent(h.ch.pos, pos) || h.trading == Some(id) || h.talking.as_ref().is_some_and(|t| t.0 == id))
+        });
+        if wander && !busy {
+            self.mob_roam(id);
+        } else {
             self.spend(ActorId::Mob(id), TICK);
         }
     }

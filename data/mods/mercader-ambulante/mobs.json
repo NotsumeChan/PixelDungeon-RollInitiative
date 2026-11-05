@@ -1,0 +1,47 @@
+{
+ "pdri:wandering_merchant": {
+  "base": "pdri:shopkeeper",
+  "name": {
+   "es": "mercader ambulante",
+   "en": "wandering merchant"
+  },
+  "desc": {
+   "es": "Va de piso en piso con la mochila llena. Nunca está dos veces en el mismo lugar.",
+   "en": "He goes from floor to floor with a full pack. Never in the same place twice."
+  },
+  "npc": "pdri:wandering_merchant",
+  "wander": true,
+  "speed": 0.5,
+  "disposition": 0,
+  "weapon": "pdri:dagger",
+  "armor": "pdri:cloth_armor",
+  "inventory": [
+   [
+    "pdri:ration",
+    2
+   ],
+   [
+    "pdri:potion_healing",
+    1
+   ]
+  ],
+  "stock": [
+   [
+    "potion",
+    2
+   ],
+   [
+    "scroll",
+    2
+   ],
+   [
+    "weapon",
+    1
+   ],
+   [
+    "armor",
+    1
+   ]
+  ]
+ }
+}

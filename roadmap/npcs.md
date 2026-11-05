@@ -32,7 +32,7 @@ Estado: plan confirmado por el dueño (2026-11-05, ver "Decisiones del dueño").
 - **Comercio**: la tienda **vende lo que el NPC tiene en su inventario** (así el mercader fijo y el ambulante son lo
   mismo); precio = `price` de `items.json` (nuevo campo), modificado por la disposición. Vender = la mitad y el ítem
   pasa a su inventario. Ventana de tienda con las dos mochilas.
-- **Mercader ambulante** (futuro): un NPC con tienda que deambula (`State::Passive` que camina) y puede aparecer en
+- **Mercader ambulante** (hecho, 0.9.14: mod incluido `data/mods/mercader-ambulante`; se reabastece con mercancía nueva en cada piso donde aparece): un NPC con tienda que deambula (`State::Passive` que camina) y puede aparecer en
   cualquier piso; reabastece su inventario cada tanto.
 - **Colocación**: `npcs` por piso (como `bestiary.json`), con un rng propio derivado de la seed del piso: no gasta el
   rng del nivel, así los pisos y los mobs siguen saliendo iguales.

@@ -23,6 +23,13 @@ const BASE: [(&str, &str); 11] = [
     ("quests", include_str!("../../data/quests.json")),
 ];
 
+/// Mods que vienen con el juego (`data/mods/`): después del juego base y antes de los del usuario, que pueden pisarlos.
+const BUILTIN: [(&str, &str); 3] = [
+    ("mobs", include_str!("../../data/mods/mercader-ambulante/mobs.json")),
+    ("dialogs", include_str!("../../data/mods/mercader-ambulante/dialogs.json")),
+    ("npcs", include_str!("../../data/mods/mercader-ambulante/npcs.json")),
+];
+
 /// Registros de los mods (`<datos>/mods/<mod>/<registro>.json`), en orden de carpeta: se leen una vez, al arrancar.
 static MODS: OnceLock<Vec<(String, String)>> = OnceLock::new();
 
@@ -53,9 +60,9 @@ pub fn load_mods(dir: &Path) -> Vec<String> {
     msgs
 }
 
-/// El juego base y después los mods: lo último pisa a lo anterior.
+/// El juego base, los mods incluidos y después los del usuario: lo último pisa a lo anterior.
 fn sources() -> impl Iterator<Item = (&'static str, &'static str)> {
-    BASE.into_iter().chain(MODS.get().into_iter().flatten().map(|(n, t)| (n.as_str(), t.as_str())))
+    BASE.into_iter().chain(BUILTIN).chain(MODS.get().into_iter().flatten().map(|(n, t)| (n.as_str(), t.as_str())))
 }
 
 /// Hash del contenido (los JSON de los registros, en orden): un cliente con otro contenido no entra a la partida.

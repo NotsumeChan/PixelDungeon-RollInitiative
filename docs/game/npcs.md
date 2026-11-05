@@ -45,3 +45,7 @@ generador sin maldiciones), `weapon` y `armor`. Un NPC con arma pega con sus dad
   +10 % por punto. Precio 0 = no está a la venta / no le interesa. Lo vendido pasa a su inventario.
 - `give` saca del inventario del NPC si lo tiene (si no, crea uno); `take` lo guarda en su inventario.
 - `shop(i)`: lo que muestra la UI (`ShopView`).
+
+Mercader ambulante (mod incluido `data/mods/mercader-ambulante`): `create_npcs` suma la tabla `"*"` de `npcs.json`
+(cualquier piso) a la del piso; `mob_passive` (`mobs.rs`) hace deambular a un NPC con `"wander": true` (`mob_roam`,
+igual que un mob que deambula) salvo con un héroe al lado o hablando o comerciando con él.

@@ -57,10 +57,15 @@ fn attitude(disp: i32) -> &'static str {
 }
 
 impl Dungeon {
-    /// Los NPCs de un piso nuevo (`data/npcs.json`: piso -> [[mob, probabilidad]]). Con un rng propio: no gasta el del
+    /// Los NPCs de un piso nuevo (`data/npcs.json`: piso -> [[mob, probabilidad]]; `"*"`, en cualquier piso). Con un rng propio: no gasta el del
     /// nivel, así los pisos, sus mobs y sus ítems salen iguales que sin NPCs.
     pub(crate) fn create_npcs(&mut self) {
-        let Some(table) = self.npcs.get(&self.depth.to_string()).and_then(Value::as_array).cloned() else { return };
+        let table: Vec<Value> = [self.depth.to_string(), "*".to_string()]
+            .iter()
+            .filter_map(|k| self.npcs.get(k).and_then(Value::as_array))
+            .flatten()
+            .cloned()
+            .collect();
         let mut rng = Rng::new(level_seed(self.seed, self.depth) ^ 0x4E50_4353);
         for e in table {
             let (Some(key), Some(p)) = (e[0].as_str(), e[1].as_f64()) else { continue };

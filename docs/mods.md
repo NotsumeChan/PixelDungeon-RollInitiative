@@ -16,6 +16,12 @@ Android la carpeta de datos de la app.
   rompe la partida: probalo.
 - La red compara el hash del contenido, mods incluidos: todos en la LAN tienen que tener los mismos mods.
 
+## Mods incluidos
+
+`data/mods/<mod>/` van dentro del juego, después del base y antes de los del usuario (que pueden pisarlos):
+`mercader-ambulante` (el mercader ambulante: `"*"` en `npcs.json` = cualquier piso; `"wander": true` en el mob =
+deambula; es un mob con `base` sobre el mercader).
+
 ## Ejemplo: `mods/ejemplo-herrero/`
 
 Un herrero troll en el piso 3 (desconfiado: actitud -1) con tienda de armas, una misión (matar 3 gnolls) que paga con
