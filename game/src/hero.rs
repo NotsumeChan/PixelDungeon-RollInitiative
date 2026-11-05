@@ -97,8 +97,11 @@ pub enum Action {
     Talk(u32),
     /// Elegir la opción k del diálogo abierto.
     Choose(usize),
-    /// Cerrar el diálogo.
+    /// Cerrar el diálogo (o la tienda).
     Bye,
+    /// En la tienda: comprar una unidad del ítem k del NPC / vender una del ítem k de la mochila.
+    Buy(usize),
+    Sell(usize),
 }
 
 pub struct Hero {
@@ -142,6 +145,8 @@ pub struct Hero {
     pub stable: bool,
     /// Diálogo abierto: (id del NPC, nodo).
     pub talking: Option<(u32, String)>,
+    /// Tienda abierta: el NPC con el que comercia.
+    pub trading: Option<u32>,
     /// Apariencia (id de `data/skins.json`), aparte de la clase. Vacía = la de su clase (`Dungeon::hero_sprite`).
     pub skin: String,
 }
@@ -196,6 +201,7 @@ impl Hero {
             saves: [0, 0],
             stable: false,
             talking: None,
+            trading: None,
             skin: String::new(),
             cls,
         };
@@ -550,6 +556,15 @@ impl Dungeon {
             Action::Bye => {
                 self.heroes[i].action = None;
                 self.heroes[i].talking = None;
+                self.heroes[i].trading = None;
+            }
+            Action::Buy(k) => {
+                self.heroes[i].action = None;
+                self.buy(i, k);
+            }
+            Action::Sell(k) => {
+                self.heroes[i].action = None;
+                self.sell(i, k);
             }
             Action::Help(j) => {
                 let ally = self.heroes[j].ch.pos;

@@ -22,7 +22,8 @@
   "desc": {
    "es": "Comida simple. Quita el hambre.",
    "en": "Simple food. Satisfies hunger."
-  }
+  },
+  "price": 10
  },
  "pdri:pasty": {
   "name": {
@@ -37,7 +38,8 @@
   "desc": {
    "es": "Un pastel enorme. Quita el hambre por mucho tiempo.",
    "en": "A huge pasty. Satisfies hunger for a long time."
-  }
+  },
+  "price": 20
  },
  "pdri:mystery_meat": {
   "name": {
@@ -52,7 +54,8 @@
   "desc": {
    "es": "Carne de origen dudoso. Comela bajo tu propio riesgo.",
    "en": "Meat of dubious origin. Eat at your own risk."
-  }
+  },
+  "price": 5
  },
  "pdri:potion_healing": {
   "name": {
@@ -66,7 +69,8 @@
   "desc": {
    "es": "Cura todas tus heridas.",
    "en": "Heals all your wounds."
-  }
+  },
+  "price": 30
  },
  "pdri:potion_experience": {
   "name": {
@@ -80,7 +84,8 @@
   "desc": {
    "es": "Te hace subir un nivel.",
    "en": "Raises you one level."
-  }
+  },
+  "price": 80
  },
  "pdri:potion_strength": {
   "name": {
@@ -94,7 +99,8 @@
   "desc": {
    "es": "Aumenta tu Fuerza (FUE) en 1.",
    "en": "Raises your Strength (STR) by 1."
-  }
+  },
+  "price": 100
  },
  "pdri:scroll_identify": {
   "name": {
@@ -109,7 +115,8 @@
   "desc": {
    "es": "Revela todo sobre un objeto.",
    "en": "Reveals everything about an item."
-  }
+  },
+  "price": 30
  },
  "pdri:scroll_teleportation": {
   "name": {
@@ -123,7 +130,8 @@
   "desc": {
    "es": "Te lleva a otro lugar del piso.",
    "en": "Takes you somewhere else on this floor."
-  }
+  },
+  "price": 40
  },
  "pdri:scroll_remove_curse": {
   "name": {
@@ -137,7 +145,8 @@
   "desc": {
    "es": "Quita las maldiciones de tu equipo.",
    "en": "Removes the curses from your equipment."
-  }
+  },
+  "price": 30
  },
  "pdri:scroll_magic_mapping": {
   "name": {
@@ -151,7 +160,8 @@
   "desc": {
    "es": "Revela el mapa del piso y sus secretos.",
    "en": "Reveals the map of the floor and its secrets."
-  }
+  },
+  "price": 40
  },
  "pdri:scroll_upgrade": {
   "name": {
@@ -166,7 +176,8 @@
   "desc": {
    "es": "Mejora un arma o armadura en +1.",
    "en": "Upgrades a weapon or armor by +1."
-  }
+  },
+  "price": 100
  },
  "pdri:dagger": {
   "name": {
@@ -181,7 +192,8 @@
   "kind": "simple",
   "finesse": true,
   "STR": 12,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 20
  },
  "pdri:knuckles": {
   "name": {
@@ -196,7 +208,8 @@
   "kind": "simple",
   "finesse": false,
   "STR": 12,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 20
  },
  "pdri:short_sword": {
   "name": {
@@ -211,7 +224,8 @@
   "kind": "martial",
   "finesse": true,
   "STR": 12,
-  "gen_weight": 0
+  "gen_weight": 0,
+  "price": 30
  },
  "pdri:quarterstaff": {
   "name": {
@@ -226,7 +240,8 @@
   "kind": "simple",
   "finesse": false,
   "STR": 14,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 40
  },
  "pdri:spear": {
   "name": {
@@ -241,7 +256,8 @@
   "kind": "simple",
   "finesse": false,
   "STR": 14,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 40
  },
  "pdri:mace": {
   "name": {
@@ -256,7 +272,8 @@
   "kind": "simple",
   "finesse": false,
   "STR": 16,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 60
  },
  "pdri:sword": {
   "name": {
@@ -271,7 +288,8 @@
   "kind": "martial",
   "finesse": false,
   "STR": 16,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 60
  },
  "pdri:longsword": {
   "name": {
@@ -286,7 +304,8 @@
   "kind": "martial",
   "finesse": false,
   "STR": 18,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 100
  },
  "pdri:battle_axe": {
   "name": {
@@ -301,7 +320,8 @@
   "kind": "martial",
   "finesse": false,
   "STR": 18,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 100
  },
  "pdri:war_hammer": {
   "name": {
@@ -316,7 +336,8 @@
   "kind": "martial",
   "finesse": false,
   "STR": 20,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 160
  },
  "pdri:glaive": {
   "name": {
@@ -331,7 +352,8 @@
   "kind": "martial",
   "finesse": false,
   "STR": 20,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 160
  },
  "pdri:shortbow": {
   "name": {
@@ -355,7 +377,8 @@
   "desc": {
    "es": "Dispara flechas.",
    "en": "Shoots arrows."
-  }
+  },
+  "price": 40
  },
  "pdri:dart": {
   "name": {
@@ -380,7 +403,8 @@
    15
   ],
   "gen_weight": 0,
-  "spin": 0
+  "spin": 0,
+  "price": 2
  },
  "pdri:incendiary_dart": {
   "name": {
@@ -415,7 +439,8 @@
   "desc": {
    "es": "Prende fuego a quien alcanza.",
    "en": "Sets its target on fire."
-  }
+  },
+  "price": 10
  },
  "pdri:curare_dart": {
   "name": {
@@ -450,7 +475,8 @@
   "desc": {
    "es": "Paraliza un momento a quien alcanza (CON CD 11 cada turno).",
    "en": "Briefly paralyses its target (CON DC 11 each turn)."
-  }
+  },
+  "price": 12
  },
  "pdri:javelin": {
   "name": {
@@ -485,7 +511,8 @@
   "desc": {
    "es": "Deja lisiado a quien alcanza.",
    "en": "Cripples its target."
-  }
+  },
+  "price": 15
  },
  "pdri:shuriken": {
   "name": {
@@ -510,7 +537,8 @@
    15
   ],
   "gen_weight": 1,
-  "spin": 1440
+  "spin": 1440,
+  "price": 10
  },
  "pdri:tomahawk": {
   "name": {
@@ -545,7 +573,8 @@
   "desc": {
    "es": "Hace sangrar a quien alcanza.",
    "en": "Makes its target bleed."
-  }
+  },
+  "price": 20
  },
  "pdri:boomerang": {
   "name": {
@@ -569,7 +598,8 @@
   "gen_weight": 0,
   "spin": 1440,
   "returns": true,
-  "upgradable": true
+  "upgradable": true,
+  "price": 40
  },
  "pdri:arrow": {
   "name": {
@@ -587,7 +617,8 @@
   "desc": {
    "es": "Munición para el arco. Acertada se pierde; fallada cae al suelo.",
    "en": "Ammunition for a bow. Lost on a hit; drops to the floor on a miss."
-  }
+  },
+  "price": 1
  },
  "pdri:cloth_armor": {
   "name": {
@@ -601,7 +632,8 @@
   "dex_max": null,
   "kind": "clothing",
   "STR": 0,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 10
  },
  "pdri:leather_armor": {
   "name": {
@@ -615,7 +647,8 @@
   "dex_max": null,
   "kind": "light",
   "STR": 12,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 30
  },
  "pdri:mail_armor": {
   "name": {
@@ -629,7 +662,8 @@
   "dex_max": 2,
   "kind": "medium",
   "STR": 14,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 60
  },
  "pdri:scale_armor": {
   "name": {
@@ -643,7 +677,8 @@
   "dex_max": 2,
   "kind": "medium",
   "STR": 16,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 100
  },
  "pdri:plate_armor": {
   "name": {
@@ -657,7 +692,8 @@
   "dex_max": 0,
   "kind": "heavy",
   "STR": 18,
-  "gen_weight": 1
+  "gen_weight": 1,
+  "price": 160
  },
  "pdri:corpse_dust": {
   "name": {
@@ -671,6 +707,7 @@
   "desc": {
    "es": "Polvo gris de unos huesos viejos. A un fabricante de varitas le interesa mucho.",
    "en": "Grey dust from old bones. A wandmaker is very interested in it."
-  }
+  },
+  "price": 0
  }
 }

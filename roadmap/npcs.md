@@ -77,6 +77,16 @@ Estado: plan confirmado por el dueño (2026-11-05, ver "Decisiones del dueño").
   cada una, ver el progreso en la ficha (las ratas cuentan desde que se acepta), abrir los restos y recoger el polvo,
   entregar; guardar y volver a entrar a mitad; en la LAN, que la misión sea del grupo.
 
+- **N4** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: inventario y equipo de los NPC como datos (fijo y al
+  azar del generador), con el que pelean y que sueltan al morir; precios en `items.json`; tienda desde el inventario
+  (comprar de a una unidad, vender de a una; lo vendido queda en su inventario; la actitud mueve los precios); `give` y
+  `take` usan su inventario. El Mercader vende raciones, pociones de curación, pergaminos de identificar, dardos,
+  armadura de cuero y algo al azar (2 pociones, 2 pergaminos, 1 arma); pelea con espada corta y armadura de cuero. El
+  Fabricante de varitas lleva un bastón. Para probar: "Veamos qué tienes" abre la tienda, comprar con y sin oro, vender
+  algo y volver a comprarlo, regatear bien (más barato) o intimidarlo (más caro), la mochila llena, matarlo y ver que
+  suelta su mercancía, y en la LAN que cada uno compre de la misma tienda. Pendiente: el mercader ambulante (que
+  deambula, aparece en cualquier piso y repone su inventario).
+
 ## Pasos (cada uno se prueba a mano)
 1. **N1 motor**: NPC pasivo, Hablar, diálogos como datos con condiciones y efectos, flags, ventana de diálogo, red.
 2. **N2 social**: pericias y tiradas, disposición, atacar a un NPC.

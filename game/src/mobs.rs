@@ -6,7 +6,8 @@ use serde_json::{Map, Value};
 use crate::actor::{ActorId, TICK};
 use crate::char::{adjacent, distance, Char};
 use crate::dungeon::{Dungeon, Fx, Tone};
-use crate::items::{make_gold, HeapKind, GOLD};
+use crate::dice;
+use crate::items::{armor_ac, make_gold, weapon_dice, HeapKind, Item, GOLD};
 use crate::fov::{self, MAX_DISTANCE};
 use crate::geom::WIDTH;
 use crate::registry::text;
@@ -71,6 +72,10 @@ pub struct Mob {
     /// Actitud de un NPC hacia los héroes (5e): -2 hostil, -1 desconfiado, 0 indiferente, 1 amistoso, 2 muy amistoso.
     /// Cambia la CD de las tiradas sociales (`npcs.rs`). Inicial: `disposition` en data/mobs.json.
     pub disposition: i32,
+    /// Lo que lleva (NPCs, `npcs.rs`): su mochila (la tienda vende de acá) y su equipo, con el que pelea.
+    pub pack: Vec<Item>,
+    pub weapon: Option<Item>,
+    pub armor: Option<Item>,
 }
 
 impl Mob {
@@ -82,11 +87,15 @@ impl Mob {
         ch.base_speed_ft = stats.get("speed_ft").and_then(Value::as_i64).unwrap_or(30) as i32;
         ch.flying = stats.get("flying").and_then(Value::as_bool).unwrap_or(false);
         let disposition = stats.get("disposition").and_then(Value::as_i64).unwrap_or(0).clamp(-2, 2) as i32;
-        Self { id, ch, key: key.to_string(), stats, state, target: -1, enemy: None, enemy_seen: false, alerted: false, fov: Vec::new(), disposition }
+        Self { id, ch, key: key.to_string(), stats, state, target: -1, enemy: None, enemy_seen: false, alerted: false, fov: Vec::new(), disposition, pack: Vec::new(), weapon: None, armor: None }
     }
 
+    /// Con armadura (un NPC), la de la armadura con su DES (`initiative`); si no, la de sus datos.
     pub fn armor_class(&self) -> i32 {
-        mob_ac(&self.stats)
+        match &self.armor {
+            Some(a) => armor_ac(Some(a), self.initiative_bonus()),
+            None => mob_ac(&self.stats),
+        }
     }
 
     pub fn attack_bonus(&self) -> i32 {
@@ -110,6 +119,13 @@ impl Mob {
     /// El daño conserva el rango del original (NormalIntRange); con crítico se tira dos veces.
     /// (daño, texto para el log, rango del original).
     pub fn roll_damage(&self, rng: &mut Rng, crit: bool) -> (i32, String, (i32, i32)) {
+        // con arma (un NPC): los dados del arma
+        if let Some(w) = &self.weapon {
+            let notation = weapon_dice(w);
+            let (total, text, _, _) = dice::roll(rng, &notation, crit);
+            let (n, sides, b) = dice::parse(&notation).unwrap_or((1, 4, 0));
+            return (total, text, (n + b, n * sides + b));
+        }
         let d = &self.stats["damage"];
         let (lo, hi) = (d[0].as_i64().unwrap_or(1) as i32, d[1].as_i64().unwrap_or(1) as i32);
         let rolls: Vec<i32> = (0..if crit { 2 } else { 1 }).map(|_| rng.normal_int_range(lo, hi)).collect();
@@ -278,6 +294,11 @@ impl Dungeon {
                 share += 1;
             }
             self.earn_exp(h, share);
+        }
+        // lo que llevaba (un NPC): mochila y equipo, al suelo
+        let pos = m.ch.pos;
+        for it in m.pack.iter().chain(&m.weapon).chain(&m.armor).cloned().collect::<Vec<_>>() {
+            self.floor_mut().level.drop(it, pos, HeapKind::Heap);
         }
         // Mob.dropLoot: sólo si los héroes no los superan por mucho (cuenta el de menor nivel)
         if let Some(loot) = m.stats.get("loot") {

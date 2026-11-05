@@ -1,4 +1,4 @@
-//! NPCs (`roadmap/npcs.md`, pasos N1 a N3): mobs con diálogo (`"npc"` en data/mobs.json) que no cazan (`State::Passive`).
+//! NPCs (`roadmap/npcs.md`, pasos N1 a N4): mobs con diálogo (`"npc"` en data/mobs.json) que no cazan (`State::Passive`).
 //! Hablar abre su diálogo (data/dialogs.json): nodos con texto y opciones; cada opción con condiciones (`if`),
 //! efectos (`do`) y el nodo siguiente (`go`; sin él, la charla termina). Los flags son de la partida (en la LAN, del
 //! grupo). Una condición o un efecto desconocido (de un mod más nuevo) no se cumple / no hace nada.
@@ -9,6 +9,10 @@
 //! flag `quest:<id>` (0 sin empezar, 1 en curso, 2 hecha): de la partida, compartido en la LAN. Las muertes se cuentan
 //! en `kills:<mob>` (desde que se acepta: `qbase:<misión>:<mob>`). Los diálogos las aceptan, las revisan ("ready") y
 //! las entregan con sus efectos; la recompensa es lo que dé el diálogo.
+//! N4: inventario y equipo (`inventory` [[ítem, n]], `stock` [[categoría, n]] del generador, `weapon`, `armor` del mob):
+//! pelea con su equipo y lo suelta al morir. La tienda (efecto `shop`) vende de su inventario y lo que se le vende pasa
+//! a él; precio = `price` del ítem, -10 % por punto de actitud (vender = la mitad). `give` saca de su inventario si lo
+//! tiene y `take` lo guarda ahí.
 use serde_json::Value;
 
 use crate::actor::ActorId;
@@ -32,6 +36,14 @@ pub struct DialogView {
     pub options: Vec<(usize, String)>,
 }
 
+/// La tienda abierta, para la UI: el NPC, lo que vende (ítem y precio) y cuánto paga por cada ítem de la mochila.
+pub struct ShopView {
+    pub npc: ActorId,
+    pub name: String,
+    pub stock: Vec<(Item, i32)>,
+    pub sell: Vec<i32>,
+}
+
 /// Actitud por disposición, de -2 a 2.
 const ATTITUDES: [&str; 5] = ["hostil", "desconfiado", "indiferente", "amistoso", "muy amistoso"];
 
@@ -51,10 +63,141 @@ impl Dungeon {
                 let c = l.random_destination(&mut rng);
                 if c != l.entrance && c != l.exit && self.find_char(c).is_none() {
                     self.add_mob(key, c, State::Passive);
+                    let id = self.next_mob - 1;
+                    self.equip_npc(id, &mut rng);
                     break;
                 }
             }
         }
+    }
+
+    /// Inventario y equipo iniciales del NPC (`inventory`, `stock`, `weapon` y `armor` de su mob), con el rng del piso
+    /// para NPCs (no el del nivel).
+    fn equip_npc(&mut self, id: u32, rng: &mut Rng) {
+        let Some(stats) = self.mob(id).map(|m| m.stats.clone()) else { return };
+        let mut pack = Vec::new();
+        for e in stats["inventory"].as_array().into_iter().flatten() {
+            let Some(mut it) = e[0].as_str().and_then(|k| Item::new(&self.items, k)) else { continue };
+            let n = e[1].as_i64().unwrap_or(1).clamp(1, 999) as i32;
+            if it.stackable() {
+                it.quantity = n;
+                pack.push(it);
+            } else {
+                pack.extend(std::iter::repeat_n(it, n as usize));
+            }
+        }
+        let (depth, cur_str) = (self.depth, self.local().score("STR"));
+        for e in stats["stock"].as_array().into_iter().flatten() {
+            let cat = e[0].as_str().unwrap_or("");
+            for _ in 0..e[1].as_i64().unwrap_or(1).clamp(0, 20) {
+                let mut it = self.generator.random_of(cat, &self.items, rng, depth, cur_str);
+                it.cursed = false; // la tienda no vende cosas malditas
+                pack.push(it);
+            }
+        }
+        let eq = |k: &str| stats[k].as_str().and_then(|s| Item::new(&self.items, s));
+        let (weapon, armor) = (eq("weapon"), eq("armor"));
+        if let Some(m) = self.mob_mut(id) {
+            (m.pack, m.weapon, m.armor) = (pack, weapon, armor);
+        }
+    }
+
+    /// Guarda un ítem en la mochila del NPC (apila si se puede).
+    fn npc_store(&mut self, id: u32, item: Item) {
+        let Some(m) = self.mob_mut(id) else { return };
+        let same = |b: &&mut Item| b.id == item.id && b.level == item.level && b.cursed == item.cursed;
+        match m.pack.iter_mut().find(same).filter(|_| item.stackable()) {
+            Some(b) => b.quantity += item.quantity,
+            None => m.pack.push(item),
+        }
+    }
+
+    /// Saca una unidad de ese ítem de la mochila del NPC (None si no tiene).
+    fn npc_take_one(&mut self, id: u32, item_id: &str) -> Option<Item> {
+        let m = self.mob_mut(id)?;
+        let k = m.pack.iter().position(|b| b.id == item_id)?;
+        Some(if m.pack[k].quantity > 1 { m.pack[k].split(1) } else { m.pack.remove(k) })
+    }
+
+    /// Precio de compra de una unidad: `price` del ítem, -10 % por punto de actitud (+10 % si desconfía).
+    /// ponytail: sin contar el nivel del ítem ni si está identificado
+    pub fn buy_price(&self, id: u32, item: &Item) -> i32 {
+        let base = item.int("price").max(0);
+        let disp = self.mob(id).map_or(0, |m| m.disposition);
+        if base == 0 { 0 } else { (base * (10 - disp) / 10).max(1) }
+    }
+
+    /// Lo que paga por una unidad: la mitad del precio, +10 % por punto de actitud. 0 = no le interesa.
+    pub fn sell_price(&self, id: u32, item: &Item) -> i32 {
+        let base = item.int("price").max(0) / 2;
+        let disp = self.mob(id).map_or(0, |m| m.disposition);
+        if base == 0 { 0 } else { (base * (10 + disp) / 10).max(1) }
+    }
+
+    /// El NPC de la tienda abierta del héroe i (si sigue tranquilo).
+    fn trader(&self, i: usize) -> Option<u32> {
+        self.heroes[i].trading.filter(|&id| self.passive(ActorId::Mob(id)))
+    }
+
+    pub fn shop(&self, i: usize) -> Option<ShopView> {
+        let id = self.trader(i)?;
+        let m = self.mob(id)?;
+        Some(ShopView {
+            npc: ActorId::Mob(id),
+            name: m.ch.name.clone(),
+            stock: m.pack.iter().map(|it| (it.clone(), self.buy_price(id, it))).collect(),
+            sell: self.heroes[i].backpack.iter().map(|it| self.sell_price(id, it)).collect(),
+        })
+    }
+
+    /// Compra una unidad del ítem k del NPC.
+    pub(crate) fn buy(&mut self, i: usize, k: usize) {
+        let Some(id) = self.trader(i) else {
+            self.heroes[i].trading = None;
+            return;
+        };
+        let Some(item) = self.mob(id).and_then(|m| m.pack.get(k)).cloned() else { return };
+        let price = self.buy_price(id, &item);
+        if price == 0 {
+            self.tell(i, "Eso no está a la venta");
+            return;
+        }
+        if self.heroes[i].gold < price {
+            self.tell(i, "No te alcanza el oro");
+            return;
+        }
+        let Some(one) = self.npc_take_one(id, &item.id) else { return };
+        let name = self.item_name(&one);
+        match self.collect(i, one) {
+            Ok(()) => {
+                self.heroes[i].gold -= price;
+                self.tell(i, &format!("Compras {name} por {price} de oro"));
+            }
+            Err(back) => {
+                self.npc_store(id, back);
+                self.tell(i, "No te queda lugar en la mochila");
+            }
+        }
+    }
+
+    /// Vende una unidad del ítem k de la mochila (lo equipado no se vende).
+    pub(crate) fn sell(&mut self, i: usize, k: usize) {
+        let Some(id) = self.trader(i) else {
+            self.heroes[i].trading = None;
+            return;
+        };
+        let Some(item) = self.heroes[i].backpack.get(k) else { return };
+        let price = self.sell_price(id, item);
+        if price == 0 {
+            self.tell(i, "No le interesa");
+            return;
+        }
+        let bp = &mut self.heroes[i].backpack;
+        let one = if bp[k].quantity > 1 { bp[k].split(1) } else { bp.remove(k) };
+        let name = self.item_name(&one);
+        self.heroes[i].gold += price;
+        self.npc_store(id, one);
+        self.tell(i, &format!("Vendes {name} por {price} de oro"));
     }
 
     /// ¿Es un NPC tranquilo (se le habla, no pelea)?
@@ -214,24 +357,20 @@ impl Dungeon {
 
     /// Efectos: ["give", ítem, n], ["take", ítem, n], ["gold", ±n], ["flag", clave, valor], ["add", clave, ±n],
     /// ["log", texto] (sólo para el que habla), ["map"] (el mapa del piso), ["disposition", ±n] (su actitud),
-    /// ["quest", misión, "start" | "done"], ["place", ítem] (lo deja en unos restos de esqueleto del piso; si no hay,
+    /// ["shop"] (abre su tienda), ["quest", misión, "start" | "done"], ["place", ítem] (lo deja en unos restos de esqueleto del piso; si no hay,
     /// en unos nuevos), ["attack"] (lo vuelve hostil), ["end"].
     fn apply(&mut self, i: usize, id: u32, e: &Value) {
         let n = |k: usize| e[k].as_i64().unwrap_or(0);
         let key = e[1].as_str().unwrap_or("").to_string();
         match e[0].as_str().unwrap_or("") {
             "give" => {
-                let Some(mut item) = Item::new(&self.items, &key) else { return };
+                // de su inventario si lo tiene; si no, uno nuevo
+                let Some(model) = Item::new(&self.items, &key) else { return };
                 let count = n(2).clamp(1, 999) as i32;
-                let reps = if item.stackable() {
-                    item.quantity = count;
-                    1
-                } else {
-                    count
-                };
-                let name = self.item_name(&item);
-                for _ in 0..reps {
-                    if let Err(it) = self.collect(i, item.clone()) {
+                let name = self.item_name(&model);
+                for _ in 0..count {
+                    let one = self.npc_take_one(id, &key).unwrap_or_else(|| model.clone());
+                    if let Err(it) = self.collect(i, one) {
                         let pos = self.heroes[i].ch.pos;
                         self.floor_mut().level.drop(it, pos, HeapKind::Heap); // mochila llena: al suelo
                     }
@@ -239,14 +378,21 @@ impl Dungeon {
                 self.tell(i, &format!("Recibes {name}"));
             }
             "take" => {
+                // pasa a su inventario
                 let mut left = n(2).clamp(1, 999) as i32;
+                let mut taken = Vec::new();
                 let h = &mut self.heroes[i];
                 for b in h.backpack.iter_mut().filter(|b| b.id == key) {
                     let t = left.min(b.quantity);
-                    b.quantity -= t;
+                    if t > 0 {
+                        taken.push(b.split(t));
+                    }
                     left -= t;
                 }
                 h.backpack.retain(|b| b.quantity > 0);
+                for it in taken {
+                    self.npc_store(id, it);
+                }
             }
             "gold" => {
                 let h = &mut self.heroes[i];
@@ -290,6 +436,10 @@ impl Dungeon {
                 self.heroes[i].action = Some(Action::Attack(ActorId::Mob(id)));
             }
             "end" => self.heroes[i].talking = None,
+            "shop" => {
+                self.heroes[i].talking = None;
+                self.heroes[i].trading = Some(id);
+            }
             "quest" => {
                 let qname = self.quests.get(&key).map_or_else(|| key.clone(), |q| text(&q["name"]));
                 match e[2].as_str() {

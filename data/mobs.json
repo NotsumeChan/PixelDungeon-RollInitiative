@@ -440,6 +440,192 @@
   "exp": 5,
   "max_lvl": 10
  },
-  "pdri:wandmaker": {"name": {"es": "viejo fabricante de varitas", "en": "old wandmaker"}, "desc": {"es": "Un anciano robusto con cara de despistado. Sabe más de magia de lo que aparenta.", "en": "This old but hale gentleman wears a slightly confused expression. He knows more magic than he lets on."}, "sprite": "wandmaker.png", "frame": [12, 14], "anims": {"idle": [10, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 3, 3, 3, 3, 3, 2, 1], true], "run": [20, [0], true], "attack": [20, [0], false], "die": [20, [0], false]}, "HT": 20, "defense": 10, "damage": [2, 6], "attack": 10, "dr": 0, "exp": 0, "max_lvl": 0, "npc": "pdri:wandmaker"},
-  "pdri:shopkeeper": {"name": {"es": "mercader", "en": "shopkeeper"}, "desc": {"es": "Un mercader que no le teme a las alcantarillas mientras haya clientes.", "en": "A merchant who doesn't fear the sewers as long as there are customers."}, "sprite": "shopkeeper.png", "frame": [14, 14], "anims": {"idle": [10, [1, 1, 1, 1, 1, 0, 0, 0, 0], true], "run": [10, [1], true], "attack": [10, [1], false], "die": [20, [0], false]}, "HT": 30, "defense": 8, "damage": [2, 8], "attack": 12, "dr": 1, "exp": 0, "max_lvl": 0, "npc": "pdri:shopkeeper"}
+ "pdri:wandmaker": {
+  "name": {
+   "es": "viejo fabricante de varitas",
+   "en": "old wandmaker"
+  },
+  "desc": {
+   "es": "Un anciano robusto con cara de despistado. Sabe más de magia de lo que aparenta.",
+   "en": "This old but hale gentleman wears a slightly confused expression. He knows more magic than he lets on."
+  },
+  "sprite": "wandmaker.png",
+  "frame": [
+   12,
+   14
+  ],
+  "anims": {
+   "idle": [
+    10,
+    [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     2,
+     3,
+     3,
+     3,
+     3,
+     3,
+     3,
+     2,
+     1
+    ],
+    true
+   ],
+   "run": [
+    20,
+    [
+     0
+    ],
+    true
+   ],
+   "attack": [
+    20,
+    [
+     0
+    ],
+    false
+   ],
+   "die": [
+    20,
+    [
+     0
+    ],
+    false
+   ]
+  },
+  "HT": 20,
+  "defense": 10,
+  "damage": [
+   2,
+   6
+  ],
+  "attack": 10,
+  "dr": 0,
+  "exp": 0,
+  "max_lvl": 0,
+  "npc": "pdri:wandmaker",
+  "weapon": "pdri:quarterstaff",
+  "inventory": [
+   [
+    "pdri:potion_healing",
+    1
+   ]
+  ]
+ },
+ "pdri:shopkeeper": {
+  "name": {
+   "es": "mercader",
+   "en": "shopkeeper"
+  },
+  "desc": {
+   "es": "Un mercader que no le teme a las alcantarillas mientras haya clientes.",
+   "en": "A merchant who doesn't fear the sewers as long as there are customers."
+  },
+  "sprite": "shopkeeper.png",
+  "frame": [
+   14,
+   14
+  ],
+  "anims": {
+   "idle": [
+    10,
+    [
+     1,
+     1,
+     1,
+     1,
+     1,
+     0,
+     0,
+     0,
+     0
+    ],
+    true
+   ],
+   "run": [
+    10,
+    [
+     1
+    ],
+    true
+   ],
+   "attack": [
+    10,
+    [
+     1
+    ],
+    false
+   ],
+   "die": [
+    20,
+    [
+     0
+    ],
+    false
+   ]
+  },
+  "HT": 30,
+  "defense": 8,
+  "damage": [
+   2,
+   8
+  ],
+  "attack": 12,
+  "dr": 1,
+  "exp": 0,
+  "max_lvl": 0,
+  "npc": "pdri:shopkeeper",
+  "weapon": "pdri:short_sword",
+  "armor": "pdri:leather_armor",
+  "inventory": [
+   [
+    "pdri:ration",
+    3
+   ],
+   [
+    "pdri:potion_healing",
+    2
+   ],
+   [
+    "pdri:scroll_identify",
+    2
+   ],
+   [
+    "pdri:dart",
+    15
+   ],
+   [
+    "pdri:leather_armor",
+    1
+   ]
+  ],
+  "stock": [
+   [
+    "potion",
+    2
+   ],
+   [
+    "scroll",
+    2
+   ],
+   [
+    "weapon",
+    1
+   ]
+  ]
+ }
 }

@@ -296,6 +296,8 @@ pub fn action_v(a: Action) -> Value {
         Action::Talk(id) => json!(["talk", id]),
         Action::Choose(k) => json!(["choose", k]),
         Action::Bye => json!(["bye"]),
+        Action::Buy(k) => json!(["buy", k]),
+        Action::Sell(k) => json!(["sell", k]),
     }
 }
 
@@ -322,6 +324,8 @@ pub fn action_of(v: &Value) -> Option<Action> {
         "talk" => Action::Talk(u32::try_from(v[1].as_u64()?).ok()?),
         "choose" => Action::Choose(idx(1)?),
         "bye" => Action::Bye,
+        "buy" => Action::Buy(idx(1)?),
+        "sell" => Action::Sell(idx(1)?),
         _ => return None,
     })
 }
@@ -385,6 +389,8 @@ fn valid(d: &Dungeon, i: usize, a: Action) -> bool {
             Action::Cast(k, _) => k < h.spell_ids().len(),
             Action::Talk(id) => d.passive(ActorId::Mob(id)),
             Action::Choose(_) => h.talking.is_some(),
+            Action::Buy(_) => h.trading.is_some(),
+            Action::Sell(k) => h.trading.is_some() && k < h.backpack.len(),
             _ => true,
         }
 }
@@ -678,6 +684,8 @@ mod tests {
             Action::Talk(4),
             Action::Choose(2),
             Action::Bye,
+            Action::Buy(3),
+            Action::Sell(0),
         ];
         for a in all {
             assert_eq!(action_of(&action_v(a)), Some(a), "{a:?}");

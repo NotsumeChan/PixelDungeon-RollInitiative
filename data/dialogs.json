@@ -478,27 +478,14 @@
     "options": [
      {
       "text": {
-       "es": "Una ración, por favor (10 de oro).",
-       "en": "A ration, please (10 gold)."
+       "es": "Veamos qué tienes.",
+       "en": "Let's see what you've got."
       },
-      "if": [
-       [
-        "gold",
-        10
-       ]
-      ],
       "do": [
        [
-        "gold",
-        -10
-       ],
-       [
-        "give",
-        "pdri:ration",
-        1
+        "shop"
        ]
-      ],
-      "go": "thanks"
+      ]
      },
      {
       "text": {

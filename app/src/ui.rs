@@ -6,7 +6,7 @@
 use game::actor::ActorId;
 use game::dice::{self, ABILITIES, ABILITY_NAMES};
 use game::dungeon::Dungeon;
-use game::npcs::DialogView;
+use game::npcs::{DialogView, ShopView};
 use game::geom::LENGTH;
 use game::hero::{Action, Slot, Verb, BACKPACK_SIZE, HUNGRY};
 use game::items::{weapon_dice, Image, Item, SLOT_ARMOR, SLOT_RING, SLOT_WEAPON};
@@ -197,6 +197,8 @@ pub enum UiAction {
     Trait,
     /// Chat de la partida LAN: abrir (`Cr::New`), escribir, borrar, mandar (`Cr::Done`), cancelar (`Cr::Unfocus`).
     Chat(Cr),
+    /// Tienda: elegir un ítem (true = del NPC, false = de la mochila).
+    ShopSel(bool, usize),
     SetUiScale(f32),
 }
 
@@ -281,6 +283,8 @@ pub struct Ui {
     /// En una partida LAN (muestra el botón del chat) y el mensaje que se está escribiendo.
     pub lan: bool,
     pub chat: Option<String>,
+    /// Tienda: el ítem elegido (true = del NPC, índice).
+    pub shop_sel: Option<(bool, usize)>,
     hot: Vec<Hot>,
     car_cur: Option<ActorId>,
     car_off: f32,
@@ -289,7 +293,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// Escribe en el mensaje del chat (si se está escribiendo uno).
@@ -362,6 +366,10 @@ impl Ui {
         // diálogo con un NPC: tapa todo lo demás hasta que se cierre (Esc o Adiós)
         if let Some(dv) = d.dialog(d.hero) {
             self.draw_dialog(atlas, font, chars, d, out, w, h, &dv);
+            return;
+        }
+        if let Some(sv) = d.shop(d.hero) {
+            self.draw_shop(atlas, font, d, out, w, h, &sv);
             return;
         }
         match self.window.clone() {
@@ -732,6 +740,79 @@ impl Ui {
             g
         });
         Self::draw_slot(atlas, font, d, out, cell(cols - 1, 0), gold.as_ref(), Some(14), true);
+    }
+
+    /// Tienda de un NPC: lo que vende y tu mochila (ranuras de 24); tocar un ítem lo elige y abajo aparecen su precio y
+    /// COMPRAR / VENDER. CERRAR (o Esc / Atrás) la cierra.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_shop(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32, sv: &ShopView) {
+        const S: f32 = 24.0;
+        let me = d.local();
+        let step = S + SLOT_MARGIN;
+        let cols = (((w - 16.0 + SLOT_MARGIN) / step).floor() as usize).max(4);
+        let (r_stock, r_pack) = (sv.stock.len().max(1).div_ceil(cols), BACKPACK_SIZE.div_ceil(cols));
+        let cw = S * cols as f32 + SLOT_MARGIN * (cols - 1) as f32;
+        let foot = 2.0 * LINE_H + 20.0;
+        let ch = 2.0 * BAG_TITLE_H + (r_stock + r_pack) as f32 * step + BAG_GAP + foot;
+        let c = [((w - cw) / 2.0).floor(), ((h - ch) / 2.0).floor().max(2.0), cw, ch];
+        self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
+        Self::draw_window_tinted(atlas, out, c, BAG_TINT);
+        font.text(out, &format!("{} - tu oro: {}", capitalize(&sv.name), me.gold), c[0], c[1] + 2.0, YELLOW);
+        // lo elegido puede haberse vendido o comprado
+        let sel = self.shop_sel.filter(|&(npc, k)| if npc { k < sv.stock.len() } else { k < me.backpack.len() });
+        let mark = |out: &mut Vec<Sprite>, r: [f32; 4]| {
+            for (p, s) in [([r[0], r[1]], [r[2], 1.0]), ([r[0], r[1] + r[3] - 1.0], [r[2], 1.0]), ([r[0], r[1]], [1.0, r[3]]), ([r[0] + r[2] - 1.0, r[1]], [1.0, r[3]])] {
+                out.push(atlas.rect(p, s, YELLOW));
+            }
+        };
+        let mut y = c[1] + BAG_TITLE_H;
+        if sv.stock.is_empty() {
+            font.text(out, "No le queda nada", c[0], y + 6.0, GREY);
+        }
+        for (k, (item, _)) in sv.stock.iter().enumerate() {
+            let r = [c[0] + (k % cols) as f32 * step, y + (k / cols) as f32 * step, S, S];
+            Self::draw_slot(atlas, font, d, out, r, Some(item), None, true);
+            if sel == Some((true, k)) {
+                mark(out, r);
+            }
+            self.hot(r, UiAction::ShopSel(true, k), Some(&d.item_name(item)));
+        }
+        y += r_stock as f32 * step + BAG_GAP;
+        font.text(out, "Tu mochila", c[0], y, GREY);
+        y += BAG_TITLE_H;
+        for k in 0..BACKPACK_SIZE {
+            let r = [c[0] + (k % cols) as f32 * step, y + (k / cols) as f32 * step, S, S];
+            let item = me.backpack.get(k);
+            Self::draw_slot(atlas, font, d, out, r, item, None, item.is_some());
+            if sel == Some((false, k)) {
+                mark(out, r);
+            }
+            if let Some(it) = item {
+                self.hot(r, UiAction::ShopSel(false, k), Some(&d.item_name(it)));
+            }
+        }
+        y += r_pack as f32 * step;
+        let (line, act) = match sel {
+            Some((true, k)) => {
+                let (it, p) = &sv.stock[k];
+                (format!("{}: {p} de oro", d.item_name(it)), Some((format!("COMPRAR ({p})"), (*p > 0 && me.gold >= *p).then_some(UiAction::Act(Action::Buy(k))))))
+            }
+            Some((false, k)) => {
+                let p = sv.sell.get(k).copied().unwrap_or(0);
+                let what = if p > 0 { format!("te paga {p} de oro") } else { "no le interesa".to_string() };
+                (format!("{}: {what}", d.item_name(&me.backpack[k])), Some((format!("VENDER ({p})"), (p > 0).then_some(UiAction::Act(Action::Sell(k))))))
+            }
+            None => ("Toca un objeto para comprarlo o venderlo".to_string(), None),
+        };
+        for (j, l) in wrap(font, &line, cw).iter().take(2).enumerate() {
+            font.text(out, l, c[0], y + j as f32 * LINE_H, WHITE);
+        }
+        let by = y + 2.0 * LINE_H + 1.0;
+        let bw = ((cw - 2.0) / 2.0).floor();
+        if let Some((label, a)) = act {
+            self.draw_button(atlas, font, out, [c[0], by, bw, 18.0], &label, a);
+        }
+        self.draw_button(atlas, font, out, [c[0] + bw + 2.0, by, bw, 18.0], "CERRAR", Some(UiAction::Act(Action::Bye)));
     }
 
     /// WndItem: ícono, nombre, descripción con los números de 5e y un botón por acción.

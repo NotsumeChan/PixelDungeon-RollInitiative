@@ -104,7 +104,7 @@ fn hero_v(h: &Hero) -> Value {
            "backpack": h.backpack.iter().map(item_v).collect::<Vec<_>>(), "quick": h.quickslots,
            "second_wind": h.second_wind, "slots": h.slots, "free_casts": h.free_casts,
            "marked": h.marked.map(actor_v), "dead": h.dead, "saves": h.saves, "stable": h.stable,
-           "talking": h.talking.as_ref().map(|(m, n)| json!([m, n])), "skin": h.skin,
+           "talking": h.talking.as_ref().map(|(m, n)| json!([m, n])), "skin": h.skin, "trading": h.trading,
            "char": char_v(&h.ch)})
 }
 
@@ -176,7 +176,9 @@ fn floor_v(f: &Floor) -> Value {
     let mobs: Vec<Value> = f
         .mobs
         .iter()
-        .map(|m| json!([m.id, m.key, state_name(m.state), m.target, m.enemy_seen, m.alerted, char_v(&m.ch), m.disposition]))
+        .map(|m| json!([m.id, m.key, state_name(m.state), m.target, m.enemy_seen, m.alerted, char_v(&m.ch), m.disposition,
+                    json!({"pack": m.pack.iter().map(item_v).collect::<Vec<_>>(), "weapon": m.weapon.as_ref().map(item_v),
+                           "armor": m.armor.as_ref().map(item_v)})]))
         .collect();
     let s = &f.scheduler;
     json!({"now": s.now, "map": l.map, "visited": l.visited, "mapped": l.mapped, "heaps": heaps, "mobs": mobs,
@@ -306,6 +308,7 @@ pub fn load(data: &Value) -> Option<Dungeon> {
         // opcionales (guardados de antes de los NPCs)
         h.talking = hd.get("talking").and_then(|t| Some((t[0].as_u64()? as u32, t[1].as_str()?.to_string())));
         h.skin = hd.get("skin").and_then(Value::as_str).unwrap_or("").to_string();
+        h.trading = hd.get("trading").and_then(Value::as_u64).map(|t| t as u32);
         load_char(&d, &mut h.ch, &hd["char"])?;
         h.update_awareness();
         heroes.push(h);
@@ -352,6 +355,12 @@ pub fn load(data: &Value) -> Option<Dungeon> {
             mob.alerted = m[5].as_bool()?;
             if let Some(v) = m.get(7).and_then(Value::as_i64) {
                 mob.disposition = v.clamp(-2, 2) as i32; // opcional: guardados de antes de N2
+            }
+            if let Some(g) = m.get(8) {
+                // opcional: guardados de antes de N4
+                mob.pack = g["pack"].as_array()?.iter().map(|v| unitem(&d, v)).collect::<Option<_>>()?;
+                mob.weapon = if g["weapon"].is_null() { None } else { Some(unitem(&d, &g["weapon"])?) };
+                mob.armor = if g["armor"].is_null() { None } else { Some(unitem(&d, &g["armor"])?) };
             }
             load_char(&d, &mut mob.ch, &m[6])?;
             mobs.push(mob);

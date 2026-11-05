@@ -35,3 +35,13 @@ aceptó, contadas en el flag `kills:<mob>`; `["has", ítem, n]`: en la mochila o
 - Efectos `["quest", id, "start" | "done"]` (el log de todos lo avisa) y `["place", ítem]` (en unos restos de esqueleto
   del piso, o en unos nuevos). La recompensa la dan los efectos de la opción que entrega.
 - `quest_lines`: las empezadas con su progreso, para la ficha.
+
+Inventario, equipo y tienda (N4): en `mobs.json`, `inventory` ([[ítem, n]]), `stock` ([[categoría, n]], sacados del
+generador sin maldiciones), `weapon` y `armor`. Un NPC con arma pega con sus dados y con armadura tiene su CA (DES =
+`initiative`); al morir suelta todo. Se guarda con el piso (`Mob::pack`, `weapon`, `armor`).
+- Efecto `["shop"]`: cierra la charla y abre su tienda (`Hero::trading`). `Action::Buy(k)` compra una unidad del ítem
+  k del NPC; `Action::Sell(k)`, una del ítem k de la mochila (lo equipado no). No gastan tiempo; `Bye` cierra.
+- Precio (`price` de items.json): comprar = precio -10 % por punto de actitud (+10 % si desconfía); vender = la mitad
+  +10 % por punto. Precio 0 = no está a la venta / no le interesa. Lo vendido pasa a su inventario.
+- `give` saca del inventario del NPC si lo tiene (si no, crea uno); `take` lo guarda en su inventario.
+- `shop(i)`: lo que muestra la UI (`ShopView`).

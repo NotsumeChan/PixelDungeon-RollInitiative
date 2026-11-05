@@ -639,6 +639,7 @@ impl App {
                     self.ui.create.auto_assign(&order, fresh);
                 }
             }
+            UiAction::ShopSel(npc, k) => self.ui.shop_sel = Some((npc, k)),
             UiAction::Chat(cr) => match cr {
                 ui::Cr::New => self.ui.chat = Some(String::new()),
                 ui::Cr::Type(ch) => self.ui.chat_type(&ch.to_string()),
@@ -806,7 +807,9 @@ impl App {
                 }
             }
             // Esc: cierra la ventana abierta, cancela examinar o abre el menú
-            KeyCode::Escape if self.world.d.local().talking.is_some() => self.ui_action(UiAction::Act(Action::Bye)),
+            KeyCode::Escape if self.world.d.local().talking.is_some() || self.world.d.local().trading.is_some() => {
+                self.ui_action(UiAction::Act(Action::Bye))
+            }
             KeyCode::Escape if !free => self.ui.window = None,
             KeyCode::Escape if self.ui.examining => self.ui.examining = false,
             KeyCode::Escape if self.ui.casting.is_some() => self.ui.casting = None,

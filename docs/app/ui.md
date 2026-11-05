@@ -110,3 +110,7 @@ tocó nada a mano. Los botones de abajo de la lista y de la creación miden `BOT
 
 Creación de personaje: clase y apariencia se eligen con dos selectores con flechas (`draw_picker`): entran todas las
 clases de `data/classes.json` (también las de los mods) y todas las skins de `data/skins.json`.
+
+Tienda (`draw_shop`): si el héroe local tiene una tienda abierta (`Dungeon::shop`), tapa el resto: lo que vende el NPC
+y tu mochila en ranuras de 24, el ítem elegido (`Ui::shop_sel`) con su precio y COMPRAR / VENDER, y CERRAR (o Esc /
+Atrás = `Action::Bye`).
