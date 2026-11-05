@@ -1,10 +1,14 @@
-//! NPCs (`roadmap/npcs.md`, pasos N1 y N2): mobs con diálogo (`"npc"` en data/mobs.json) que no cazan (`State::Passive`).
+//! NPCs (`roadmap/npcs.md`, pasos N1 a N3): mobs con diálogo (`"npc"` en data/mobs.json) que no cazan (`State::Passive`).
 //! Hablar abre su diálogo (data/dialogs.json): nodos con texto y opciones; cada opción con condiciones (`if`),
 //! efectos (`do`) y el nodo siguiente (`go`; sin él, la charla termina). Los flags son de la partida (en la LAN, del
 //! grupo). Una condición o un efecto desconocido (de un mod más nuevo) no se cumple / no hace nada.
 //! N2: una opción con `check` [pericia, CD] tira d20 + característica + competencia (data/skills.json, `skill_prof` de
 //! la clase); bien = `go` y `do`, mal = `fail` y `fail_do`. La actitud del NPC (`Mob::disposition`) baja la CD 2 por
 //! punto (o la sube si desconfía).
+//! N3: misiones (data/quests.json: `name`, `desc`, `objectives` [["kill", mob, n] | ["has", ítem, n]]). Su estado es el
+//! flag `quest:<id>` (0 sin empezar, 1 en curso, 2 hecha): de la partida, compartido en la LAN. Las muertes se cuentan
+//! en `kills:<mob>` (desde que se acepta: `qbase:<misión>:<mob>`). Los diálogos las aceptan, las revisan ("ready") y
+//! las entregan con sus efectos; la recompensa es lo que dé el diálogo.
 use serde_json::Value;
 
 use crate::actor::ActorId;
@@ -167,16 +171,22 @@ impl Dungeon {
 
     /// Condiciones: ["has", ítem, n], ["gold", n], ["flag", clave, "=" | "!=" | ">=" | "<", valor], ["class", id],
     /// ["level", n], ["disposition", n] (la actitud del NPC es al menos n), ["skill", pericia] (con competencia),
+    /// ["quest", misión, "none" | "active" | "ready" (en curso y con los objetivos cumplidos) | "done"],
     /// ["not", condición].
     fn cond(&self, i: usize, c: &Value) -> bool {
         let h = &self.heroes[i];
         let n = |k: usize| c[k].as_i64().unwrap_or(0);
         match c[0].as_str().unwrap_or("") {
-            "has" => {
-                let id = c[1].as_str().unwrap_or("");
-                let worn = [h.weapon.as_ref(), h.armor.as_ref()].into_iter().flatten();
-                let have: i64 = h.backpack.iter().chain(worn).filter(|b| b.id == id).map(|b| i64::from(b.quantity)).sum();
-                have >= n(2).max(1)
+            "has" => self.count_item(i, c[1].as_str().unwrap_or("")) >= n(2).max(1),
+            "quest" => {
+                let q = c[1].as_str().unwrap_or("");
+                match c[2].as_str() {
+                    Some("none") => self.quest_state(q) == 0,
+                    Some("active") => self.quest_state(q) == 1,
+                    Some("ready") => self.quest_ready(i, q),
+                    Some("done") => self.quest_state(q) == 2,
+                    _ => false,
+                }
             }
             "gold" => i64::from(h.gold) >= n(1),
             "flag" => {
@@ -204,7 +214,8 @@ impl Dungeon {
 
     /// Efectos: ["give", ítem, n], ["take", ítem, n], ["gold", ±n], ["flag", clave, valor], ["add", clave, ±n],
     /// ["log", texto] (sólo para el que habla), ["map"] (el mapa del piso), ["disposition", ±n] (su actitud),
-    /// ["attack"] (lo vuelve hostil), ["end"].
+    /// ["quest", misión, "start" | "done"], ["place", ítem] (lo deja en unos restos de esqueleto del piso; si no hay,
+    /// en unos nuevos), ["attack"] (lo vuelve hostil), ["end"].
     fn apply(&mut self, i: usize, id: u32, e: &Value) {
         let n = |k: usize| e[k].as_i64().unwrap_or(0);
         let key = e[1].as_str().unwrap_or("").to_string();
@@ -279,7 +290,100 @@ impl Dungeon {
                 self.heroes[i].action = Some(Action::Attack(ActorId::Mob(id)));
             }
             "end" => self.heroes[i].talking = None,
+            "quest" => {
+                let qname = self.quests.get(&key).map_or_else(|| key.clone(), |q| text(&q["name"]));
+                match e[2].as_str() {
+                    Some("start") if self.quest_state(&key) == 0 => {
+                        self.flags.insert(format!("quest:{key}"), 1);
+                        // las muertes cuentan desde ahora
+                        let objectives = self.quests.get(&key).and_then(|q| q["objectives"].as_array()).cloned();
+                        let kills: Vec<String> = objectives
+                            .into_iter()
+                            .flatten()
+                            .filter(|o| o[0] == "kill")
+                            .filter_map(|o| o[1].as_str().map(str::to_string))
+                            .collect();
+                        for mob in kills {
+                            let now = self.flags.get(&format!("kills:{mob}")).copied().unwrap_or(0);
+                            self.flags.insert(format!("qbase:{key}:{mob}"), now);
+                        }
+                        self.log(&format!("Nueva mision: {qname}"));
+                    }
+                    Some("done") if self.quest_state(&key) == 1 => {
+                        self.flags.insert(format!("quest:{key}"), 2);
+                        let who = self.heroes[i].ch.name.clone();
+                        self.log(&format!("{who} completa la mision: {qname}"));
+                    }
+                    _ => {}
+                }
+            }
+            "place" => {
+                let Some(item) = Item::new(&self.items, &key) else { return };
+                let bones: Vec<i32> = self.level().heaps.iter().filter(|(_, h)| h.kind == HeapKind::Skeleton).map(|(c, _)| *c).collect();
+                let mut rng = self.rng.clone();
+                let cell = match rng.pick(bones.len()) {
+                    Some(k) => bones[k],
+                    None => self.level().random_drop_cell(&mut rng),
+                };
+                self.rng = rng;
+                self.floor_mut().level.drop(item, cell, HeapKind::Skeleton);
+            }
             _ => {}
         }
+    }
+
+    /// Cuántos tiene el héroe i de ese ítem (mochila y equipo).
+    fn count_item(&self, i: usize, id: &str) -> i64 {
+        let h = &self.heroes[i];
+        let worn = [h.weapon.as_ref(), h.armor.as_ref()].into_iter().flatten();
+        h.backpack.iter().chain(worn).filter(|b| b.id == id).map(|b| i64::from(b.quantity)).sum()
+    }
+
+    /// 0 sin empezar, 1 en curso, 2 hecha.
+    fn quest_state(&self, q: &str) -> i64 {
+        self.flags.get(&format!("quest:{q}")).copied().unwrap_or(0)
+    }
+
+    /// El progreso de cada objetivo de la misión: (qué, cuántos, cuántos pide).
+    fn objectives(&self, i: usize, q: &str) -> Vec<(String, i64, i64)> {
+        let Some(qd) = self.quests.get(q) else { return Vec::new() };
+        let list = qd["objectives"].as_array().into_iter().flatten();
+        list.map(|o| {
+            let id = o[1].as_str().unwrap_or("");
+            let want = o[2].as_i64().unwrap_or(1).max(1);
+            let name = |m: &serde_json::Map<String, Value>| m.get(id).map_or_else(|| id.to_string(), |v| text(&v["name"]));
+            match o[0].as_str().unwrap_or("") {
+                "kill" => {
+                    let now = self.flags.get(&format!("kills:{id}")).copied().unwrap_or(0);
+                    let base = self.flags.get(&format!("qbase:{q}:{id}")).copied().unwrap_or(0);
+                    (name(&self.mobs_data), (now - base).clamp(0, want), want)
+                }
+                "has" => (name(&self.items), self.count_item(i, id).min(want), want),
+                _ => ("?".to_string(), 0, want),
+            }
+        })
+        .collect()
+    }
+
+    fn quest_ready(&self, i: usize, q: &str) -> bool {
+        self.quest_state(q) == 1 && self.objectives(i, q).iter().all(|o| o.1 >= o.2)
+    }
+
+    /// Las misiones empezadas, para la ficha: "Ratas en la despensa: rata marsupial 3/5" o "...: hecha".
+    pub fn quest_lines(&self, i: usize) -> Vec<String> {
+        self.quests
+            .iter()
+            .filter_map(|(q, qd)| {
+                let name = text(&qd["name"]);
+                match self.quest_state(q) {
+                    1 => {
+                        let prog: Vec<String> = self.objectives(i, q).iter().map(|(t, h, n)| format!("{t} {h}/{n}")).collect();
+                        Some(format!("{name}: {}", prog.join(", ")))
+                    }
+                    2 => Some(format!("{name}: hecha")),
+                    _ => None,
+                }
+            })
+            .collect()
     }
 }

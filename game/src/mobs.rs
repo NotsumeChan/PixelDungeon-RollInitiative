@@ -265,6 +265,7 @@ impl Dungeon {
     /// XP repartida entre los héroes vivos del piso (redondeo hacia arriba) y +1 al que dio el último golpe.
     fn mob_die(&mut self, id: u32, src: Option<ActorId>) {
         let Some(m) = self.remove_mob(id) else { return };
+        *self.flags.entry(format!("kills:{}", m.key)).or_insert(0) += 1; // para las misiones de matar (npcs.rs)
         self.effect(Fx::Die { who: ActorId::Mob(id), cell: m.ch.pos, stats: m.stats.clone() }); // el render deja el cadáver
         if self.level().visible[m.ch.pos as usize] {
             self.log(&format!("{} muere", m.ch.name));

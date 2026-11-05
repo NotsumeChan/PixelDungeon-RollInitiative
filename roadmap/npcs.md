@@ -69,6 +69,14 @@ Estado: plan confirmado por el dueño (2026-11-05, ver "Decisiones del dueño").
   suba la CD de lo demás, que regatear bien habilite "¿Algo especial para un amigo?", pegarle a uno delante del otro
   (en pisos distintos no se ven: probarlo con un mod o más adelante), y el dado y el log en la LAN.
 
+- **N3** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: misiones como datos (`data/quests.json`) con objetivos
+  de matar (contador por mob) o de tener un ítem, estado de la partida (compartido en la LAN), en la ficha con su
+  progreso, y aceptar / revisar / entregar desde los diálogos. Contenido: el Fabricante de varitas (piso 2) pide polvo de
+  cadáver, que aparece en unos restos de esqueleto de su piso al aceptar; lo paga con un pergamino de mejora y una
+  poción de curación (y se vuelve más amistoso). El Mercader (piso 1) paga 40 de oro por 5 ratas. Para probar: aceptar
+  cada una, ver el progreso en la ficha (las ratas cuentan desde que se acepta), abrir los restos y recoger el polvo,
+  entregar; guardar y volver a entrar a mitad; en la LAN, que la misión sea del grupo.
+
 ## Pasos (cada uno se prueba a mano)
 1. **N1 motor**: NPC pasivo, Hablar, diálogos como datos con condiciones y efectos, flags, ventana de diálogo, red.
 2. **N2 social**: pericias y tiradas, disposición, atacar a un NPC.

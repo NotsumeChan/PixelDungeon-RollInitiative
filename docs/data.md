@@ -24,6 +24,8 @@ Registros que lee `game/registry.py`. IDs `namespace:nombre` (`pdri:` = juego ba
   personaje. Las del juego base son los 4 héroes de Pixel Dungeon, con los ids de sus clases de antes.
 - **skills.json**: pericias de 5e, id -> `name` y `ability`. En `classes.json`, `skill_prof` = las pericias con
   competencia.
+- **quests.json**: misiones: id -> `name`, `desc`, `objectives` ([["kill", mob, n] | ["has", ítem, n]]); los diálogos
+  las empiezan y las entregan (`docs/game/npcs.md`). Un ítem de misión: `category` "quest" y `gen_weight` 0.
 - **NPCs** (`docs/game/npcs.md`): en `mobs.json`, `npc` (id del diálogo) hace NPC al mob y `disposition` (-2..2) es su
   actitud inicial. **npcs.json**: piso ->
   [[mob, probabilidad]]. **dialogs.json**: id -> `start` (nodo inicial) y `nodes`: nodo -> `text` y `options`

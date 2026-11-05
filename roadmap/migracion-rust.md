@@ -303,7 +303,7 @@ de "Estado R6").
    compila su PC y sube los archivos (`gh release create v0.x.0 target/release/pdri target/android/pdri.apk ...`;
    el `.exe` de Windows sale más fácil de GitHub). Preferir GitHub: no depende de la PC encendida.
 
-8. **NPCs** (pedido del dueño, 2026-11-05): plan y pasos en `roadmap/npcs.md`. N1 (motor de diálogos) y N2 (pericias y tiradas sociales) ✏️ escritos.
+8. **NPCs** (pedido del dueño, 2026-11-05): plan y pasos en `roadmap/npcs.md`. N1 (motor de diálogos), N2 (pericias y tiradas sociales) y N3 (misiones) ✏️ escritos.
 9. **Movimiento en PC** (pedido del dueño, 2026-11-05): opción en Configuración -> Controles para mover al héroe
    sólo con el mouse o sólo con el teclado (hoy valen los dos a la vez), y una línea punteada en el mapa con el camino
    hasta el destino elegido (el del pathfinder, hasta que el héroe llega o se cancela). La línea, también en el

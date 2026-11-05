@@ -895,6 +895,11 @@ impl Ui {
         if !skills.is_empty() {
             lines.push((format!("Pericias: {}", skills.join(", ")), WHITE));
         }
+        let quests = d.quest_lines(d.hero);
+        if !quests.is_empty() {
+            lines.push(("Misiones:".to_string(), YELLOW));
+            lines.extend(quests.into_iter().map(|q| (q, WHITE)));
+        }
         let trait_btn = if me.has_trait("pdri:second_wind") {
             let state = if me.second_wind { "disponible" } else { "usado" };
             lines.push((format!("Segundo Aliento (F): {state}"), WHITE));

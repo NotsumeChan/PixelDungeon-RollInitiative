@@ -27,3 +27,11 @@ todos. Bien: `go` y `do`; mal: `fail` y `fail_do`. La UI muestra la pericia, el 
   CD en 2 (desconfiado la sube); la ventana la muestra arriba a la derecha. Se guarda con el piso.
 - Atacar a un NPC (pegarle, o el efecto `attack`) hace que los otros NPCs tranquilos que lo vieron desconfíen más (-1).
 - `skill_bonus` también lo usa Medicina al estabilizar; `proficient_skills`, la ficha.
+
+Misiones (N3, `data/quests.json`): `name`, `desc` y `objectives` (`["kill", mob, n]`: muertes de ese mob desde que se
+aceptó, contadas en el flag `kills:<mob>`; `["has", ítem, n]`: en la mochila o equipado). El estado es el flag
+`quest:<id>` (0 sin empezar, 1 en curso, 2 hecha): de la partida, compartido en la LAN.
+- Condición `["quest", id, "none" | "active" | "ready" | "done"]` ("ready" = en curso y con todo cumplido).
+- Efectos `["quest", id, "start" | "done"]` (el log de todos lo avisa) y `["place", ítem]` (en unos restos de esqueleto
+  del piso, o en unos nuevos). La recompensa la dan los efectos de la opción que entrega.
+- `quest_lines`: las empezadas con su progreso, para la ficha.

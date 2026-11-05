@@ -18,6 +18,7 @@ va en esa misma versión (no se sube de nuevo el número). El número del medio 
 | 0.5.0 | R5 | Creación de personaje con dados (4d6, 7 tiradas, asignar o escribir), lista de personajes y guardado; ya estaban el combate 5e y la ficha |
 | 0.8.0 | R5 | Hotseat (`[dev] hotseat`: 2 héroes en la misma PC, Tab, cambio automático al que le toca, nombres sobre los héroes): paridad con `python-prototipe`. La misma excepción que la 0.7 (partículas y proyectil en vuelo) |
 | 0.7.0 | R5, R5d | Arrastrar en la creación (cierra la 0.6), armas a distancia, idioma del contenido, log de tiradas de desarrollador (`[dev] dice_log`). Excepción a la regla: faltan las partículas y el proyectil en vuelo (pulido visual, pendiente) |
+| 0.9.9 | N3 | NPCs: misiones como datos (`data/quests.json`: matar o tener), en la ficha con su progreso, de la partida; el polvo de cadáver del Fabricante de varitas y las ratas del Mercader |
 | 0.9.8 | arreglos | Mensaje de muerte partido al ancho de la pantalla; en Android sin teclas (la nueva partida está en el menú) y "Atras" en vez de "Esc" en los avisos. (Una 0.9.8 y 0.9.9 anteriores, del margen de los bordes, se deshicieron a pedido del dueño: el `versionCode` sigue en 18) |
 | 0.9.7 | arreglos | Título en vertical: la versión va abajo al centro con margen (en la esquina la cortaba la curva de la pantalla) |
 | 0.9.6 | arreglos | Tocarse a uno mismo parado sobre un ítem lo recoge (o abre el cofre / tumba de abajo) en vez de buscar; sin nada en el suelo sigue buscando |

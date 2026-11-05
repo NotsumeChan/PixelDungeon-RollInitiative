@@ -13,7 +13,76 @@
        "es": "¿Qué ingrediente buscas?",
        "en": "What ingredient are you looking for?"
       },
-      "go": "ingredient"
+      "go": "ingredient",
+      "if": [
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "none"
+       ]
+      ]
+     },
+     {
+      "text": {
+       "es": "Aquí tienes tu polvo de cadáver.",
+       "en": "Here is your corpse dust."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "ready"
+       ]
+      ],
+      "do": [
+       [
+        "take",
+        "pdri:corpse_dust",
+        1
+       ],
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "done"
+       ],
+       [
+        "give",
+        "pdri:scroll_upgrade",
+        1
+       ],
+       [
+        "give",
+        "pdri:potion_healing",
+        1
+       ],
+       [
+        "disposition",
+        1
+       ]
+      ],
+      "go": "reward"
+     },
+     {
+      "text": {
+       "es": "Sobre tu ingrediente...",
+       "en": "About your ingredient..."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "active"
+       ],
+       [
+        "not",
+        [
+         "quest",
+         "pdri:corpse_dust",
+         "ready"
+        ]
+       ]
+      ],
+      "go": "remind"
      },
      {
       "text": {
@@ -94,6 +163,14 @@
         "pdri:wandmaker_lie",
         "=",
         0
+       ],
+       [
+        "not",
+        [
+         "quest",
+         "pdri:corpse_dust",
+         "done"
+        ]
        ]
       ],
       "check": [
@@ -193,6 +270,31 @@
       "text": {
        "es": "Lo buscaré.",
        "en": "I'll look for it."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "none"
+       ]
+      ],
+      "do": [
+       [
+        "quest",
+        "pdri:corpse_dust",
+        "start"
+       ],
+       [
+        "place",
+        "pdri:corpse_dust"
+       ]
+      ],
+      "go": "accepted"
+     },
+     {
+      "text": {
+       "es": "Ahora no.",
+       "en": "Not now."
       },
       "go": "start"
      }
@@ -317,6 +419,51 @@
       "go": "start"
      }
     ]
+   },
+   "accepted": {
+    "text": {
+     "es": "¡Gracias! Busca entre los restos de esqueletos de este piso: alguno tendrá polvo.",
+     "en": "Thank you! Search the skeletal remains on this floor: one of them will have dust."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "remind": {
+    "text": {
+     "es": "¿Nada todavía? Los restos de esqueletos de este piso son tu mejor apuesta.",
+     "en": "Nothing yet? The skeletal remains on this floor are your best bet."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "reward": {
+    "text": {
+     "es": "¡Justo lo que necesitaba! No traigo varitas encima, pero toma esto: te servirá más.",
+     "en": "Just what I needed! I don't carry wands with me, but take this: it will serve you better."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
    }
   }
  },
@@ -381,6 +528,71 @@
        "en": "What's the word around here?"
       },
       "go": "rumor"
+     },
+     {
+      "text": {
+       "es": "¿Tienes trabajo para mí?",
+       "en": "Do you have work for me?"
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "none"
+       ]
+      ],
+      "go": "job"
+     },
+     {
+      "text": {
+       "es": "Las ratas ya no molestarán.",
+       "en": "The rats won't bother you anymore."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "ready"
+       ]
+      ],
+      "do": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "done"
+       ],
+       [
+        "gold",
+        40
+       ],
+       [
+        "disposition",
+        1
+       ]
+      ],
+      "go": "paid"
+     },
+     {
+      "text": {
+       "es": "Sobre las ratas...",
+       "en": "About the rats..."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "active"
+       ],
+       [
+        "not",
+        [
+         "quest",
+         "pdri:rat_hunt",
+         "ready"
+        ]
+       ]
+      ],
+      "go": "rats_left"
      },
      {
       "text": {
@@ -615,6 +827,87 @@
     "text": {
      "es": "Para los amigos, unos dardos. Afilados, como me gustan.",
      "en": "For friends, some darts. Sharp, just how I like them."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "job": {
+    "text": {
+     "es": "Las ratas me roban la mercadería. Mata cinco y te pago 40 de oro.",
+     "en": "Rats keep stealing my goods. Kill five and I'll pay you 40 gold."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Hecho.",
+       "en": "Deal."
+      },
+      "if": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "none"
+       ]
+      ],
+      "do": [
+       [
+        "quest",
+        "pdri:rat_hunt",
+        "start"
+       ]
+      ],
+      "go": "job_ok"
+     },
+     {
+      "text": {
+       "es": "No, gracias.",
+       "en": "No, thanks."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "job_ok": {
+    "text": {
+     "es": "Vuelve cuando estén muertas.",
+     "en": "Come back when they're dead."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "rats_left": {
+    "text": {
+     "es": "Todavía oigo ratas. Te faltan algunas.",
+     "en": "I still hear rats. You're missing a few."
+    },
+    "options": [
+     {
+      "text": {
+       "es": "Volver.",
+       "en": "Back."
+      },
+      "go": "start"
+     }
+    ]
+   },
+   "paid": {
+    "text": {
+     "es": "Trato es trato. Toma tu oro.",
+     "en": "A deal is a deal. Take your gold."
     },
     "options": [
      {

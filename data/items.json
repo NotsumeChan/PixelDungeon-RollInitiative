@@ -658,5 +658,19 @@
   "kind": "heavy",
   "STR": 18,
   "gen_weight": 1
+ },
+ "pdri:corpse_dust": {
+  "name": {
+   "es": "polvo de cadáver",
+   "en": "corpse dust"
+  },
+  "category": "quest",
+  "image": 121,
+  "stackable": false,
+  "gen_weight": 0,
+  "desc": {
+   "es": "Polvo gris de unos huesos viejos. A un fabricante de varitas le interesa mucho.",
+   "en": "Grey dust from old bones. A wandmaker is very interested in it."
+  }
  }
 }
