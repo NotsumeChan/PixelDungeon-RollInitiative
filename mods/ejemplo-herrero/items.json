@@ -1,0 +1,16 @@
+{
+ "herrero:troll_sword": {
+  "base": "pdri:sword",
+  "name": {
+   "es": "espada troll",
+   "en": "troll sword"
+  },
+  "desc": {
+   "es": "Forjada por el herrero troll: pesada y filosa.",
+   "en": "Forged by the troll blacksmith: heavy and sharp."
+  },
+  "dice": "1d10",
+  "gen_weight": 0,
+  "price": 150
+ }
+}

@@ -296,6 +296,10 @@ impl App {
         let atlas = Atlas::build(&sheets);
         let font = Font::new(&atlas, FONT);
         let now = Instant::now();
+        for m in game::registry::load_mods(&data_dir()) {
+            log::info!("{m}"); // Android: logcat
+            eprintln!("{m}");
+        }
         let config = Config::load();
         game::registry::set_lang(config.language);
         Self {

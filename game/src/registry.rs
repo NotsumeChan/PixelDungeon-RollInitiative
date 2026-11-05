@@ -1,13 +1,14 @@
 //! Registros de contenido (`game/registry.py`): `data/<nombre>.json` (clases, mobs, bestiario, ítems, estados,
-//! conjuros). Las carpetas se leen en orden y lo último pisa a lo anterior (base de los mods). Una entrada con
+//! conjuros, ...). Primero el juego base y después los mods (`load_mods`): lo último pisa a lo anterior. Una entrada con
 //! `"base": "<id>"` copia esa otra entrada y aplica sus campos encima.
 //! El orden de las entradas se conserva (serde_json con `preserve_order`): decide tiradas, como el dict de Python.
+use std::path::Path;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde_json::{Map, Value};
 
 /// El contenido del juego base va dentro del binario (Android sin AssetManager).
-/// ponytail: sólo el juego base; los mods agregarán sus carpetas aquí (1.x)
 const BASE: [(&str, &str); 11] = [
     ("classes", include_str!("../../data/classes.json")),
     ("mobs", include_str!("../../data/mobs.json")),
@@ -22,11 +23,46 @@ const BASE: [(&str, &str); 11] = [
     ("quests", include_str!("../../data/quests.json")),
 ];
 
+/// Registros de los mods (`<datos>/mods/<mod>/<registro>.json`), en orden de carpeta: se leen una vez, al arrancar.
+static MODS: OnceLock<Vec<(String, String)>> = OnceLock::new();
+
+/// Lee los mods de `dir/mods` (carpetas en orden alfabético; sólo los archivos de registros conocidos). Un JSON que no
+/// es un objeto se salta. Devuelve una línea por mod leído o archivo salteado (para el log). Llamar antes de `load`.
+pub fn load_mods(dir: &Path) -> Vec<String> {
+    let mut mods: Vec<_> = std::fs::read_dir(dir.join("mods")).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
+    mods.sort();
+    let (mut out, mut msgs) = (Vec::new(), Vec::new());
+    for m in mods {
+        let name = m.file_name().unwrap_or_default().to_string_lossy().into_owned();
+        let mut n = 0;
+        for (reg, _) in BASE {
+            let Ok(text) = std::fs::read_to_string(m.join(format!("{reg}.json"))) else { continue };
+            match serde_json::from_str::<Map<String, Value>>(&text) {
+                Ok(_) => {
+                    out.push((reg.to_string(), text));
+                    n += 1;
+                }
+                Err(e) => msgs.push(format!("mod {name}/{reg}.json: {e}")),
+            }
+        }
+        if n > 0 {
+            msgs.push(format!("mod {name}: {n} registros"));
+        }
+    }
+    let _ = MODS.set(out);
+    msgs
+}
+
+/// El juego base y después los mods: lo último pisa a lo anterior.
+fn sources() -> impl Iterator<Item = (&'static str, &'static str)> {
+    BASE.into_iter().chain(MODS.get().into_iter().flatten().map(|(n, t)| (n.as_str(), t.as_str())))
+}
+
 /// Hash del contenido (los JSON de los registros, en orden): un cliente con otro contenido no entra a la partida.
 /// FNV-1a de 64 bits: estable entre plataformas y versiones de Rust (no es criptográfico: sólo detecta diferencias).
 pub fn content_hash() -> String {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for (n, text) in BASE {
+    for (n, text) in sources() {
         for b in n.bytes().chain(text.bytes()) {
             h = (h ^ b as u64).wrapping_mul(0x0100_0000_01b3);
         }
@@ -36,7 +72,7 @@ pub fn content_hash() -> String {
 
 pub fn load(name: &str) -> Result<Map<String, Value>, String> {
     let mut merged = Map::new();
-    for (n, text) in BASE {
+    for (n, text) in sources() {
         if n == name {
             let m: Map<String, Value> = serde_json::from_str(text).map_err(|e| format!("data/{n}.json: {e}"))?;
             merged.extend(m); // una clave repetida pisa el valor y conserva su lugar (como dict.update)

@@ -93,7 +93,8 @@ Estado: plan confirmado por el dueño (2026-11-05, ver "Decisiones del dueño").
 3. **N3 misiones**: contadores, recompensas, ventana de misiones; el Fabricante de varitas.
 4. **N4 inventario y comercio**: inventario y equipo de los NPC, precios, tienda desde el inventario, comprar y
    vender; el Mercader; después, el mercader ambulante.
-5. **N5 mods**: el formato en `docs/data.md` y un mod de ejemplo con un NPC propio.
+5. **N5 mods**: el formato en `docs/data.md` y un mod de ejemplo con un NPC propio. Hecho (0.9.12): `docs/mods.md` y `mods/ejemplo-herrero`.
+   Probar: copiar `mods/ejemplo-herrero` a `<datos>/mods/` y bajar al piso 3; en la LAN, los dos con el mod (si no, el hash no coincide).
 
 ## Decisiones del dueño (2026-11-05)
 1. Contenido inicial: el Fabricante de varitas y el Mercader; el Fantasma, por ahora no.
