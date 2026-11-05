@@ -1553,10 +1553,9 @@ impl Ui {
             paras.push((tr!("Los mods vienen de fuentes externas: ten cuidado de donde los descargas y revisalos antes de instalarlos.", "Mods come from external sources: be careful where you download them from and review them before installing.").into(), WHITE));
             paras.push((tr!("Los scripts de los mods corren aislados, pero pueden cambiar el juego de forma considerable: instalalos solo si confias en su origen.", "Mod scripts run sandboxed, but they can change the game a lot: only install them if you trust their source.").into(), rgba(255, 120, 80, 255)));
             paras.push((tr!("Instalar mods es tu responsabilidad. Acepta para continuar (no se vuelve a preguntar).", "Installing mods is your responsibility. Accept to continue (you won't be asked again).").into(), GOLDEN));
-        } else if self.mods.is_empty() {
-            paras.push((tr!("No hay mods instalados.", "No mods installed.").into(), WHITE));
         } else {
-            paras.push((trf!("Instalados: {}", "Installed: {}", self.mods.join(", ")), WHITE));
+            let builtin = game::registry::BUILTIN_MODS.map(|m| trf!("{m} (incluido)", "{m} (built-in)"));
+            paras.push((trf!("Instalados: {}", "Installed: {}", builtin.into_iter().chain(self.mods.iter().cloned()).collect::<Vec<_>>().join(", ")), WHITE));
         }
         if cfg.mods_ack && !self.mods_msg.is_empty() {
             paras.push((self.mods_msg.clone(), GOLDEN));

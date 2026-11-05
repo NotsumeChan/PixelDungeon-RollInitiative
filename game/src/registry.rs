@@ -24,6 +24,9 @@ const BASE: [(&str, &str); 11] = [
 ];
 
 /// Mods que vienen con el juego (`data/mods/`): después del juego base y antes de los del usuario, que pueden pisarlos.
+/// Los nombres de los mods incluidos (para la pantalla de Mods).
+pub const BUILTIN_MODS: [&str; 1] = ["mercader-ambulante"];
+
 const BUILTIN: [(&str, &str); 3] = [
     ("mobs", include_str!("../../data/mods/mercader-ambulante/mobs.json")),
     ("dialogs", include_str!("../../data/mods/mercader-ambulante/dialogs.json")),
