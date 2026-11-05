@@ -259,8 +259,9 @@ de "Estado R6").
 1. **Que el dueño pruebe la última tanda** (PC + teléfono, vertical y apaisado): sala de espera, lista de quién
    falta, efectos y dados en el teléfono, teclado en pantalla, botón del rasgo, Salir y volver a abrir en Android,
    que no aparezcan copias de personajes. Lo que falle, primero.
-2. ✏️ **R6, personaje portátil** (escrito el 2026-11-05, ver su "Estado" arriba): falta la prueba del dueño. Con
-   eso, **0.9**.
+2. ✏️ **R6, personaje portátil** (escrito el 2026-11-05, ver su "Estado" arriba): falta la prueba del dueño.
+   **Versión 0.9.0** (2026-11-05, ver `roadmap/versiones.md`): la PC y el teléfono tienen que tener la misma para
+   jugar en LAN.
 3. ✏️ **Chat de texto** (escrito el 2026-11-05, ver su "Estado" arriba): falta la prueba del dueño.
 4. Resto de R6: aplicar el estado sin rearmar la partida (el cliente regenera los pisos en cada estado: puede trabar
    en el teléfono), el teléfono como host (MulticastLock para recibir los "discover"), escribir la IP a mano.

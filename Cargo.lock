@@ -155,7 +155,7 @@ dependencies = [
 
 [[package]]
 name = "app"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "android_logger",
  "bytemuck",
@@ -649,7 +649,7 @@ dependencies = [
 
 [[package]]
 name = "game"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "serde_json",
 ]
