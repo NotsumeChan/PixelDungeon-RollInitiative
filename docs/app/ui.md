@@ -107,3 +107,6 @@ la UI: retrato, nombre, texto y las opciones como botones (`Action::Choose`). Es
 Creación de personaje: NUEVO y TIRAR ya tiran los 4d6 y `Create::auto_assign` reparte las tiradas más altas según el
 `ability_priority` de la clase (la app lo pide: `ability_order` en `lib.rs`); cambiar de clase las reacomoda si no se
 tocó nada a mano. Los botones de abajo de la lista y de la creación miden `BOTTOM_BTN_H` (24) para el dedo.
+
+Creación de personaje: clase y apariencia se eligen con dos selectores con flechas (`draw_picker`): entran todas las
+clases de `data/classes.json` (también las de los mods) y todas las skins de `data/skins.json`.

@@ -8,7 +8,6 @@
    "es": "Guerrero",
    "en": "Fighter"
   },
-  "sprite": "warrior.png",
   "hit_die": 10,
   "weapon_prof": [
    "simple",
@@ -62,7 +61,6 @@
    "es": "Mago",
    "en": "Wizard"
   },
-  "sprite": "mage.png",
   "hit_die": 6,
   "weapon_prof": [
    "pdri:dagger",
@@ -116,7 +114,6 @@
    "es": "Pícaro",
    "en": "Rogue"
   },
-  "sprite": "rogue.png",
   "hit_die": 8,
   "weapon_prof": [
    "simple",
@@ -173,7 +170,6 @@
    "es": "Explorador",
    "en": "Ranger"
   },
-  "sprite": "ranger.png",
   "hit_die": 10,
   "weapon_prof": [
    "simple",

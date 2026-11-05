@@ -163,6 +163,13 @@ características de la clase (`ability_priority` en `classes.json`: Guerrero FUE
 Explorador DES-SAB); TIRAR reparte igual y cambiar de clase reacomoda si no se tocó nada a mano. Para probar: tocar los
 botones en el teléfono, NUEVO con cada clase, cambiar de clase antes y después de mover una tirada.
 
+**Clases y apariencias** (pedido del dueño, 2026-11-05): las 12 clases básicas de 5e, y la apariencia aparte de la
+clase. ✏️ 0.9.2: los 4 héroes de PD son skins (`data/skins.json`, ids = los de sus clases de antes: un personaje viejo
+se ve igual), elegidas en la creación con un selector con flechas, guardadas en el personaje y el héroe y mandadas en
+el `hello` de la LAN; las clases salen de `data/classes.json` (las de un mod aparecen solas). Para probar: crear un
+personaje con otra skin que su clase (p. ej. Mago con la Cazadora) y verlo en el mapa, la lista y la LAN; un
+personaje de antes sigue igual. Siguiente: las 8 clases que faltan (0.9.3).
+
 **Estado R6** ✏️ escrito (2026-11-04), pendiente de prueba del dueño (PC + teléfono): red LAN en `app/src/net.rs`
 (`docs/app/net.md`), sólo std. Lista de personajes -> CREAR LAN (juegas con el elegido y la partida queda abierta; el
 log muestra la IP) o UNIRSE (lista de partidas de la red; tocar una entra con el personaje elegido). Host autoritativo

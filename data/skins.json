@@ -1,0 +1,30 @@
+{
+ "pdri:warrior": {
+  "name": {
+   "es": "Guerrero",
+   "en": "Warrior"
+  },
+  "sprite": "warrior.png"
+ },
+ "pdri:mage": {
+  "name": {
+   "es": "Mago",
+   "en": "Mage"
+  },
+  "sprite": "mage.png"
+ },
+ "pdri:rogue": {
+  "name": {
+   "es": "Pícaro",
+   "en": "Rogue"
+  },
+  "sprite": "rogue.png"
+ },
+ "pdri:huntress": {
+  "name": {
+   "es": "Cazadora",
+   "en": "Huntress"
+  },
+  "sprite": "ranger.png"
+ }
+}

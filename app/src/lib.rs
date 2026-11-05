@@ -39,7 +39,8 @@ pub const TITLE: &str = "PixelDungeon-RollInitiative";
 const DRAG_MIN_PX: f64 = 8.0; // arrastrar más que esto (pixeles de pantalla) mueve la cámara; menos es un click
 const PINCH_STEP: f64 = 1.25; // cuánto tiene que cambiar la distancia entre dedos para un paso de zoom
 /// Clases jugables, en el orden de la creación de personaje.
-const CLASSES: [&str; 4] = ["pdri:warrior", "pdri:mage", "pdri:rogue", "pdri:huntress"];
+/// La clase si falta (el juego base siempre la trae). Las que se eligen salen de `data/classes.json`, en su orden.
+const DEFAULT_CLASS: &str = "pdri:warrior";
 
 /// Hojas del atlas, en orden: los índices de `Atlas::rects`. Van dentro del binario (Android sin AssetManager).
 const SHEETS: [&[u8]; 15] = [
@@ -86,14 +87,16 @@ struct World {
 impl World {
     /// Partida nueva de un personaje (clase, características y nombre). `hotseat`: suma un segundo héroe igual
     /// ("<nombre> 2"), el modo de prueba de la red.
-    fn new(seed: i64, class: &str, abilities: [i32; 6], name: &str, hotseat: bool) -> Self {
+    fn new(seed: i64, class: &str, abilities: [i32; 6], name: &str, skin: &str, hotseat: bool) -> Self {
         let mut d = Dungeon::new_with(seed, class, abilities);
         if !name.is_empty() {
             d.heroes[0].ch.name = name.to_string();
         }
+        d.heroes[0].skin = skin.to_string();
         if hotseat {
             let j = d.add_hero(class, abilities);
             d.heroes[j].ch.name = format!("{} 2", d.heroes[0].ch.name);
+            d.heroes[j].skin = skin.to_string();
         }
         Self::from_dungeon(d)
     }
@@ -197,6 +200,9 @@ struct App {
     /// Las clases para la creación de personaje: nombre, "Guerrero d10" y avatar.
     class_rows: Vec<ui::RosterRow>,
     classes: serde_json::Map<String, serde_json::Value>,
+    /// Las apariencias (`data/skins.json`) y sus filas para la creación.
+    skins: serde_json::Map<String, serde_json::Value>,
+    skin_rows: Vec<ui::RosterRow>,
     /// El personaje en juego (characters.json) y la lista de personajes (con sus filas para la UI).
     character: Option<serde_json::Value>,
     roster: Vec<serde_json::Value>,
@@ -240,19 +246,29 @@ fn data_dir() -> std::path::PathBuf {
     base.unwrap_or_else(|| PathBuf::from(".")).join("PixelDND")
 }
 
-/// Las clases para la creación de personaje, en el idioma actual: nombre, "Guerrero d10" y avatar.
+/// Las clases para la creación de personaje, en el idioma actual: nombre y "Guerrero d10" (sin avatar: la apariencia
+/// es aparte). Todas las de `data/classes.json`, en su orden.
 fn class_rows(c: &serde_json::Map<String, serde_json::Value>) -> Vec<ui::RosterRow> {
-    CLASSES
-        .iter()
-        .map(|k| match c.get(*k) {
-            Some(v) => ui::RosterRow {
-                name: game::registry::text(&v["name"]),
-                status: format!("{} d{}", game::registry::text(&v["dnd_class"]), v["hit_die"]),
-                stats: String::new(),
-                sheet: v["sprite"].as_str().and_then(|s| CHAR_SHEETS.iter().position(|e| e.0 == s)).map(|i| i + SHEETS.len()),
-            },
-            None => ui::RosterRow { name: k.to_string(), status: String::new(), stats: String::new(), sheet: None },
+    c.values()
+        .map(|v| ui::RosterRow {
+            name: game::registry::text(&v["name"]),
+            status: format!("{} d{}", game::registry::text(&v["dnd_class"]), v["hit_die"]),
+            stats: String::new(),
+            sheet: None,
         })
+        .collect()
+}
+
+/// La hoja del atlas de una skin (None = no está o su png no está cargado).
+fn skin_sheet(skins: &serde_json::Map<String, serde_json::Value>, id: &str) -> Option<usize> {
+    let file = skins.get(id)?["sprite"].as_str()?;
+    CHAR_SHEETS.iter().position(|e| e.0 == file).map(|i| i + SHEETS.len())
+}
+
+/// Las apariencias para la creación: nombre y avatar.
+fn skin_rows(s: &serde_json::Map<String, serde_json::Value>) -> Vec<ui::RosterRow> {
+    s.iter()
+        .map(|(k, v)| ui::RosterRow { name: game::registry::text(&v["name"]), status: String::new(), stats: String::new(), sheet: skin_sheet(s, k) })
         .collect()
 }
 
@@ -287,12 +303,14 @@ impl App {
             font,
             gpu: None,
             sprites: Vec::new(),
-            world: World::new(new_seed(), CLASSES[0], game::dice::DEFAULT_SCORES, "", false),
+            world: World::new(new_seed(), DEFAULT_CLASS, game::dice::DEFAULT_SCORES, "", "", false),
             ui: Ui::new(),
             config,
             title: true,
             class_rows: class_rows(&game::registry::load("classes").unwrap_or_default()),
             classes: game::registry::load("classes").unwrap_or_default(),
+            skins: game::registry::load("skins").unwrap_or_default(),
+            skin_rows: skin_rows(&game::registry::load("skins").unwrap_or_default()),
             character: None,
             roster: Vec::new(),
             roster_rows: Vec::new(),
@@ -560,6 +578,7 @@ impl App {
                 self.config.set_language(code);
                 game::registry::set_lang(code);
                 self.class_rows = class_rows(&self.classes);
+                self.skin_rows = skin_rows(&self.skins);
             }
             UiAction::SetResolution(r) => {
                 self.config.set_resolution(r);
@@ -596,7 +615,11 @@ impl App {
                     "" => self.class_rows[st.class].name.clone(),
                     n => n.to_string(),
                 };
-                let c = characters::new_character(&name, CLASSES[st.class], ab);
+                let Some(class) = self.classes.keys().nth(st.class).cloned() else { return };
+                let mut c = characters::new_character(&name, &class, ab);
+                if let Some(s) = self.skins.keys().nth(st.skin) {
+                    c["skin"] = serde_json::Value::String(s.clone());
+                }
                 self.roster.push(c.clone());
                 if let Err(e) = characters::save(&data_dir(), &self.roster) {
                     log::warn!("no se pudo guardar la lista de personajes: {e}");
@@ -611,7 +634,7 @@ impl App {
                 let reorder = fresh || matches!(c, ui::Cr::Class(_));
                 self.ui.create.apply(c, new_seed());
                 if reorder {
-                    let order = ability_order(self.classes.get(CLASSES[self.ui.create.class]));
+                    let order = ability_order(self.classes.values().nth(self.ui.create.class));
                     self.ui.create.auto_assign(&order, fresh);
                 }
             }
@@ -891,9 +914,9 @@ impl App {
             return; // en red, la partida no se reemplaza (R, nueva partida)
         }
         let c = self.character.clone().unwrap_or_default();
-        let class = c["class"].as_str().unwrap_or(CLASSES[0]);
+        let class = c["class"].as_str().unwrap_or(DEFAULT_CLASS);
         let name = c["name"].as_str().unwrap_or("");
-        self.world = World::new(seed, class, characters::abilities(&c), name, self.config.hotseat);
+        self.world = World::new(seed, class, characters::abilities(&c), name, characters::skin(&c), self.config.hotseat);
         self.saved_depth = self.world.d.depth;
         self.ui = Ui::new();
         self.pan = [0.0; 2];
@@ -920,7 +943,7 @@ impl App {
                 };
                 let ab = characters::abilities(c);
                 let stats: Vec<String> = (0..6).map(|k| format!("{} {}", game::dice::ABILITY_NAMES[k], ab[k])).collect();
-                let sheet = cls["sprite"].as_str().and_then(|s| CHAR_SHEETS.iter().position(|e| e.0 == s)).map(|k| k + SHEETS.len());
+                let sheet = skin_sheet(&self.skins, characters::skin(c)).or_else(|| skin_sheet(&self.skins, class));
                 ui::RosterRow { name, status, stats: stats.join("  "), sheet }
             })
             .collect();
@@ -973,8 +996,8 @@ impl App {
             }
             let p = save::portable(h);
             let mut run = save::load_run(&dir, id).filter(|d| d.heroes.iter().any(|h| h.is_alive())).unwrap_or_else(|| {
-                let class = c["class"].as_str().unwrap_or(CLASSES[0]);
-                World::new(new_seed(), class, characters::abilities(c), c["name"].as_str().unwrap_or(""), false).d
+                let class = c["class"].as_str().unwrap_or(DEFAULT_CLASS);
+                World::new(new_seed(), class, characters::abilities(c), c["name"].as_str().unwrap_or(""), characters::skin(c), false).d
             });
             let me = run.hero;
             save::set_portable(&mut run, me, &p);
@@ -995,6 +1018,7 @@ impl App {
         self.sprites.clear();
         let w = &self.world;
         let classes = &self.class_rows;
+        let skins = &self.skin_rows;
         let rows = &self.roster_rows;
         let lobby = match &self.net {
             Net::Host(h) if matches!(self.ui.window, Some(UiWindow::Lobby)) => Some(h.names(&w.d)),
@@ -1015,7 +1039,7 @@ impl App {
             .collect()
         };
         let status = &self.lan_status;
-        self.ui.draw_title(&self.atlas, &self.font, &w.chars, &w.d, &self.config, &mut self.sprites, uw as f32, uh as f32, dt, classes, rows, &lan, status);
+        self.ui.draw_title(&self.atlas, &self.font, &w.chars, &w.d, &self.config, &mut self.sprites, uw as f32, uh as f32, dt, classes, skins, rows, &lan, status);
         let end = self.sprites.len() as u32;
         self.gpu.as_mut().unwrap().draw(&self.sprites, &[], 0..end);
     }

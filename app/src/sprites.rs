@@ -168,7 +168,7 @@ pub fn look(d: &Dungeon, a: ActorId, first: usize) -> Option<Look> {
         ActorId::Hero(i) => {
             let h = &d.heroes[i];
             let tier = h.armor.as_ref().map_or(0, |a| a.int("tier")) as u32;
-            let sheet = sheet_of(h.cls["sprite"].as_str(), first);
+            let sheet = sheet_of(d.hero_sprite(i), first);
             Some(Look { sheet, w: HERO_W, h: HERO_H, row: Some(tier), stats: None, name: h.ch.name.clone() })
         }
         ActorId::Mob(id) => d.mob(id).map(|m| mob_look(&m.stats, m.ch.name.clone(), first)),

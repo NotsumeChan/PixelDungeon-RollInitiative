@@ -104,7 +104,7 @@ fn hero_v(h: &Hero) -> Value {
            "backpack": h.backpack.iter().map(item_v).collect::<Vec<_>>(), "quick": h.quickslots,
            "second_wind": h.second_wind, "slots": h.slots, "free_casts": h.free_casts,
            "marked": h.marked.map(actor_v), "dead": h.dead, "saves": h.saves, "stable": h.stable,
-           "talking": h.talking.as_ref().map(|(m, n)| json!([m, n])),
+           "talking": h.talking.as_ref().map(|(m, n)| json!([m, n])), "skin": h.skin,
            "char": char_v(&h.ch)})
 }
 
@@ -305,6 +305,7 @@ pub fn load(data: &Value) -> Option<Dungeon> {
         h.stable = hd["stable"].as_bool()?;
         // opcionales (guardados de antes de los NPCs)
         h.talking = hd.get("talking").and_then(|t| Some((t[0].as_u64()? as u32, t[1].as_str()?.to_string())));
+        h.skin = hd.get("skin").and_then(Value::as_str).unwrap_or("").to_string();
         load_char(&d, &mut h.ch, &hd["char"])?;
         h.update_awareness();
         heroes.push(h);

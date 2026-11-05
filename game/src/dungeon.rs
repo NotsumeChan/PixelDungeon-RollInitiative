@@ -151,6 +151,7 @@ pub struct Dungeon {
     pub(crate) npcs: Map<String, Value>,
     pub(crate) dialogs: Map<String, Value>,
     pub(crate) skills: Map<String, Value>,
+    pub(crate) skins: Map<String, Value>,
     /// Flags de los diálogos y misiones: de la partida (en la LAN, del grupo). Se guardan.
     pub flags: BTreeMap<String, i64>,
 }
@@ -199,6 +200,7 @@ impl Dungeon {
             npcs: load("npcs"),
             dialogs: load("dialogs"),
             skills: load("skills"),
+            skins: load("skins"),
             flags: BTreeMap::new(),
         };
         // apariencias sin identificar: lo primero que gasta el rng de la partida (como el prototipo)
@@ -306,6 +308,18 @@ impl Dungeon {
 
     pub fn level(&self) -> &Level {
         &self.floor().level
+    }
+
+    /// La hoja de sprites del héroe i: la de su skin (`data/skins.json`). Sin skin (guardados de antes de las skins) o
+    /// con una que no está cargada, la de igual id que su clase; si tampoco, la primera.
+    pub fn hero_sprite(&self, i: usize) -> Option<&str> {
+        let h = self.heroes.get(i)?;
+        let s = self.skins.get(&h.skin).or_else(|| self.skins.get(&h.class_key)).or_else(|| self.skins.values().next())?;
+        s["sprite"].as_str()
+    }
+
+    pub fn has_skin(&self, id: &str) -> bool {
+        self.skins.contains_key(id)
     }
 
     pub fn local(&self) -> &Hero {

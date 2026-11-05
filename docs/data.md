@@ -4,7 +4,7 @@ Registros que lee `game/registry.py`. IDs `namespace:nombre` (`pdri:` = juego ba
 
 - **classes.json** (`HERO_CLASSES`): ver el comentario en `game/hero.py` (`dnd_class`, `hit_die`, `weapon_prof`,
   `armor_prof`, `save_prof`, `traits`, `spellcasting`, `start_weapon`, `start_armor`, `items` (id o [id, cantidad]),
-  `quick`, `known`, `awareness_base`, `hunger_step`, `sprite`, `speed_ft` (5e, pies; 30), `ability_priority` (las 6
+  `quick`, `known`, `awareness_base`, `hunger_step`, `speed_ft` (5e, pies; 30), `ability_priority` (las 6
   características de la más a la menos importante: la creación de personaje les da las tiradas más altas)).
 - **mobs.json** (`MOBS`): `name`, `desc`, `sprite`, `frame` [ancho, alto], `anims` (nombre -> [fps, [frames], se repite]),
   `HT`, `defense`, `damage` [mín, máx], `attack`, `dr`, `exp`, `max_lvl`, `speed` (PD, fuera de combate), `speed_ft` (5e, pies; 30), `initiative` (mod DES; 0), `flying`, `loot` [id, prob], `saves`.
@@ -17,6 +17,9 @@ Registros que lee `game/registry.py`. IDs `namespace:nombre` (`pdri:` = juego ba
   - `missile`: `thrown`, `dice`, `kind`, `finesse`, `range`, `STR`, `dly`, `qty` [mín, máx], `spin`, `on_hit`
     [estado, duración, nivel, CD], `returns`, `upgradable`. Munición: `flight_image`.
   - `food`: `energy`. `potion` / `scroll`: `effect` (nombre en `items.EFFECTS`), `target`.
+- **skins.json**: apariencias de los héroes, aparte de la clase: id -> `name` y `sprite` (hoja de
+  `Assets/Characters/` con el layout del héroe del original: una fila por armadura). Se eligen en la creación de
+  personaje. Las del juego base son los 4 héroes de Pixel Dungeon, con los ids de sus clases de antes.
 - **skills.json**: pericias de 5e, id -> `name` y `ability`. En `classes.json`, `skill_prof` = las pericias con
   competencia.
 - **NPCs** (`docs/game/npcs.md`): en `mobs.json`, `npc` (id del diálogo) hace NPC al mob y `disposition` (-2..2) es su

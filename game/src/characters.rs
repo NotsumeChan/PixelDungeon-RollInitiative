@@ -1,5 +1,5 @@
 //! Lista de personajes creados (`game/characters.py`), en `<datos>/characters.json`. Personaje = {"id", "name",
-//! "class", "abilities", "created"}. Las entradas se guardan tal cual (una de otra versión o de una clase que no está
+//! "class", "skin", "abilities", "created"}. Las entradas se guardan tal cual (una de otra versión o de una clase que no está
 //! cargada se conserva aunque no se pueda jugar).
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -51,6 +51,11 @@ pub fn new_character(name: &str, class_id: &str, abilities: [i32; 6]) -> Value {
 /// Las características del personaje en el orden de `ABILITIES` (10 si falta alguna).
 pub fn abilities(c: &Value) -> [i32; 6] {
     ABILITIES.map(|a| c["abilities"].get(a).and_then(Value::as_i64).unwrap_or(10) as i32)
+}
+
+/// La apariencia del personaje (`data/skins.json`); los de antes de las skins usan la de igual id que su clase.
+pub fn skin(c: &Value) -> &str {
+    c["skin"].as_str().or_else(|| c["class"].as_str()).unwrap_or("")
 }
 
 pub fn id(c: &Value) -> &str {

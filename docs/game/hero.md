@@ -58,3 +58,6 @@ R5d, armas a distancia (`hero.py`: `_throw`, `_shoot`, `_ranged_attack`, `_after
   CD]: dardos incendiarios, de curare...), el bumerán vuelve a la mochila (o a los pies si está llena), lo que falla
   cae en la casilla donde se frenó y lo que acierta se pierde.
 - Sin proyectil en vuelo todavía (pendiente de pulido, con las partículas).
+
+Apariencia: `Hero::skin` (id de `data/skins.json`), aparte de la clase; se guarda y viaja en el `hello` de la LAN.
+`Dungeon::hero_sprite` da la hoja: la de la skin, o la de igual id que su clase (guardados viejos), o la primera.

@@ -142,6 +142,8 @@ pub struct Hero {
     pub stable: bool,
     /// Diálogo abierto: (id del NPC, nodo).
     pub talking: Option<(u32, String)>,
+    /// Apariencia (id de `data/skins.json`), aparte de la clase. Vacía = la de su clase (`Dungeon::hero_sprite`).
+    pub skin: String,
 }
 
 impl Hero {
@@ -194,6 +196,7 @@ impl Hero {
             saves: [0, 0],
             stable: false,
             talking: None,
+            skin: String::new(),
             cls,
         };
         h.ch.base_speed_ft = h.cls.get("speed_ft").and_then(Value::as_i64).unwrap_or(30) as i32;

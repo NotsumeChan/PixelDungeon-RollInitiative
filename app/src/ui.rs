@@ -1187,7 +1187,8 @@ impl Ui {
     /// característica la asigna; click en una característica sin tirada elegida deja escribir el número. Esc vuelve.
     /// Arrastrar (mouse o dedo): una tirada a una característica, una característica a otra (se cambian) o afuera (se
     /// quita). Lo arrastrado sigue al puntero.
-    fn draw_create(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, classes: &[RosterRow]) {
+    #[allow(clippy::too_many_arguments)]
+    fn draw_create(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, classes: &[RosterRow], skins: &[RosterRow]) {
         const SEL_BG: [f32; 4] = rgba(0x99, 0x88, 0x33, 0xAA);
         const BOX_BG: [f32; 4] = rgba(0x53, 0x56, 0x4D, 0x99);
         let bg = |on: bool| if on { SEL_BG } else { BOX_BG };
@@ -1209,20 +1210,17 @@ impl Ui {
         font.text(out, &t, r[0] + 2.0, r[1] + 2.0, col);
         self.hot(r, UiAction::Create(Cr::Name), None);
 
-        // clases (4 columnas; en vertical no entran: 2)
-        let cols = if w < 300.0 { 2 } else { 4 };
-        let step = ((w - 12.0) / cols as f32).floor();
-        for (k, c) in classes.iter().enumerate() {
-            let r = [8.0 + (k % cols) as f32 * step, top + (k / cols) as f32 * 38.0, step - 4.0, 34.0];
-            out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], bg(k == st.class)));
-            if let Some(sheet) = c.sheet {
-                out.push(piece(atlas, sheet, [1, 0, 11, 15], [r[0] + 4.0, r[1] + ((r[3] - 15.0) / 2.0).floor()], [11.0, 15.0], WHITE));
-            }
-            font.text(out, &c.name, r[0] + 18.0, r[1] + 6.0, WHITE);
-            font.text(out, &c.status, r[0] + 18.0, r[1] + 18.0, GREY);
-            self.hot(r, UiAction::Create(Cr::Class(k)), None);
-        }
-        let y = top + classes.len().div_ceil(cols) as f32 * 38.0; // 53 con 4 clases en 320
+        // clase y apariencia: selectores con flechas (entran todas las clases, también las de los mods); en vertical,
+        // uno debajo del otro
+        let half = if narrow { w - 16.0 } else { ((w - 20.0) / 2.0).floor() };
+        let class_r = [8.0, top, half, 34.0];
+        let skin_r = if narrow { [8.0, top + 38.0, half, 34.0] } else { [12.0 + half, top, half, 34.0] };
+        let none = RosterRow { name: "?".into(), status: String::new(), stats: String::new(), sheet: None };
+        let c = classes.get(st.class).unwrap_or(&none);
+        self.draw_picker(atlas, font, out, class_r, &c.name, &c.status, None, st.class, classes.len(), Cr::Class);
+        let s = skins.get(st.skin).unwrap_or(&none);
+        self.draw_picker(atlas, font, out, skin_r, &s.name, "Apariencia", s.sheet, st.skin, skins.len(), Cr::Skin);
+        let y = top + if narrow { 76.0 } else { 38.0 };
 
         // características
         let step = ((w - 12.0) / 6.0).floor();
@@ -1334,6 +1332,23 @@ impl Ui {
         }
     }
 
+    /// Un selector de la creación: < y > pasan al anterior / siguiente (`act(k)`), en el medio el avatar (si hay),
+    /// el nombre y un subtítulo.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_picker(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, r: [f32; 4], title: &str, sub: &str, sheet: Option<usize>, cur: usize, n: usize, act: fn(usize) -> Cr) {
+        out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], rgba(0x53, 0x56, 0x4D, 0x99)));
+        let n = n.max(1);
+        self.draw_button(atlas, font, out, [r[0], r[1], 24.0, r[3]], "<", Some(UiAction::Create(act((cur + n - 1) % n))));
+        self.draw_button(atlas, font, out, [r[0] + r[2] - 24.0, r[1], 24.0, r[3]], ">", Some(UiAction::Create(act((cur + 1) % n))));
+        let mut x = r[0] + 28.0;
+        if let Some(sheet) = sheet {
+            out.push(piece(atlas, sheet, [1, 0, 11, 15], [x, r[1] + ((r[3] - 15.0) / 2.0).floor()], [11.0, 15.0], WHITE));
+            x += 14.0;
+        }
+        font.text(out, title, x, r[1] + 6.0, WHITE);
+        font.text(out, sub, x, r[1] + 18.0, GREY);
+    }
+
     /// Unirse a una partida LAN: las partidas que contestaron (gris = otra versión o contenido) y el estado.
     #[allow(clippy::too_many_arguments)]
     fn draw_join(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, games: &[(String, bool)], status: &str) {
@@ -1402,7 +1417,7 @@ impl Ui {
     /// los letreros que laten, el dashboard (Jugar, Acerca de), configuración arriba a la izquierda y la versión.
     /// ponytail: sin Mods (1.x); los letreros se suman con alfa, no con mezcla aditiva
     #[allow(clippy::too_many_arguments)]
-    pub fn draw_title(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, classes: &[RosterRow], roster: &[RosterRow], lan: &[(String, bool)], lan_status: &str) {
+    pub fn draw_title(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, classes: &[RosterRow], skins: &[RosterRow], roster: &[RosterRow], lan: &[(String, bool)], lan_status: &str) {
         self.t += dt;
         self.hot.clear();
         // Archs: textura repetida, desplazada en Y (SCROLL_SPEED = 20; la de adelante, 40)
@@ -1468,7 +1483,7 @@ impl Ui {
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
             Some(Window::Page(paras)) => self.draw_page(atlas, font, out, w, h, &paras),
             Some(Window::Info { icon, title, text, hp }) => self.draw_info(atlas, font, chars, d, out, w, h, icon, &title, &text, hp),
-            Some(Window::Create) => self.draw_create(atlas, font, out, w, h, classes),
+            Some(Window::Create) => self.draw_create(atlas, font, out, w, h, classes, skins),
             Some(Window::Roster) => self.draw_roster(atlas, font, out, w, h, roster),
             Some(Window::Join) => self.draw_join(atlas, font, out, w, h, lan, lan_status),
             Some(Window::Lobby) => self.draw_lobby(atlas, font, out, w, h, lan, lan_status),
@@ -1565,6 +1580,8 @@ pub enum Cr {
     New,
     Name,
     Class(usize),
+    /// Apariencia (índice en `data/skins.json`).
+    Skin(usize),
     Stat(usize),
     Chip(usize),
     Roll,
@@ -1584,6 +1601,7 @@ const NAME_MAX: usize = 16;
 pub struct Create {
     pub name: String,
     pub class: usize,
+    pub skin: usize,
     pub scores: [Option<i32>; 6],
     /// La tirada asignada a cada característica (None = escrita a mano o vacía).
     source: [Option<usize>; 6],
@@ -1627,6 +1645,7 @@ impl Create {
             Cr::New => *self = Create { pool: dice::roll_ability_pool(&mut game::rng::Rng::new(seed)), ..Create::default() },
             Cr::Name => (self.focus, self.chip) = (Some(Focus::Name), None),
             Cr::Class(k) => self.class = k,
+            Cr::Skin(k) => self.skin = k,
             Cr::Unfocus => self.focus = None,
             Cr::Clear => {
                 // como el prototipo: borra las características; nombre, clase y tiradas quedan

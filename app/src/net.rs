@@ -478,6 +478,9 @@ impl HostGame {
                         None => {
                             let i = d.add_hero(msg["class"].as_str().unwrap_or(""), abilities(&msg).unwrap_or_default());
                             d.heroes[i].ch.name = name.clone();
+                            if let Some(s) = msg["skin"].as_str().filter(|s| d.has_skin(s)) {
+                                d.heroes[i].skin = s.to_string(); // una que no está cargada: la de su clase
+                            }
                             // personaje portátil: nivel, XP, oro y equipo (ya validado en `refuse`)
                             save::set_portable(d, i, &msg["hero"]);
                             d.depth = d.local().depth; // add_hero entra al piso 1: vuelve el piso del host
@@ -594,7 +597,7 @@ impl ClientGame {
         let mut g = Self { stream, inbox, refused: None, closed: false, lobby: None, fx: Vec::new(), dice: Vec::new() };
         g.send(&json!({"t": "hello", "version": game::VERSION, "hash": game::registry::content_hash(),
                        "name": c["name"], "char": characters::id(c), "class": c["class"],
-                       "abilities": characters::abilities(c), "hero": hero}));
+                       "abilities": characters::abilities(c), "hero": hero, "skin": characters::skin(c)}));
         Ok(g)
     }
 
