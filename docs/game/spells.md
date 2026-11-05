@@ -17,3 +17,9 @@
   gratis 2 + (nivel - 1) / 4 veces; la marca suma +1d6 a los ataques con armas).
 - `shot`: la línea de tiro de un héroe (pasa por los aliados: media cobertura, -2).
 - Faltan: proyectiles y partículas de los conjuros, concentración, foco.
+
+Clases de 5e (0.9.3): tipos nuevos `save` (salvación contra la CD del lanzador: Llama sagrada, Burla cruel, Rociada
+venenosa; `half` = la mitad si se salva) y `buff` (un estado sobre uno mismo: Furia), `amount` en `heal` (curación fija:
+Imposición de manos) y la tabla `pact` de espacios (Brujo: pocos, del nivel más alto). Los rasgos con usos (`features`
+de la clase: [conjuro, base, cada]) son conjuros de nivel 1 con usos por descanso en vez de espacios; no piden
+competencia con la armadura. El +1d6 de las marcas sale del flag `mark` del estado (Marca del cazador, Maleficio).

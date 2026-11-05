@@ -334,14 +334,24 @@ impl Hero {
         if self.ranged.is_some() && w.is_some_and(|w| w.flag("ranged")) {
             return self.ability_mod("DEX"); // arco
         }
-        if w.is_some_and(|w| w.flag("finesse")) {
+        // Artes marciales (Monje): sin armas o con armas simples, FUE o DES (la mayor)
+        let martial = self.has_trait("pdri:martial_arts") && w.is_none_or(|w| w.str("kind") == "simple");
+        if martial || w.is_some_and(|w| w.flag("finesse")) {
             return self.ability_mod("STR").max(self.ability_mod("DEX"));
         }
         self.ability_mod("STR")
     }
 
+    /// CA (5e). Defensa sin armadura (`unarmored_ac` de la clase: Bárbaro CON, Monje SAB): sin armadura (la ropa no
+    /// cuenta), 10 + DES + esa característica si es mejor.
     pub fn armor_class(&self) -> i32 {
-        armor_ac(self.armor.as_ref(), self.ability_mod("DEX"))
+        let worn = armor_ac(self.armor.as_ref(), self.ability_mod("DEX"));
+        match self.cls.get("unarmored_ac").and_then(Value::as_str) {
+            Some(ab) if self.armor.as_ref().is_none_or(|a| a.str("kind") == "clothing") => {
+                worn.max(10 + self.ability_mod("DEX") + self.ability_mod(ab))
+            }
+            _ => worn,
+        }
     }
 
     pub fn attack_bonus(&self) -> i32 {

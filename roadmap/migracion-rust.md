@@ -168,7 +168,25 @@ clase. ✏️ 0.9.2: los 4 héroes de PD son skins (`data/skins.json`, ids = los
 se ve igual), elegidas en la creación con un selector con flechas, guardadas en el personaje y el héroe y mandadas en
 el `hello` de la LAN; las clases salen de `data/classes.json` (las de un mod aparecen solas). Para probar: crear un
 personaje con otra skin que su clase (p. ej. Mago con la Cazadora) y verlo en el mapa, la lista y la LAN; un
-personaje de antes sigue igual. Siguiente: las 8 clases que faltan (0.9.3).
+personaje de antes sigue igual.
+✏️ 0.9.3: las 8 clases que faltan, con lo de nivel 1 de 5e:
+- Bárbaro d12: Furia (acción adicional, 10 turnos: +2 al daño cuerpo a cuerpo y la mitad del daño de los ataques;
+  2 usos, +1 cada 3 niveles) y Defensa sin armadura (CON).
+- Bardo d8 (CAR): Burla cruel, Curar heridas, Dormir.
+- Clérigo d8 (SAB): Llama sagrada, Saeta guía, Curar heridas.
+- Druida d8 (SAB): Producir llama, Rociada venenosa, Curar heridas.
+- Monje d8: Artes marciales (FUE o DES con armas simples o sin armas; puño 1d4) y Defensa sin armadura (SAB).
+- Paladín d10: Imposición de manos (5 PV por uso, usos = nivel).
+- Hechicero d6 (CAR): Descarga de fuego, Rociada venenosa, Proyectil mágico, Dormir.
+- Brujo d8 (CAR, magia de pacto): Descarga sobrenatural y Maleficio.
+
+Cada una con sus salvaciones, competencias de armas, armaduras y pericias, equipo inicial y orden de
+características. Los rasgos se ven y se usan desde el libro (F / el botón de la barra).
+Ponytail, para después: Inspiración bárdica, Sentido divino, Canalizar divinidad, golpe extra del Monje, Forma
+salvaje, Castigo divino, invocaciones del Brujo, metamagia; la Furia no exige FUE ni corta los conjuros.
+Para probar: crear una de cada una, su CA sin armadura (Bárbaro y Monje), la Furia (daño +2 y la mitad del daño
+recibido, el estado en la ficha), los conjuros de salvación (el dado verde o rojo del mob), Imposición de manos a un
+aliado caído, que el Brujo tenga 1 espacio en nivel 1 y 2 en nivel 2.
 
 **Estado R6** ✏️ escrito (2026-11-04), pendiente de prueba del dueño (PC + teléfono): red LAN en `app/src/net.rs`
 (`docs/app/net.md`), sólo std. Lista de personajes -> CREAR LAN (juegas con el elegido y la partida queda abierta; el

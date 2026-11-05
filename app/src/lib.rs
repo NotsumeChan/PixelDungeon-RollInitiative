@@ -491,7 +491,7 @@ impl App {
                 let h = self.world.d.local();
                 if h.has_trait("pdri:second_wind") {
                     self.ui_action(UiAction::Act(Action::SecondWind));
-                } else if h.spellcasting().is_some() {
+                } else if h.has_book() {
                     self.ui.window = Some(UiWindow::Spells);
                 }
             }

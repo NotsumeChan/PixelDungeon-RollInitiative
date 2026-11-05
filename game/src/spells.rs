@@ -5,8 +5,12 @@
 //! Campos: `level` (0 = truco: sin espacio, los dados se multiplican en los niveles 5, 11 y 17; 1+ = gasta el menor
 //! espacio de ese nivel o mayor), `kind` (attack: tirada de ataque de conjuro contra la CA, `damage` y `buff` opcional;
 //! auto: `darts` dardos que aciertan solos; sleep: reserva de `pool` PV, duerme a los de menos vida a `radius`;
-//! heal: cura `damage` + mod; mark: pone `buff` al objetivo), `target` (enemy | cell | self | touch), `upcast` (por
-//! cada nivel de espacio extra: darts / pool / damage), `bonus` (acción adicional: no gasta tiempo), `fx`.
+//! heal: cura `damage` + mod, o `amount` fijo; mark: pone `buff` al objetivo; save: el objetivo tira la salvación
+//! `save` contra la CD y si falla recibe `damage` (con `half`, la mitad si se salva); buff: pone `buff` a uno mismo),
+//! `target` (enemy | cell | self | touch), `upcast` (por cada nivel de espacio extra: darts / pool / damage), `bonus`
+//! (acción adicional: no gasta tiempo), `fx`.
+//! Rasgos con usos (`features` de la clase: [conjuro, base, cada]): se lanzan como conjuros de nivel 1 pero con usos
+//! por descanso (base + (nivel - 1) / cada) en vez de espacios, y sin pedir competencia con la armadura.
 //! ponytail: sin proyectiles ni partículas de conjuros (el log y los dados avisan); sin concentración ni foco
 use serde_json::Value;
 
@@ -21,6 +25,8 @@ use crate::registry::text;
 /// Espacios de conjuro por nivel de personaje (5e): lanzador completo (Mago) y medio (Explorador, reglas 2024).
 const FULL: [&[i32]; 10] = [&[2], &[3], &[4, 2], &[4, 3], &[4, 3, 2], &[4, 3, 3], &[4, 3, 3, 1], &[4, 3, 3, 2], &[4, 3, 3, 3, 1], &[4, 3, 3, 3, 2]];
 const HALF: [&[i32]; 10] = [&[2], &[2], &[3], &[3], &[4, 2], &[4, 2], &[4, 3], &[4, 3], &[4, 3, 2], &[4, 3, 2]];
+/// Magia de pacto (Brujo): pocos espacios, todos del nivel más alto que tiene.
+const PACT: [&[i32]; 10] = [&[1], &[2], &[0, 2], &[0, 2], &[0, 0, 2], &[0, 0, 2], &[0, 0, 0, 2], &[0, 0, 0, 2], &[0, 0, 0, 0, 2], &[0, 0, 0, 0, 2]];
 pub const TIME_TO_CAST: f64 = 1.0;
 
 /// Rasgos que dan lanzamientos gratis: (rasgo, conjuro); usos = 2 + (nivel - 1) / 4.
@@ -35,10 +41,30 @@ impl Hero {
         self.cls.get("spellcasting")
     }
 
-    /// Los conjuros de la clase, en orden (el índice es el de `Action::Cast`).
+    /// Los conjuros de la clase y después sus rasgos con usos, en orden (el índice es el de `Action::Cast`).
     pub fn spell_ids(&self) -> Vec<String> {
         let list = self.spellcasting().and_then(|s| s.get("spells")).and_then(Value::as_array);
-        list.into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect()
+        let spells = list.into_iter().flatten().filter_map(Value::as_str);
+        let feats = self.features().into_iter().map(|f| f.0);
+        spells.map(str::to_string).chain(feats).collect()
+    }
+
+    /// Rasgos con usos de la clase: (conjuro, base, cada cuántos niveles suma uno).
+    fn features(&self) -> Vec<(String, i32, i32)> {
+        let list = self.cls.get("features").and_then(Value::as_array);
+        list.into_iter()
+            .flatten()
+            .filter_map(|f| Some((f[0].as_str()?.to_string(), f[1].as_i64().unwrap_or(1) as i32, f[2].as_i64().unwrap_or(0) as i32)))
+            .collect()
+    }
+
+    pub fn is_feature(&self, sid: &str) -> bool {
+        self.features().iter().any(|f| f.0 == sid)
+    }
+
+    /// ¿Tiene libro (conjuros o rasgos con usos)? Lo abre F / el botón de la barra.
+    pub fn has_book(&self) -> bool {
+        !self.spell_ids().is_empty()
     }
 
     /// Bono de ataque de conjuro: competencia + modificador de la característica de lanzamiento.
@@ -53,12 +79,18 @@ impl Hero {
 
     pub fn max_slots(&self, lvl: i32) -> Vec<i32> {
         let Some(kind) = self.spellcasting().and_then(|s| s["slots"].as_str()) else { return Vec::new() };
-        let table = if kind == "half" { &HALF } else { &FULL };
+        let table = match kind {
+            "half" => &HALF,
+            "pact" => &PACT,
+            _ => &FULL,
+        };
         table[(lvl.clamp(1, 10) - 1) as usize].to_vec()
     }
 
     pub fn max_free(&self, lvl: i32) -> Vec<(String, i32)> {
-        FREE_CASTS.iter().filter(|(t, _)| self.has_trait(t)).map(|(_, s)| (s.to_string(), 2 + (lvl - 1) / 4)).collect()
+        let free = FREE_CASTS.iter().filter(|(t, _)| self.has_trait(t)).map(|(_, s)| (s.to_string(), 2 + (lvl - 1) / 4));
+        let feats = self.features().into_iter().map(|(s, base, every)| (s, base + if every > 0 { (lvl - 1) / every } else { 0 }));
+        free.chain(feats).collect()
     }
 
     pub fn free_casts_of(&self, sid: &str) -> i32 {
@@ -78,7 +110,8 @@ impl Hero {
         let (old, new) = (self.max_slots(self.lvl - 1), self.max_slots(self.lvl));
         self.slots.resize(new.len().max(self.slots.len()), 0);
         for (k, n) in new.iter().enumerate() {
-            self.slots[k] += n - old.get(k).copied().unwrap_or(0);
+            // el pacto pasa sus espacios a un nivel mayor: los del nivel viejo desaparecen (nunca quedan negativos)
+            self.slots[k] = (self.slots[k] + n - old.get(k).copied().unwrap_or(0)).max(0);
         }
         let old_free = self.max_free(self.lvl - 1);
         for (sid, n) in self.max_free(self.lvl) {
@@ -121,7 +154,7 @@ impl Dungeon {
 
     pub fn can_cast(&self, h: &Hero, sid: &str) -> bool {
         let Some(s) = self.spell(sid) else { return false };
-        if !h.spell_ids().iter().any(|x| x == sid) || !h.proficient_armor() {
+        if !h.spell_ids().iter().any(|x| x == sid) || !(h.proficient_armor() || h.is_feature(sid)) {
             return false;
         }
         let level = s["level"].as_i64().unwrap_or(0) as i32;
@@ -167,7 +200,7 @@ impl Dungeon {
         let me = ActorId::Hero(i);
         let Some(sid) = self.heroes[i].spell_ids().get(k).cloned() else { return };
         let Some(s) = self.spell(&sid).cloned() else { return };
-        if !self.heroes[i].proficient_armor() {
+        if !self.heroes[i].proficient_armor() && !self.heroes[i].is_feature(&sid) {
             self.tell(i, "No puedes lanzar conjuros con una armadura sin competencia");
             return;
         }
@@ -212,9 +245,10 @@ impl Dungeon {
             if let Some(f) = h.free_casts.iter_mut().find(|f| f.0 == sid && f.1 > 0) {
                 f.1 -= 1;
             } else {
-                let slot = h.slot_for(level);
+                let slot = if h.is_feature(&sid) { 0 } else { h.slot_for(level) };
                 if slot == 0 {
-                    self.tell(i, "No te quedan espacios de conjuro");
+                    let msg = if h.is_feature(&sid) { "No te quedan usos (se recuperan al descansar)" } else { "No te quedan espacios de conjuro" };
+                    self.tell(i, msg);
                     return;
                 }
                 h.slots[slot as usize - 1] -= 1;
@@ -231,6 +265,14 @@ impl Dungeon {
             "sleep" => self.spell_sleep(&s, &name, cell, extra),
             "heal" => self.spell_heal(i, &s, &name, target.unwrap_or(me), extra),
             "mark" => self.spell_mark(i, &s, &name, target.unwrap()),
+            "save" => self.spell_save(i, &s, &name, target.unwrap(), extra),
+            "buff" => {
+                let id = s["buff"][0].as_str().unwrap_or("").to_string();
+                self.add_buff(me, &id, s["buff"][1].as_f64(), 0, 0);
+                let who = self.heroes[i].ch.name.clone();
+                self.log(&format!("{who}: {name}"));
+                self.status(me, &name.to_lowercase(), Tone::Pos);
+            }
             _ => {}
         }
         if !s.get("bonus").and_then(Value::as_bool).unwrap_or(false) {
@@ -271,6 +313,44 @@ impl Dungeon {
         };
         self.defer(p);
         if let Some(buff) = s.get("buff").and_then(Value::as_array) {
+            let id = buff[0].as_str().unwrap_or("").to_string();
+            self.defer(Pending::Buff { target, id, duration: buff[1].as_f64() });
+        }
+    }
+
+    /// Conjuro de salvación: el objetivo tira `save` contra tu CD; si falla recibe el daño (con `half`, la mitad si se
+    /// salva) y el `buff`.
+    fn spell_save(&mut self, i: usize, s: &Value, name: &str, target: ActorId, extra: i32) {
+        let ability = s["save"].as_str().unwrap_or("DEX");
+        let dc = self.heroes[i].spell_dc();
+        let (saved, stxt) = self.saving_throw(target, ability, dc, name);
+        let half = s.get("half").and_then(Value::as_bool).unwrap_or(false);
+        let tname = self.ch(target).map_or(String::new(), |c| c.name.clone());
+        let me = ActorId::Hero(i);
+        if saved && !half {
+            let p = Pending::Attack { attacker: me, target, hit: false, dmg: 0, detail: format!("{name}: {stxt}, se salva"), simple: format!("{tname} resiste {name}") };
+            self.defer(p);
+            return;
+        }
+        let base = s["damage"].as_str().unwrap_or("1d4");
+        let up = s.get("upcast").and_then(|u| u.get("damage")).and_then(Value::as_str).unwrap_or(base);
+        let (n, sides, b) = dice::parse(&more(base, up, extra)).unwrap_or((1, 4, 0));
+        let n = n * if s["level"].as_i64() == Some(0) { self.heroes[i].cantrip_mult() } else { 1 };
+        let notation = if b != 0 { format!("{n}d{sides}{b:+}") } else { format!("{n}d{sides}") };
+        let (total, dtext, rolled, _) = dice::roll(&mut self.rng, &notation, false);
+        let k = rolled.len() as i32;
+        self.roll_event(&format!("{k}d{sides}"), rolled.iter().sum(), k, k * sides, None);
+        let dmg = if saved { total / 2 } else { total };
+        let p = Pending::Attack {
+            attacker: me,
+            target,
+            hit: true,
+            dmg,
+            detail: format!("{name}: {stxt}, {dtext}={dmg}"),
+            simple: format!("{name} a {tname}: {dmg}"),
+        };
+        self.defer(p);
+        if !saved && let Some(buff) = s.get("buff").and_then(Value::as_array) {
             let id = buff[0].as_str().unwrap_or("").to_string();
             self.defer(Pending::Buff { target, id, duration: buff[1].as_f64() });
         }
@@ -339,6 +419,10 @@ impl Dungeon {
     }
 
     fn spell_heal(&mut self, i: usize, s: &Value, name: &str, who: ActorId, extra: i32) {
+        if let Some(amount) = s.get("amount").and_then(Value::as_i64) {
+            self.defer(Pending::Heal { caster: i, who, amount: amount as i32, name: name.to_string() }); // fijo, sin dados
+            return;
+        }
         let base = s["damage"].as_str().unwrap_or("1d8");
         let up = s.get("upcast").and_then(|u| u.get("damage")).and_then(Value::as_str).unwrap_or(base);
         let notation = more(base, up, extra);

@@ -51,6 +51,27 @@
    "es": "Marcado",
    "en": "Marked"
   },
-  "icon": 27
+  "icon": 27,
+  "flags": [
+   "mark"
+  ]
+ },
+ "pdri:hex": {
+  "base": "pdri:hunters_mark",
+  "name": {
+   "es": "Maldito",
+   "en": "Hexed"
+  }
+ },
+ "pdri:rage": {
+  "name": {
+   "es": "Furia",
+   "en": "Raging"
+  },
+  "duration": 10,
+  "flags": [
+   "rage",
+   "resist"
+  ]
  }
 }

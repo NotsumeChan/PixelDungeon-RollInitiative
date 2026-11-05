@@ -574,14 +574,20 @@ impl Ui {
             self.hot([x, y, size[0], size[1]], act, Some(tip));
         }
         // rasgo de clase (F): en el teléfono no hay teclado. El ícono de la clase de Icons.java
-        if me.has_trait("pdri:second_wind") || me.spellcasting().is_some() {
+        if me.has_trait("pdri:second_wind") || me.has_book() {
             let x = 61.0;
             out.push(piece(atlas, TOOLBAR, TOOL_QUICK, [x, y], [22.0, 25.0], WHITE));
             let k = ["pdri:warrior", "pdri:mage", "pdri:rogue", "pdri:huntress"].iter().position(|c| *c == me.class_key).unwrap_or(0);
             let used = me.has_trait("pdri:second_wind") && !me.second_wind;
             let alpha = if used { 0.4 } else { 1.0 };
             out.push(piece(atlas, ICONS, [k as u32 * 16, ICON_CLASS_Y, 16, 16], [x + 3.0, y + 5.0], [16.0, 16.0], [1.0, 1.0, 1.0, alpha]));
-            let tip = if me.has_trait("pdri:second_wind") { "Segundo Aliento (F)" } else { "Conjuros (F)" };
+            let tip = if me.has_trait("pdri:second_wind") {
+                "Segundo Aliento (F)"
+            } else if me.spellcasting().is_some() {
+                "Conjuros (F)"
+            } else {
+                "Rasgos (F)"
+            };
             self.hot([x, y, 22.0, 25.0], UiAction::Trait, Some(tip));
         }
         // chat de la partida LAN (Enter): en el teléfono no hay teclado
@@ -878,6 +884,9 @@ impl Ui {
         } else if me.spellcasting().is_some() {
             lines.push((format!("Conjuros (F): ataque {:+}, CD {}", me.spell_bonus(), me.spell_dc()), WHITE));
             Some(("Conjuros", Some(UiAction::Open(Window::Spells))))
+        } else if me.has_book() {
+            lines.push(("Rasgos (F)".to_string(), WHITE));
+            Some(("Rasgos", Some(UiAction::Open(Window::Spells))))
         } else {
             None
         };
@@ -913,10 +922,12 @@ impl Ui {
     #[allow(clippy::too_many_arguments)]
     fn draw_spells(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
         let me = d.local();
-        let Some(sc) = me.spellcasting() else {
+        if !me.has_book() {
             self.window = None;
             return;
-        };
+        }
+        let null = serde_json::Value::Null;
+        let sc = me.spellcasting().unwrap_or(&null); // sólo rasgos (Bárbaro, Paladín): sin característica de lanzamiento
         let sw = SPELLS_W.min(w - 16.0);
         let ability = sc["ability"].as_str().unwrap_or("INT");
         let short = ABILITIES.iter().position(|a| *a == ability).map_or(ability, |k| ABILITY_NAMES[k]);
@@ -929,7 +940,8 @@ impl Ui {
         ];
         for (sid, n) in &me.free_casts {
             let name = d.spell(sid).map_or(sid.clone(), |s| text(&s["name"]));
-            head.push((format!("{name}: {n} gratis"), WHITE));
+            let what = if me.is_feature(sid) { "usos" } else { "gratis" };
+            head.push((format!("{name}: {n} {what}"), WHITE));
         }
         let rows: Vec<(usize, String, Vec<String>, bool, bool)> = me
             .spell_ids()

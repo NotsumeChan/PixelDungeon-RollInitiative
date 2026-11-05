@@ -61,3 +61,8 @@ R5d, armas a distancia (`hero.py`: `_throw`, `_shoot`, `_ranged_attack`, `_after
 
 Apariencia: `Hero::skin` (id de `data/skins.json`), aparte de la clase; se guarda y viaja en el `hello` de la LAN.
 `Dungeon::hero_sprite` da la hoja: la de la skin, o la de igual id que su clase (guardados viejos), o la primera.
+
+Rasgos de 5e por datos de la clase: `unarmored_ac` (Defensa sin armadura: sin armadura o con ropa, 10 + DES + esa
+característica si es mejor; Bárbaro CON, Monje SAB), el rasgo `pdri:martial_arts` (Monje: sin armas o con armas simples
+ataca con FUE o DES, la mayor, y el golpe sin armas hace 1d4). La Furia (estado con flags `rage`: +2 al daño cuerpo a
+cuerpo, y `resist`: la mitad del daño de los ataques de los mobs).

@@ -1022,8 +1022,17 @@ impl Dungeon {
     fn roll_damage(&mut self, a: ActorId, crit: bool, adv: i32, target: ActorId) -> (i32, String, Option<DiceEvent>) {
         match a {
             ActorId::Hero(i) => {
+                // Furia: +2 cuerpo a cuerpo
+                let rage = if self.heroes[i].ranged.is_none() && self.has_flag(a, "rage") { 2 } else { 0 };
+                let m = self.heroes[i].attack_mod() + rage;
+                if self.heroes[i].wep().is_none() && self.heroes[i].has_trait("pdri:martial_arts") {
+                    // Artes marciales: el golpe sin armas hace 1d4
+                    let (t, txt, r, _) = dice::roll(&mut self.rng, "1d4", crit);
+                    let k = r.len() as i32;
+                    let ev = DiceEvent { label: format!("{k}d4"), value: r.iter().sum(), lo: k, hi: 4 * k, ok: None };
+                    return (t + m, format!("{txt}{m:+}"), Some(ev));
+                }
                 let h = &self.heroes[i];
-                let m = h.attack_mod();
                 let Some(w) = h.wep() else { return (1 + m, format!("1{m:+}"), None) }; // sin armas: 1 + FUE
                 // Ataque Furtivo: con ventaja y arma sutil o a distancia
                 let sneaky = w.flag("finesse") || h.ranged.is_some();
@@ -1034,7 +1043,7 @@ impl Dungeon {
                 let n = rolled.len() as i32;
                 let (mut label, mut hi) = (format!("{n}d{sides}"), n * sides);
                 // Ataque Furtivo (con ventaja y arma sutil) y Marca del cazador (+1d6): dobles en crítico
-                let marked = self.ch(target).is_some_and(|c| c.buffs.iter().any(|b| b.id == "pdri:hunters_mark"));
+                let marked = self.ch(target).is_some_and(|c| c.buffs.iter().any(|b| b.has_flag("mark")));
                 for extra in [sneak, marked.then_some(1)].into_iter().flatten() {
                     let (t, et, er, _) = dice::roll(&mut self.rng, &format!("{extra}d6"), crit);
                     total += t;
@@ -1134,6 +1143,9 @@ impl Dungeon {
                 Pending::Attack { attacker, target, hit, dmg, detail, simple } => {
                     self.log(if self.verbose_rolls { &detail } else { &simple });
                     if hit {
+                        // resistencia (Furia): la mitad del daño de los ataques de los mobs
+                        let resist = matches!(attacker, ActorId::Mob(_)) && self.has_flag(target, "resist");
+                        let dmg = if resist { dmg / 2 } else { dmg };
                         self.damage(target, dmg, Some(attacker));
                     } else {
                         self.status(target, "esquiva", Tone::Neutral);
