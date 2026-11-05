@@ -271,6 +271,21 @@ de "Estado R6").
    compila su PC y sube los archivos (`gh release create v0.x.0 target/release/pdri target/android/pdri.apk ...`;
    el `.exe` de Windows sale más fácil de GitHub). Preferir GitHub: no depende de la PC encendida.
 
+8. **NPCs** (pedido del dueño, 2026-11-05): plan y pasos en `roadmap/npcs.md`.
+9. **Movimiento en PC** (pedido del dueño, 2026-11-05): opción en Configuración -> Controles para mover al héroe
+   sólo con el mouse o sólo con el teclado (hoy valen los dos a la vez), y una línea punteada en el mapa con el camino
+   hasta el destino elegido (el del pathfinder, hasta que el héroe llega o se cancela). La línea, también en el
+   teléfono.
+10. **Luz y visión 5e** (pedido del dueño, 2026-11-05): cada piso o zona con su nivel de luz (luz brillante a cielo
+   abierto de día, penumbra, oscuridad en cuevas) y el campo de visión según 5e en vez del radio fijo de PD
+   (`fov::MAX_DISTANCE`). Luz brillante: se ve hasta donde llega la vista. Penumbra: zona ligeramente oscura,
+   desventaja en Percepción (Sabiduría) con la vista (y al buscar). Oscuridad: muy oscura, no se ve más allá de la luz
+   propia. Fuentes de luz con radio en pies -> casillas (5 ft = 1): antorcha 20 ft de luz brillante + 20 ft de
+   penumbra, linterna, el conjuro Luz; visión en la oscuridad (60 ft, la oscuridad cuenta como penumbra) si una
+   clase, raza o mod la da. Como datos: `light` por piso o por sala, `light` en ítems (radio brillante y de
+   penumbra) y `darkvision` en clases y mobs (los mobs también ven según la luz: sigilo en lo oscuro). La niebla de
+   la GPU ya tiene "visible / vista": sumar la penumbra como un tono intermedio.
+
 **Pendientes conocidos (pulido):** partículas de trampas y conjuros y proyectiles en vuelo (`screens/particles.py`),
 nubes de gas que se expanden (Blob), el indicador de ocupado gira en el original (acá titila: `Sprite` no rota),
 mimic, habilidades especiales de los mobs (Swarm, Skeleton, Thief), FLEEING, descansos (hoy se recupera todo al
