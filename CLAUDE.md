@@ -44,7 +44,8 @@ cargo run -q -p game --example level -- <seed> <piso>   # volcado ASCII de un pi
 - Trabajo diario en la rama `dev`; `merge: dev -> main` al cerrar cada fase, cuando el dueño la validó. El dueño pushea.
 - Al cerrar lo que cambie la versión, subirla en `Cargo.toml` y `android/AndroidManifest.xml` (regla en
   `roadmap/versiones.md`). **Cada cambio, aunque sea chico, sube el último número** (0.9.0 -> 0.9.1 -> 0.9.2...),
-  con su fila en la tabla de `versiones.md` y su commit (pedido del dueño, 2026-11-05). `Local.config` cambia al probar opciones: no commitearlo.
+  con su fila en la tabla de `versiones.md` y su commit (pedido del dueño, 2026-11-05). Un tema = una versión: más
+  arreglos del mismo tema van en la misma versión, no en una nueva. `Local.config` cambia al probar opciones: no commitearlo.
 - Commits cortos, a nombre del dueño, sin líneas de coautoría: `feat: …`, `fix: …`, `merge: …`, terminando con
   `#` y el paso del roadmap al que pertenecen (`feat: atlas de sprites #R0`, `fix: niebla #R2`).
 - La clave de firma nunca entra al repo (`~/.pddnd-signing/`).

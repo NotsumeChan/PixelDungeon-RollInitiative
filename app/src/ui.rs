@@ -23,6 +23,8 @@ use crate::{ARCS_BG, ARCS_FG, BANNERS, BUFFS, CHROME, DASHBOARD, EXP_BAR, HP_BAR
 const LINE_H: f32 = 10.0;
 const LOG_LINES: usize = 4;
 const LOG_LINE_H: f32 = 9.0;
+/// La tecla de cancelar como se llama en esta plataforma (en Android hace de Esc el botón Atrás).
+const ESC: &str = if cfg!(target_os = "android") { "Atras" } else { "Esc" };
 /// Alto del log más la barra, desde abajo (los dados chicos van arriba de esto en vertical).
 pub const LOG_AREA: f32 = TOOLBAR_H + 1.0 + LOG_LINES as f32 * LOG_LINE_H;
 const TOOLBAR_H: f32 = 25.0;
@@ -377,9 +379,9 @@ impl Ui {
             None => {
                 self.draw_tooltip(atlas, font, out, w, h);
                 let casting = self.casting.and_then(|k| d.local().spell_ids().get(k).cloned());
-                let msg = casting.and_then(|sid| d.spell(&sid).map(|s| format!("Elige el objetivo: {} (Esc cancela)", text(&s["name"]))));
+                let msg = casting.and_then(|sid| d.spell(&sid).map(|s| format!("Elige el objetivo: {} ({ESC} cancela)", text(&s["name"]))));
                 let throwing = self.throwing.and_then(|s| d.local().item(s)).map(|it| d.item_title(it));
-                let msg = msg.or_else(|| throwing.map(|t| format!("Elige adonde lanzar: {t} (Esc cancela)")));
+                let msg = msg.or_else(|| throwing.map(|t| format!("Elige adonde lanzar: {t} ({ESC} cancela)")));
                 let msg = msg.or_else(|| self.examining.then(|| "Toca una casilla para examinarla".to_string()));
                 if let Some(msg) = msg {
                     let msg = msg.as_str();
@@ -418,7 +420,13 @@ impl Ui {
         }
         let me = d.local();
         let center = if !d.heroes.iter().any(|h| h.is_alive()) {
-            Some(("Has muerto - R nueva partida, Esc menu".to_string(), DEAD_TEXT))
+            // en el teléfono no hay R ni Esc: la nueva partida está en el menú
+            let msg = if cfg!(target_os = "android") {
+                "Has muerto - el menu (arriba a la derecha) tiene Nueva partida"
+            } else {
+                "Has muerto - R nueva partida, Esc menu"
+            };
+            Some((msg.to_string(), DEAD_TEXT))
         } else if me.is_downed() {
             let [s, f] = me.saves;
             let msg = if me.stable { "Inconsciente - estable".into() } else { format!("Inconsciente - exitos {s}/3, fallos {f}/3") };
@@ -427,7 +435,10 @@ impl Ui {
             None
         };
         if let Some((msg, color)) = center {
-            font.text(out, &msg, ((w - font.width(&msg)) / 2.0).floor(), (h / 2.0 - 20.0).floor(), color);
+            // partido al ancho: en vertical no entraba en una línea
+            for (k, line) in wrap(font, &msg, w - 8.0).iter().enumerate() {
+                font.text(out, line, ((w - font.width(line)) / 2.0).floor(), (h / 2.0 - 20.0).floor() + k as f32 * LOG_LINE_H, color);
+            }
         }
     }
 
@@ -1423,7 +1434,8 @@ impl Ui {
             lines.extend(wrap(font, text, w - 24.0).into_iter().map(|l| (l, *color)));
             lines.push((String::new(), WHITE));
         }
-        lines.push(("Esc o click para volver".into(), GREY));
+        let back = if cfg!(target_os = "android") { "Toca para volver" } else { "Esc o click para volver" };
+        lines.push((back.into(), GREY));
         let mut y = ((h - lines.len() as f32 * 10.0) / 2.0).floor();
         for (line, color) in lines {
             font.text(out, &line, ((w - font.width(&line)) / 2.0).floor(), y, color);
