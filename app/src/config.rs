@@ -119,6 +119,8 @@ pub struct Config {
     pub dice_log: bool,
     /// `[dev] hotseat`: modo de prueba de la red, 2 héroes en la misma PC (Tab cambia). Sólo en el archivo.
     pub hotseat: bool,
+    /// `[general] mods_ack`: aceptó el aviso de responsabilidad de la pantalla de Mods (no vuelve a aparecer).
+    pub mods_ack: bool,
     /// Clave de `RESOLUTIONS` (sin archivo o desconocida: "Hd", como el prototipo).
     pub resolution: &'static str,
     /// Escala de la interfaz respecto del zoom que entra (1 = 100%; `ui_scale` en Local.config, como el prototipo).
@@ -137,7 +139,7 @@ fn path() -> PathBuf {
 impl Config {
     pub fn load() -> Self {
         let lines: Vec<String> = std::fs::read_to_string(path()).unwrap_or_default().lines().map(str::to_string).collect();
-        let mut c = Self { max_fps: DEFAULT_FPS, show_fps: false, fullscreen: false, language: "es", dice_log: false, hotseat: false, resolution: "Hd", ui_scale: 1.0, ui_base: 1, keys: Vec::new(), lines };
+        let mut c = Self { max_fps: DEFAULT_FPS, show_fps: false, fullscreen: false, language: "es", dice_log: false, hotseat: false, mods_ack: false, resolution: "Hd", ui_scale: 1.0, ui_base: 1, keys: Vec::new(), lines };
         if let Some(s) = c.get("general", "ui_scale").and_then(|v| v.parse().ok()) {
             c.ui_scale = s;
         }
@@ -147,6 +149,7 @@ impl Config {
         if let Some(l) = c.get("general", "language").and_then(|v| game::registry::LANGS.iter().find(|l| l.0 == v)) {
             c.language = l.0;
         }
+        c.mods_ack = c.get("general", "mods_ack").is_some_and(|v| v.eq_ignore_ascii_case("true"));
         c.dice_log = c.get("dev", "dice_log").is_some_and(|v| v.eq_ignore_ascii_case("true"));
         c.hotseat = c.get("dev", "hotseat").is_some_and(|v| v.eq_ignore_ascii_case("true"));
         if let Some(r) = c.get("general", "resolution").and_then(|v| RESOLUTIONS.iter().find(|r| r.0 == v)) {
@@ -210,6 +213,12 @@ impl Config {
     /// Tamaño de la ventana en pixeles.
     pub fn window_size(&self) -> (u32, u32) {
         RESOLUTIONS.iter().find(|r| r.0 == self.resolution).map_or((1280, 720), |r| (r.1, r.2))
+    }
+
+    pub fn set_mods_ack(&mut self) {
+        self.mods_ack = true;
+        self.set("general", "mods_ack", "true");
+        self.save();
     }
 
     pub fn set_language(&mut self, code: &'static str) {

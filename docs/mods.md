@@ -1,5 +1,11 @@
 # Mods
 
+**Instalar**: la primera vez, la pantalla de Mods pide aceptar el aviso de responsabilidad (`mods_ack` en
+Local.config: no vuelve a aparecer). Mods -> IMPORTAR ZIP abre el selector de archivos del sistema (Windows, Linux y Android); el juego
+descomprime el zip en `<datos>/mods/<mod>/` (el nombre es la carpeta de adentro del zip, o el del zip). Sólo copia los
+`<registro>.json` y `script.lua` (en la raíz del zip o en una carpeta; tope 16 MB); reinicia el juego para cargarlo.
+En escritorio también se puede copiar la carpeta a mano.
+
 Un mod es una carpeta dentro de `<datos>/mods/` con archivos de registro con el mismo nombre que los de `data/`
 (`classes`, `mobs`, `bestiary`, `items`, `buffs`, `spells`, `npcs`, `dialogs`, `skills`, `skins`, `quests`; `.json`).
 `<datos>` es la carpeta de personajes y partidas: Windows `%APPDATA%/PixelDND`, Linux `~/.local/share/PixelDND`,

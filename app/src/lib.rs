@@ -6,6 +6,7 @@ mod dice_fx;
 mod font;
 mod gpu;
 mod map;
+mod mods;
 mod net;
 mod sprites;
 mod ui;
@@ -456,11 +457,31 @@ impl App {
         }
     }
 
+    /// Resultado de importar un mod (`mods.rs`): el aviso en la pantalla de Mods y la lista al día.
+    fn mod_imported(&mut self, r: Result<String, String>) {
+        self.ui.mods_msg = match r {
+            Ok(name) => game::trf!("Mod \"{name}\" instalado: reinicia el juego para cargarlo.", "Mod \"{name}\" installed: restart the game to load it."),
+            Err(e) => game::trf!("No se pudo importar: {e}", "Couldn't import: {e}"),
+        };
+        self.ui.mods = mods::installed(&data_dir());
+    }
+
     fn ui_action(&mut self, act: UiAction) {
         match act {
             UiAction::Nothing => {}
             UiAction::Close => self.ui.window = None,
-            UiAction::Open(w) => self.ui.window = Some(w),
+            UiAction::Open(w) => {
+                if matches!(w, ui::Window::Mods) {
+                    self.ui.mods = mods::installed(&data_dir());
+                }
+                self.ui.window = Some(w);
+            }
+            UiAction::AckMods => self.config.set_mods_ack(),
+            UiAction::ImportMod => {
+                if let Some(r) = mods::pick(&data_dir()) {
+                    self.mod_imported(r);
+                }
+            }
             UiAction::Act(a) => {
                 let d = &mut self.world.d;
                 if d.local().is_alive() {
@@ -1020,6 +1041,10 @@ impl App {
 
     /// La pantalla de título: sólo la capa de UI.
     fn frame_title(&mut self, dt: f32) {
+        #[cfg(target_os = "android")]
+        if let Some(r) = mods::poll(&data_dir()) {
+            self.mod_imported(r);
+        }
         let Some(gpu) = self.gpu.as_ref() else { return };
         let (uw, uh) = gpu.ui_size();
         self.ui.in_title = true;
@@ -1263,10 +1288,14 @@ pub fn run(el: EventLoop<()>) {
 }
 
 #[cfg(target_os = "android")]
+static ANDROID_APP: std::sync::OnceLock<winit::platform::android::activity::AndroidApp> = std::sync::OnceLock::new();
+
+#[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(app: winit::platform::android::activity::AndroidApp) {
     use winit::platform::android::EventLoopBuilderExtAndroid;
     android_logger::init_once(android_logger::Config::default().with_max_level(log::LevelFilter::Info));
+    let _ = ANDROID_APP.set(app.clone()); // para llamar a MainActivity (importar mods)
     if let Some(dir) = app.internal_data_path() {
         let _ = config::DIR.set(dir); // Local.config en la carpeta de datos de la app
     }

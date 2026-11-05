@@ -72,6 +72,11 @@ pub fn load_mods(dir: &Path) -> Vec<String> {
     msgs
 }
 
+/// Un archivo que puede traer un mod: `<registro>.json` o `script.lua`.
+pub fn is_mod_file(name: &str) -> bool {
+    name == "script.lua" || name.strip_suffix(".json").is_some_and(|r| BASE.iter().any(|(n, _)| *n == r))
+}
+
 /// El juego base, los mods incluidos y después los del usuario: lo último pisa a lo anterior.
 fn sources() -> impl Iterator<Item = (&'static str, &'static str)> {
     BASE.into_iter().chain(BUILTIN).chain(MODS.get().into_iter().flatten().map(|(n, t)| (n.as_str(), t.as_str())))

@@ -137,7 +137,9 @@ pub enum Window {
     Rules,
     /// Controles (desde la configuración).
     Controls,
-    /// Pantalla de texto del título (Mods, Acerca de): centrada sobre negro; click o Esc vuelve.
+    /// Mods instalados (`Ui::mods`) e IMPORTAR ZIP (`mods.rs`).
+    Mods,
+    /// Pantalla de texto del título (Acerca de): centrada sobre negro; click o Esc vuelve.
     Page(Vec<(String, [f32; 4])>),
     /// Lista de personajes (Jugar): JUGAR / NUEVO / BORRAR, CREAR LAN / UNIRSE.
     Roster,
@@ -156,6 +158,10 @@ pub enum UiAction {
     Nothing,
     Close,
     Open(Window),
+    /// Elegir un zip con el selector de archivos del sistema e instalarlo (`mods.rs`).
+    ImportMod,
+    /// Aceptar el aviso de responsabilidad de los mods (una sola vez: `Config::mods_ack`).
+    AckMods,
     Act(Action),
     /// Activa / cancela examinar: el próximo click en el mapa examina esa casilla.
     Examine,
@@ -272,6 +278,9 @@ pub struct Ui {
     pub throwing: Option<Slot>,
     /// En la pantalla de título (la configuración vuelve al título, no al menú de la partida).
     pub in_title: bool,
+    /// Pantalla de Mods: las carpetas instaladas y el aviso de la última importación.
+    pub mods: Vec<String>,
+    pub mods_msg: String,
     /// Lista de personajes: el elegido, el primero que se ve y si BORRAR espera confirmación.
     pub roster_sel: Option<usize>,
     pub roster_scroll: usize,
@@ -296,7 +305,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods: Vec::new(), mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// Escribe en el mensaje del chat (si se está escribiendo uno).
@@ -384,7 +393,7 @@ impl Ui {
             Some(Window::Item(slot)) => self.draw_item(atlas, font, d, out, w, h, slot),
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             Some(Window::Spells) => self.draw_spells(atlas, font, d, out, w, h),
-            Some(Window::Create | Window::Page(_) | Window::Roster | Window::Join | Window::Lobby) => self.window = None, // sólo en el título
+            Some(Window::Create | Window::Page(_) | Window::Mods | Window::Roster | Window::Join | Window::Lobby) => self.window = None, // sólo en el título
             Some(Window::Rules) => self.draw_rules(atlas, font, d, out, w, h),
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
             None if self.chat.is_some() => self.draw_chat(atlas, font, out, w, h),
@@ -1534,9 +1543,43 @@ impl Ui {
         self.hot([0.0, 0.0, w, h], UiAction::Close, None);
     }
 
+    /// Pantalla de Mods. La primera vez, sólo las advertencias y ACEPTO / VOLVER (aceptar se guarda y no vuelve a
+    /// aparecer); después, los instalados, el aviso de la última importación e IMPORTAR ZIP / VOLVER.
+    fn draw_mods(&mut self, atlas: &Atlas, font: &Font, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32) {
+        out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
+        self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
+        let mut paras: Vec<(String, [f32; 4])> = vec![("Mods".into(), YELLOW)];
+        if !cfg.mods_ack {
+            paras.push((tr!("Los mods vienen de fuentes externas: ten cuidado de donde los descargas y revisalos antes de instalarlos.", "Mods come from external sources: be careful where you download them from and review them before installing.").into(), WHITE));
+            paras.push((tr!("Los scripts de los mods corren aislados, pero pueden cambiar el juego de forma considerable: instalalos solo si confias en su origen.", "Mod scripts run sandboxed, but they can change the game a lot: only install them if you trust their source.").into(), rgba(255, 120, 80, 255)));
+            paras.push((tr!("Instalar mods es tu responsabilidad. Acepta para continuar (no se vuelve a preguntar).", "Installing mods is your responsibility. Accept to continue (you won't be asked again).").into(), GOLDEN));
+        } else if self.mods.is_empty() {
+            paras.push((tr!("No hay mods instalados.", "No mods installed.").into(), WHITE));
+        } else {
+            paras.push((trf!("Instalados: {}", "Installed: {}", self.mods.join(", ")), WHITE));
+        }
+        if cfg.mods_ack && !self.mods_msg.is_empty() {
+            paras.push((self.mods_msg.clone(), GOLDEN));
+        }
+        let mut lines: Vec<(String, [f32; 4])> = Vec::new();
+        for (text, color) in paras {
+            lines.extend(wrap(font, &text, w - 24.0).into_iter().map(|l| (l, color)));
+            lines.push((String::new(), WHITE));
+        }
+        let mut y = ((h - 28.0 - lines.len() as f32 * 10.0) / 2.0).floor().max(4.0);
+        for (line, color) in lines {
+            font.text(out, &line, ((w - font.width(&line)) / 2.0).floor(), y, color);
+            y += 10.0;
+        }
+        let bw = ((w - 18.0) / 2.0).floor().min(90.0);
+        let x = ((w - bw * 2.0 - 2.0) / 2.0).floor();
+        self.draw_button(atlas, font, out, [x, h - BOTTOM_BTN_H - 4.0, bw, BOTTOM_BTN_H], if cfg.mods_ack { tr!("IMPORTAR ZIP", "IMPORT ZIP") } else { tr!("ACEPTO", "I ACCEPT") }, Some(if cfg.mods_ack { UiAction::ImportMod } else { UiAction::AckMods }));
+        self.draw_button(atlas, font, out, [x + bw + 2.0, h - BOTTOM_BTN_H - 4.0, bw, BOTTOM_BTN_H], tr!("VOLVER", "BACK"), Some(UiAction::Close));
+    }
+
     /// Pantalla de título (TitleScene.java): arcos de fondo que se desplazan (el de adelante al doble), el banner con
     /// los letreros que laten, el dashboard (Jugar, Acerca de), configuración arriba a la izquierda y la versión.
-    /// ponytail: sin Mods (1.x); los letreros se suman con alfa, no con mezcla aditiva
+    /// ponytail: los letreros se suman con alfa, no con mezcla aditiva
     #[allow(clippy::too_many_arguments)]
     pub fn draw_title(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32, dt: f32, classes: &[RosterRow], skins: &[RosterRow], roster: &[RosterRow], lan: &[(String, bool)], lan_status: &str) {
         self.t += dt;
@@ -1572,12 +1615,7 @@ impl Ui {
         for (icon, label, x, act) in [
             // Rankings y Badges del original se reemplazaron por Mods; la configuración (PrefsButton) es un botón más
             (0u32, tr!("Jugar", "Play"), x0, UiAction::OpenRoster),
-            (2, "Mods", x0 + step, UiAction::Open(Window::Page(vec![
-                ("Mods".into(), YELLOW),
-                (tr!("No hay mods instalados. El sistema de mods todavia no esta disponible.", "No mods installed. The mod system isn't available yet.").into(), WHITE),
-                (tr!("Los mods vienen de fuentes externas: ten cuidado de donde los descargas y revisalos antes de instalarlos.", "Mods come from external sources: be careful where you download them from and review them before installing.").into(), rgba(190, 190, 190, 255)),
-                (tr!("Los mods que traen codigo pueden cambiar el juego de forma considerable y hacer cualquier cosa en tu equipo: instalalos solo si confias en su origen.", "Mods that include code can change the game a lot and do anything on your computer: only install them if you trust their source.").into(), rgba(255, 120, 80, 255)),
-            ]))),
+            (2, "Mods", x0 + step, UiAction::Open(Window::Mods)),
             (1, tr!("Acerca de", "About"), x0 + step * 2.0, UiAction::Open(Window::Page(vec![
                 (format!("PixelDungeon-RollInitiative v{}", game::VERSION), YELLOW),
                 (tr!("Roguelike basado en Pixel Dungeon de Watabou (GPL v3), con las reglas de D&D 5e y multijugador cooperativo.", "Roguelike based on Watabou's Pixel Dungeon (GPL v3), with D&D 5e rules and co-op multiplayer.").into(), WHITE),
@@ -1610,6 +1648,7 @@ impl Ui {
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
             Some(Window::Page(paras)) => self.draw_page(atlas, font, out, w, h, &paras),
+            Some(Window::Mods) => self.draw_mods(atlas, font, cfg, out, w, h),
             Some(Window::Info { icon, title, text, hp }) => self.draw_info(atlas, font, chars, d, out, w, h, icon, &title, &text, hp),
             Some(Window::Create) => self.draw_create(atlas, font, out, w, h, classes, skins),
             Some(Window::Roster) => self.draw_roster(atlas, font, out, w, h, roster),
