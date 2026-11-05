@@ -290,7 +290,8 @@ de "Estado R6").
 3. ✏️ **Chat de texto** (escrito el 2026-11-05, ver su "Estado" arriba): falta la prueba del dueño.
 4. Resto de R6: aplicar el estado sin rearmar la partida (el cliente regenera los pisos en cada estado: puede trabar
    en el teléfono), el teléfono como host (MulticastLock para recibir los "discover"), escribir la IP a mano.
-5. **Idioma de los textos del código** (hoy en español, como el prototipo; el contenido ya se elige es / en).
+5. ✏️ **Idioma de los textos del código** (0.9.11, 2026-11-05): `tr!` / `trf!` (`game/src/registry.rs`), todo el
+   código traducido al inglés; falta la prueba del dueño. Lo que arma el host (log, dados) llega en su idioma.
 6. Pulido: partículas y proyectiles en vuelo, nubes de gas.
 7. **Publicar desde `main`** (pedido del dueño): GitHub Actions que, al llegar algo a `main`, compile Linux, Windows y
    el APK y los publique como **Release** (tag `v<versión>` de `Cargo.toml`, los 3 archivos adjuntos). Hoy

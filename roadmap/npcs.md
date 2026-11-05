@@ -84,8 +84,39 @@ Estado: plan confirmado por el dueño (2026-11-05, ver "Decisiones del dueño").
   armadura de cuero y algo al azar (2 pociones, 2 pergaminos, 1 arma); pelea con espada corta y armadura de cuero. El
   Fabricante de varitas lleva un bastón. Para probar: "Veamos qué tienes" abre la tienda, comprar con y sin oro, vender
   algo y volver a comprarlo, regatear bien (más barato) o intimidarlo (más caro), la mochila llena, matarlo y ver que
-  suelta su mercancía, y en la LAN que cada uno compre de la misma tienda. Pendiente: el mercader ambulante (que
-  deambula, aparece en cualquier piso y repone su inventario).
+  suelta su mercancía, y en la LAN que cada uno compre de la misma tienda.
+  Mercader ambulante ✏️ (0.9.14, 0.9.17, 0.9.19): mod incluido `data/mods/mercader-ambulante`; aparece junto a la
+  bajada con 25 % en el piso 1, 5 % menos por piso (0 desde el 6), mercancía nueva en cada piso; ajustes "Frecuencia
+  (%)" y "Deambula" (si no, se queda donde aparece). Para probar: bajar varios pisos (en el 1-5 a veces está junto a
+  la bajada), la tienda, la tirada de Perspicacia, la frecuencia en 0 (no aparece) y 200, y "Deambula" en No.
+
+- **N5** ✏️ escrito (0.9.12, 0.9.15, 0.9.16, 0.9.18), pendiente de prueba del dueño (`docs/mods.md`):
+  - Carga de mods de `<datos>/mods/<mod>/` (registros que pisan o suman al base; entran en el hash de la LAN) y mods
+    incluidos (`data/mods/`); `npcs.json` con `"*"`, probabilidad por profundidad, `near` y `scale`.
+  - Scripts Lua (`script.lua`, `game/src/script.rs`, mlua): condiciones y efectos `["lua", ...]` de los diálogos, en
+    sandbox (sin archivos, tope de instrucciones y memoria), `ctx` con héroe, NPC, piso, flags y ajustes.
+  - Importar un zip con el selector de archivos del sistema (escritorio `rfd`, Android `MainActivity.java`: el APK
+    ya tiene código Java, `android/build.sh` lo compila con javac + d8); aviso de responsabilidad una sola vez.
+  - Lista de mods: ícono (`icon.png`), `mod.json` (nombre, descripción, autor, versión), ON / OFF (al reiniciar) y
+    AJUSTES por mod (`settings` int / bool, en Local.config, en caliente).
+  - Mod de ejemplo `mods/ejemplo-herrero`: herrero troll en el piso 3 (sprite `blacksmith.png`, cuadro 14x16
+    estimado: revisar que se vea bien), tienda, misión de 3 gnolls, ítem propio con `base`, Persuasión y una
+    apuesta en Lua con sus ajustes.
+  - Para probar: comprimir `mods/ejemplo-herrero` en un zip, importarlo en el teléfono y en la PC, reiniciar, el
+    herrero en el piso 3 (apuesta, ajustes), desactivar el mercader ambulante, y en la LAN los dos con los mismos mods.
+
+## Para la próxima sesión
+- Nada a medio hacer: todo está en commits en `dev` (última versión 0.9.19, `versionCode` 29) y el APK instalado.
+- Pendiente de los NPC y mods (sin pedir todavía):
+  - La lista de mods no tiene scroll y los importados aparecen recién al reiniciar; no se puede borrar un mod desde
+    el juego.
+  - Precios por nivel del ítem e identificación (`ponytail` en `npcs.rs`).
+  - Las tiradas sociales aplican el resultado antes de que termine el dado (`ponytail` en `npcs.rs`).
+  - En la LAN, el log, los dados y los diálogos llegan en el idioma del host.
+  - Más NPC con sprites del original: imp, rey rata, fantasma (fuera por ahora, decisión del dueño).
+  - Mods: instancias / packs y mods al unirse a una partida (`roadmap/futuro-mods-personajes-red.md`).
+- Otros temas del roadmap: movimiento en PC (sólo mouse / sólo teclado y la línea punteada) y luz y visión 5e
+  (`roadmap/mejoras.md`); el resto de R6 y publicar desde `main` (`roadmap/migracion-rust.md`).
 
 ## Pasos (cada uno se prueba a mano)
 1. **N1 motor**: NPC pasivo, Hablar, diálogos como datos con condiciones y efectos, flags, ventana de diálogo, red.
@@ -93,8 +124,8 @@ Estado: plan confirmado por el dueño (2026-11-05, ver "Decisiones del dueño").
 3. **N3 misiones**: contadores, recompensas, ventana de misiones; el Fabricante de varitas.
 4. **N4 inventario y comercio**: inventario y equipo de los NPC, precios, tienda desde el inventario, comprar y
    vender; el Mercader; después, el mercader ambulante.
-5. **N5 mods**: el formato en `docs/data.md` y un mod de ejemplo con un NPC propio. Hecho (0.9.12): `docs/mods.md` y `mods/ejemplo-herrero`.
-   Probar: copiar `mods/ejemplo-herrero` a `<datos>/mods/` y bajar al piso 3; en la LAN, los dos con el mod (si no, el hash no coincide).
+5. **N5 mods**: el formato en `docs/data.md` y un mod de ejemplo con un NPC propio. Hecho, con más de lo pedido
+   (Lua, importar zip, lista con ajustes): ver su "Estado".
 
 ## Decisiones del dueño (2026-11-05)
 1. Contenido inicial: el Fabricante de varitas y el Mercader; el Fantasma, por ahora no.

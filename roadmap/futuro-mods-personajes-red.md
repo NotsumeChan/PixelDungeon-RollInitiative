@@ -3,6 +3,11 @@
 > Sólo es plan. No se implementa ahora: la prioridad es la fase 3. Sirve para que lo que se haga hoy no cierre
 > estas puertas. Es una prueba de concepto: el alcance se recorta cuando llegue el momento.
 
+## Estado (2026-11-05)
+Hecho en N5 (`roadmap/npcs.md`, `docs/mods.md`): mods como carpetas de registros (y mods incluidos), scripts Lua en
+sandbox, importar un zip con el selector de archivos, lista con ON / OFF, ícono y ajustes por mod. Falta lo de abajo:
+instancias / packs, mods del host al unirse, `.pdmod` con versión y sha256, mods en el personaje.
+
 ## Ideas del dueño (resumen)
 - **Mods/addons:** personajes nuevos, cambiar el sistema de personajes entero, personajes "custom" basados en
   los 4 originales, clases, subclases, ítems, habilidades, requisitos de nivel y escalados custom.
