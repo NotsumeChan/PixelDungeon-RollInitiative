@@ -8,8 +8,8 @@ No se vuelven a discutir salvo que el dueño lo pida.
   reemplaza de a poco. Pasos en [`pendientes.md`](pendientes.md#separarse-de-pixel-dungeon).
 - **Nombre:** sigue siendo PixelDungeon-RollInitiative mientras quede algo de PD. El nuevo se elige al separarse
   (no "Roll Initiative" solo: es marca registrada).
-- **Rama `pd-core`:** antes del primer cambio que reemplace algo de PD, se crea desde `main` y queda con el core de PD
-  para quien le interese.
+- **Rama `pd-core`:** creada el 2026-11-06 en `ef30813` (0.9.25, después de D1-D4): el juego con el core de PD, para
+  quien le interese. Desde ahí, `dev` empieza a separarse (camino al editor).
 - Libre y gratis en todas las plataformas, y el agradecimiento a Pixel Dungeon queda en los créditos aunque ya no sea obligatorio.
 - **Fuente:** al separarse, Silkscreen (OFL) en vez de la de PD (2026-11-06).
 - Mientras quede algo de PD, el juego es GPL v3; al separarse, la licencia del código nuevo se decide entonces.

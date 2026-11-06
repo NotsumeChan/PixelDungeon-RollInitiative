@@ -44,8 +44,8 @@ Sin orden. Cuando el dueño elige algo, pasa a `pasos/`.
   visión en la oscuridad; los mobs también ven según la luz. La niebla suma la penumbra como tono intermedio.
 
 ## Separarse de Pixel Dungeon
-Meta a largo plazo ([`decisiones.md`](decisiones.md#meta-un-juego-propio-2026-11-06)). Antes del primero: crear la
-rama `pd-core`.
+Meta a largo plazo ([`decisiones.md`](decisiones.md#meta-un-juego-propio-2026-11-06)). La rama `pd-core` ya existe
+(0.9.25): desde ahí, `dev` se separa.
 
 | Qué | Cómo |
 |---|---|
