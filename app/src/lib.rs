@@ -294,6 +294,15 @@ fn ability_order(cls: Option<&serde_json::Value>) -> [usize; 6] {
     std::array::from_fn(|k| order[k])
 }
 
+/// Otra versión del protocolo: quién tiene que actualizar.
+fn version_msg(other: &str) -> String {
+    if net::newer(other, game::VERSION) {
+        trf!("La partida es de la versión {}: actualiza el juego (Releases en GitHub).", "The game is on version {}: update yours (GitHub Releases).", other)
+    } else {
+        trf!("La partida es de la versión {}, más vieja que la tuya: el host tiene que actualizar.", "The game is on version {}, older than yours: the host has to update.", other)
+    }
+}
+
 /// El aviso de la sala de espera: IP y puerto (para un túnel o el puerto abierto) y si pide clave.
 fn host_status(locked: bool) -> String {
     let lock = if locked { tr!("Con clave.", "Password set.") } else { tr!("Sin clave.", "No password.") };
@@ -586,8 +595,8 @@ impl App {
             }
             UiAction::JoinGame(i) => {
                 let Some(g) = self.lan_games.get(i) else { return };
-                if g.info["version"] != game::VERSION {
-                    self.lan_status = trf!("Esa partida es de la version {}.", "That game is from version {}.", g.info["version"].as_str().unwrap_or("?"));
+                if g.info["protocol"] != net::PROTOCOL {
+                    self.lan_status = version_msg(g.info["version"].as_str().unwrap_or("?"));
                     return;
                 }
                 if g.info["hash"] != game::registry::content_hash().as_str() {
@@ -1014,6 +1023,7 @@ impl App {
                 if c.closed || c.refused.is_some() {
                     let need_pass = c.need_pass;
                     let why = c.refused.clone().map_or(tr!("Se corto la conexion con el host.", "Lost the connection to the host.").to_string(), |w| trf!("El host no te dejo entrar: {w}.", "The host didn't let you in: {w}."));
+                    let why = c.host_version.as_deref().map_or(why, version_msg);
                     self.autosave(); // antes de Net::Off: guarda su héroe, no la partida del host
                     self.net = Net::Off;
                     self.awaiting = false;
@@ -1185,7 +1195,7 @@ impl App {
             .iter()
             .map(|g| {
                 let i = &g.info;
-                let ok = i["version"] == game::VERSION && i["hash"] == game::registry::content_hash().as_str();
+                let ok = i["protocol"] == net::PROTOCOL && i["hash"] == game::registry::content_hash().as_str();
                 let name = i["name"].as_str().unwrap_or("?");
                 let mut extra = if ok { String::new() } else { format!(" (v{})", i["version"].as_str().unwrap_or("?")) };
                 if i["locked"] == true {

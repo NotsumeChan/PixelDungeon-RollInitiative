@@ -12,7 +12,7 @@ Leer esto primero. Un archivo por tema:
 | [`pasos/`](pasos/) | Próximos pasos, uno por archivo |
 
 ## Ahora
-Rama `dev`, **0.9.23** (`versionCode` 33). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
+Rama `dev`, **0.9.24** (`versionCode` 34). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
 primero.
 
 ## Próximos pasos
@@ -20,7 +20,7 @@ primero.
 |---|---|---|
 | 1 | ✏️ [Releases en GitHub](pasos/1-releases.md) | `#D1` |
 | 2 | ✏️ [Red por internet](pasos/2-red-internet.md) | `#D2` |
-| 3 | [Compatibilidad entre versiones](pasos/3-compatibilidad.md) | `#D3` |
+| 3 | ✏️ [Compatibilidad entre versiones](pasos/3-compatibilidad.md) | `#D3` |
 | 4 | [Actualizador](pasos/4-updater.md) | `#D4` |
 | 5 | [Zonas, mapas y editor](pasos/5-mapas-editor.md) | `#M1`… |
 

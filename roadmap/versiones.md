@@ -8,6 +8,10 @@ en los dos lugares y en la tabla de Rust.
 un ajuste de UI), sube el último número (0.9.0 -> 0.9.1 -> 0.9.2...) en los dos lugares, con `versionCode` + 1, una
 fila en la tabla y su commit. **Un tema = una versión**: si el mismo tema necesita otro arreglo antes de pasar a otro,
 va en esa misma versión (no se sube de nuevo el número). El número del medio sube con los objetivos del "Plan hacia la 1.0".
+**Protocolo** (D3, 2026-11-06): `PROTOCOL` en `app/src/net.rs` decide quién juega con quién, no la versión. Subirlo
+(+1) cuando cambie algo que el cliente interpreta: los mensajes de `net.rs`, el formato de `save::dump` (el estado) o
+lo que el cliente regenera con la seed (generación de pisos, rng). Cambios de UI, textos o arreglos del host no lo
+suben. Ante la duda, subirlo: es mejor un aviso de "actualiza" que una partida desincronizada.
 
 | Versión (Rust) | Pasos | Contenido |
 |---|---|---|
@@ -18,6 +22,7 @@ va en esa misma versión (no se sube de nuevo el número). El número del medio 
 | 0.5.0 | R5 | Creación de personaje con dados (4d6, 7 tiradas, asignar o escribir), lista de personajes y guardado; ya estaban el combate 5e y la ficha |
 | 0.8.0 | R5 | Hotseat (`[dev] hotseat`: 2 héroes en la misma PC, Tab, cambio automático al que le toca, nombres sobre los héroes): paridad con `python-prototipe`. La misma excepción que la 0.7 (partículas y proyectil en vuelo) |
 | 0.7.0 | R5, R5d | Arrastrar en la creación (cierra la 0.6), armas a distancia, idioma del contenido, log de tiradas de desarrollador (`[dev] dice_log`). Excepción a la regla: faltan las partículas y el proyectil en vuelo (pulido visual, pendiente) |
+| 0.9.24 | D3 | Compatibilidad por protocolo (`PROTOCOL` + hash del contenido) en vez de la versión exacta; si no son compatibles, el aviso dice quién tiene que actualizar |
 | 0.9.23 | teclado | Android: el teclado del sistema en vez del dibujado (dirección, clave, chat, creación de personaje), con LISTO y CANCELAR debajo de la línea; las letras pasan de `MainActivity` a Rust por JNI |
 | 0.9.22 | D2 | Red por internet: Unirse -> DIRECCIÓN (`dominio:puerto` o `IP:puerto`, para playit.gg, ngrok o Tailscale; recuerda la última) y clave opcional de la sala (CLAVE en la sala de espera; el cliente la pide si hace falta). Conectar en otro hilo con puntos animados en Buscando / Conectando; teclado en pantalla más alto en vertical |
 | 0.9.21 | D1 | `Local.config` fuera del repo (personal) y, en escritorio, en la carpeta de datos (la primera vez copia el de la carpeta actual); `[dev]` nunca se genera sola |

@@ -1,5 +1,8 @@
 # D3 — Compatibilidad entre versiones
 
+✏️ Escrito (0.9.24), falta la prueba del dueño: `PROTOCOL = 1` y el aviso de quién actualiza (`docs/app/net.md`). El
+botón Actualizar llega con D4.
+
 **Objetivo:** que 1.1.0 y 1.1.2 jueguen juntas si nada de la red o las reglas cambió; si no pueden, que el cliente
 sepa qué hacer.
 

@@ -20,6 +20,10 @@ use game::hero::{Action, Hero, Slot, Verb};
 use game::{characters, save};
 use serde_json::{json, Map, Value};
 
+/// Versión del protocolo: dos versiones del juego juegan juntas si coincide (y el hash del contenido). Sube cuando
+/// cambia algo que el cliente interpreta: los mensajes de este archivo, el formato de `save::dump` o lo que el
+/// cliente regenera con la seed (generación de pisos, rng). Regla en `roadmap/versiones.md`.
+pub const PROTOCOL: u32 = 1;
 pub const UDP_PORT: u16 = 47810;
 pub const TCP_PORT: u16 = 47811;
 const MAGIC: &str = "pdri";
@@ -50,6 +54,12 @@ fn say(d: &mut Dungeon, i: usize, text: &str) {
         let name = d.heroes[i].ch.name.clone();
         d.log(&format!("{name}: {t}"));
     }
+}
+
+/// ¿`a` es una versión más nueva que `b`? ("0.10.0" > "0.9.22"; lo que no es número cuenta como 0)
+pub fn newer(a: &str, b: &str) -> bool {
+    let v = |s: &str| s.split('.').map(|p| p.trim().parse::<u32>().unwrap_or(0)).collect::<Vec<_>>();
+    v(a) > v(b)
 }
 
 /// La clave de la sala normalizada: letras y números, en mayúsculas (el teclado del teléfono sólo tiene mayúsculas).
@@ -126,7 +136,7 @@ impl Host {
         listener.set_nonblocking(true)?; // para poder cerrar el hilo
         let udp = UdpSocket::bind(("0.0.0.0", UDP_PORT))?;
         udp.set_read_timeout(Some(Duration::from_millis(300)))?;
-        let info = json!({"magic": MAGIC, "t": "game", "name": name, "players": 1, "version": game::VERSION,
+        let info = json!({"magic": MAGIC, "t": "game", "name": name, "players": 1, "version": game::VERSION, "protocol": PROTOCOL,
                           "hash": game::registry::content_hash(), "port": TCP_PORT});
         let info = Arc::new(Mutex::new(info));
         let writers: Arc<Mutex<BTreeMap<u32, TcpStream>>> = Arc::default();
@@ -488,9 +498,6 @@ impl HostGame {
     }
 
     fn refuse(msg: &Value, classes: &Map<String, Value>, d: &Dungeon) -> Option<&'static str> {
-        if msg["version"] != game::VERSION {
-            return Some(game::tr!("versión distinta", "different version"));
-        }
         if msg["hash"] != game::registry::content_hash().as_str() {
             return Some(game::tr!("contenido distinto (data/ o mods)", "different content (data/ or mods)"));
         }
@@ -504,6 +511,13 @@ impl HostGame {
         while let Ok((cid, msg)) = self.host.inbox.try_recv() {
             match msg["t"].as_str().unwrap_or("") {
                 "hello" if !self.players.contains_key(&cid) => {
+                    // otra versión del protocolo: el cliente decide quién tiene que actualizar con `version`
+                    if msg["protocol"] != PROTOCOL {
+                        let why = game::tr!("versión incompatible", "incompatible version");
+                        self.host.send(cid, &json!({"t": "refused", "why": why, "need": "update", "version": game::VERSION}));
+                        self.host.kick(cid);
+                        continue;
+                    }
                     if let Some(why) = Self::refuse(&msg, classes, d) {
                         self.host.send(cid, &json!({"t": "refused", "why": why}));
                         self.host.kick(cid);
@@ -627,6 +641,8 @@ pub struct ClientGame {
     pub refused: Option<String>,
     /// El host pide clave (no se mandó o no es esa).
     pub need_pass: bool,
+    /// Rechazado por otro protocolo: la versión del host.
+    pub host_version: Option<String>,
     pub closed: bool,
     /// Sala de espera: los nombres que mandó el host (se toma al mostrarlo).
     pub lobby: Option<Vec<String>>,
@@ -643,8 +659,8 @@ impl ClientGame {
         stream.set_nodelay(true)?;
         let (tx, inbox) = channel();
         read_loop(stream.try_clone()?, tx, |m| m);
-        let mut g = Self { stream, inbox, refused: None, need_pass: false, closed: false, lobby: None, fx: Vec::new(), dice: Vec::new() };
-        g.send(&json!({"t": "hello", "version": game::VERSION, "hash": game::registry::content_hash(),
+        let mut g = Self { stream, inbox, refused: None, need_pass: false, host_version: None, closed: false, lobby: None, fx: Vec::new(), dice: Vec::new() };
+        g.send(&json!({"t": "hello", "version": game::VERSION, "protocol": PROTOCOL, "hash": game::registry::content_hash(),
                        "name": c["name"], "char": characters::id(c), "class": c["class"],
                        "abilities": characters::abilities(c), "hero": hero, "skin": characters::skin(c),
                        "pass": pass_text(pass)}));
@@ -676,6 +692,9 @@ impl ClientGame {
                 "state" => latest = Some(m),
                 "refused" => {
                     self.need_pass = m["need"] == "password";
+                    if m["need"] == "update" {
+                        self.host_version = m["version"].as_str().map(str::to_string);
+                    }
                     self.refused = Some(m["why"].as_str().unwrap_or(game::tr!("rechazado", "refused")).to_string());
                 }
                 "fx" => {
@@ -840,6 +859,12 @@ mod tests {
         let s = &d.floor().scheduler;
         assert!(s.actors.iter().all(|e| !matches!(e.0, ActorId::Hero(1) | ActorId::Regen(1) | ActorId::Hunger(1))));
         assert!(s.contains(ActorId::Hero(0)));
+    }
+
+    #[test]
+    fn versiones() {
+        assert!(newer("0.10.0", "0.9.22") && newer("1.0.0", "0.99.99") && newer("0.9.23", "0.9.22"));
+        assert!(!newer("0.9.22", "0.9.22") && !newer("0.9.3", "0.9.22"));
     }
 
     #[test]

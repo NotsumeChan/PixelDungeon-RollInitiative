@@ -56,3 +56,10 @@ mensaje propio de vuelta: el log ya viaja en el estado. El host escribe con `Hos
 - Conectar (DNS + `connect_timeout`) va en otro hilo (`App::join` -> `connecting`, lo recoge `net_pump`): la pantalla
   sigue dibujando y Unirse muestra puntos animados (`Ui::busy`) mientras busca, conecta o espera al host.
 - ponytail: la clave viaja en texto plano y sin límite de intentos.
+
+## Compatibilidad entre versiones (D3, 0.9.24)
+Al unirse no se compara la versión exacta sino `PROTOCOL` (y el hash del contenido, como antes): 0.9.22 y 0.9.24
+juegan juntas si el protocolo es el mismo. El anuncio de la LAN y el `hello` llevan `protocol` y `version`. Si no
+coincide, el host contesta `refused` con `need: "update"` y su `version`; el cliente (`host_version`) avisa quién
+tiene que actualizar (`newer`): él si el host es más nuevo, el host si no (en Android no se baja de versión). El
+botón Actualizar llega con el actualizador (D4). Cuándo subir `PROTOCOL`: `roadmap/versiones.md`.
