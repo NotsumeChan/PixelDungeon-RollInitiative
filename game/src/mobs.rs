@@ -269,7 +269,7 @@ impl Dungeon {
             return true; // sin movimiento en este turno de combate: el spend() siguiente no gasta nada
         }
         let m = self.mob(id).unwrap();
-        let step = self.find_path(m.ch.flying, m.ch.pos, target, &self.level().passable, &m.fov);
+        let step = self.find_path(m.ch.flying, m.ch.pos, target, &self.level().passable, &m.fov, true);
         if step == -1 {
             return false;
         }

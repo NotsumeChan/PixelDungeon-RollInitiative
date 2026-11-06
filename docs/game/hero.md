@@ -13,6 +13,10 @@
   `Rest` (1 de tiempo), `Search` (2), `Descend` / `Ascend` (hay que pedirlo con click; pisar la escalera no basta).
   `handle(i, celda, stairs)` elige la acción según lo que hay en la celda. `Leave(celda)` (M1c): una salida del
   borde con sólo pisarla (también con el teclado), un portal sólo con click / toque (`stairs`).
+- Caminar (`hero_get_closer` / `hero_step`, 0.9.35): fuera de combate el camino se planea sin contar a los aliados
+  como obstáculo. Si el paso cae en un aliado: si está quieto o viene de frente (su paso es la celda de este), se
+  cambian de lugar; si va para otro lado, se espera 1 TICK a que se corra (la acción sigue). En combate los aliados
+  bloquean como siempre (cada uno mueve en su turno).
 - Sólo camina por celdas ya vistas; un mob nuevo a la vista corta la acción (`check_visible_mobs`). Tras cada paso,
   búsqueda pasiva con probabilidad `awareness`.
 - `animating`: tras un paso el planificador espera a que el render termine el movimiento (lo baja la app).

@@ -715,7 +715,9 @@ impl Dungeon {
     }
 
     /// Dungeon.findPath: un paso hacia `to` evitando a las criaturas que se ven.
-    pub(crate) fn find_path(&self, flying: bool, from: i32, to: i32, passable: &[bool], visible: &[bool]) -> i32 {
+    /// `heroes_block` = false: los héroes no cuentan como obstáculo (un héroe fuera de combate planea por encima de sus
+    /// aliados; al llegar a uno se cambian de lugar o lo espera, `hero_get_closer`).
+    pub(crate) fn find_path(&self, flying: bool, from: i32, to: i32, passable: &[bool], visible: &[bool], heroes_block: bool) -> i32 {
         let level = self.level();
         if self.level().adjacent(from, to) {
             let t = to as usize;
@@ -723,8 +725,8 @@ impl Dungeon {
         }
         let mut p: Vec<bool> =
             if flying { passable.iter().zip(&level.avoid).map(|(a, b)| *a || *b).collect() } else { passable.to_vec() };
-        for (_, c) in self.chars() {
-            if c >= 0 && visible[c as usize] {
+        for (a, c) in self.chars() {
+            if c >= 0 && visible[c as usize] && (heroes_block || !matches!(a, ActorId::Hero(_))) {
                 p[c as usize] = false;
             }
         }
@@ -851,10 +853,20 @@ impl Dungeon {
                 continue;
             }
             let Some(cur) = s.current() else { return };
-            if self.waiting(cur) {
-                return;
-            }
             let now = s.time(cur);
+            if self.waiting(cur) {
+                // fuera de combate es simultáneo (decisiones.md): un héroe quieto, sin nada elegido, deja pasar su turno
+                // mientras otro del piso tenga algo en curso; recién cuando nadie tiene nada se espera input
+                let ActorId::Hero(i) = cur else { return };
+                let busy = |j: usize| j != i && self.heroes[j].is_alive() && self.heroes[j].action.is_some();
+                if self.heroes[i].animating || self.heroes[i].action.is_some() || !self.here().any(busy) {
+                    return;
+                }
+                let s = &mut self.floor_mut().scheduler;
+                s.now = now;
+                s.spend(cur, TICK);
+                continue;
+            }
             self.floor_mut().scheduler.now = now;
             self.act(cur);
             // si el héroe cambió de piso, el combate se decide igual en el piso que dejó (como el prototipo)

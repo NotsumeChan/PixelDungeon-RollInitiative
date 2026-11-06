@@ -8,7 +8,7 @@
 use serde_json::{Map, Value};
 
 use crate::level::{Exit, Zone};
-use crate::actor::ActorId;
+use crate::actor::{ActorId, TICK};
 use crate::char::Char;
 use crate::dice;
 use crate::dungeon::{Dungeon, Fx, Pending, Tone};
@@ -632,28 +632,51 @@ impl Dungeon {
         if !self.can_step(ActorId::Hero(i)) {
             return true; // sin movimiento en este turno de combate: sigue en el próximo
         }
-        let level = self.level();
-        let t = target as usize;
-        let step = if self.level().adjacent(pos, target) {
-            // ponytail: el abismo está bloqueado; en Java pide confirmación y caes al piso siguiente
-            let free = self.find_char(target).is_none() && !level.pit[t];
-            if free && (level.passable[t] || level.avoid[t]) { target } else { -1 }
-        } else {
-            // sólo camina por lo ya visto (visited / mapped)
-            let p: Vec<bool> =
-                (0..level.len() as usize).map(|c| level.passable[c] && (level.visited[c] || level.mapped[c])).collect();
-            self.find_path(false, pos, target, &p, &self.heroes[i].fov)
-        };
+        // fuera de combate los aliados no cortan el camino (en combate cada uno mueve en su turno: sí lo cortan)
+        let through = !self.floor().scheduler.in_combat(ActorId::Hero(i));
+        let step = self.hero_step(i, target, through);
         if step == -1 {
             return false;
         }
-        self.move_char(ActorId::Hero(i), step);
+        if let Some(ActorId::Hero(j)) = self.find_char(step) {
+            // un aliado en el paso: si va para otro lado, se espera un turno a que se corra; si está quieto o viene
+            // de frente (su paso es esta celda), se cambian de lugar
+            let goal = match self.heroes[j].action {
+                Some(Action::Move(c) | Action::Descend(c) | Action::Ascend(c) | Action::Leave(c) | Action::PickUp(c) | Action::Open(c)) => Some(c),
+                _ => None,
+            };
+            if goal.is_some_and(|g| self.hero_step(j, g, true) != pos) {
+                self.spend(ActorId::Hero(i), TICK);
+                return true;
+            }
+            self.move_char(ActorId::Hero(i), step);
+            self.move_char(ActorId::Hero(j), pos);
+            self.heroes[j].ch.stepped = false; // no es su movimiento (combate 5e)
+            self.heroes[j].animating = true;
+        } else {
+            self.move_char(ActorId::Hero(i), step);
+        }
         let speed = self.heroes[i].speed();
         self.spend(ActorId::Hero(i), 1.0 / speed);
         self.heroes[i].animating = true;
         self.observe();
         self.search(i, false);
         true
+    }
+
+    /// El próximo paso del héroe `i` hacia `target` por lo ya visto (visited / mapped), o -1. `through`: los aliados no
+    /// cuentan como obstáculo (salvo en la celda de destino).
+    fn hero_step(&self, i: usize, target: i32, through: bool) -> i32 {
+        let pos = self.heroes[i].ch.pos;
+        let level = self.level();
+        let t = target as usize;
+        if level.adjacent(pos, target) {
+            // ponytail: el abismo está bloqueado; en Java pide confirmación y caes al piso siguiente
+            let free = self.find_char(target).is_none() && !level.pit[t];
+            return if free && (level.passable[t] || level.avoid[t]) { target } else { -1 };
+        }
+        let p: Vec<bool> = (0..level.len() as usize).map(|c| level.passable[c] && (level.visited[c] || level.mapped[c])).collect();
+        self.find_path(false, pos, target, &p, &self.heroes[i].fov, !through)
     }
 
     /// Busca secretos en las celdas vecinas visibles. Pasiva (tras cada paso) con probabilidad `awareness`.
