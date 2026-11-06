@@ -270,7 +270,7 @@ fn class_rows(c: &serde_json::Map<String, serde_json::Value>) -> Vec<ui::RosterR
     c.values()
         .map(|v| ui::RosterRow {
             name: game::registry::text(&v["name"]),
-            status: format!("{} d{}", game::registry::text(&v["dnd_class"]), v["hit_die"]),
+            status: format!("{} d{}", game::registry::text(game::hero::class_5e(v)), v["hit_die"]),
             stats: String::new(),
             sheet: None,
         })
@@ -1223,7 +1223,7 @@ impl App {
                 let run = save::load_run(&dir, characters::id(c)).filter(|d| d.heroes.iter().any(|h| h.is_alive()));
                 let status = match run {
                     Some(d) => trf!("en partida - piso {}, nivel {}", "in a run - depth {}, level {}", d.zone.z, d.local().lvl),
-                    None => format!("{} d{}", game::registry::text(&cls["dnd_class"]), cls["hit_die"]),
+                    None => format!("{} d{}", game::registry::text(game::hero::class_5e(cls)), cls["hit_die"]),
                 };
                 let ab = characters::abilities(c);
                 let stats: Vec<String> = (0..6).map(|k| format!("{} {}", game::dice::ability_names()[k], ab[k])).collect();

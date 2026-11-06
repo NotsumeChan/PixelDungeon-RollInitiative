@@ -1117,7 +1117,7 @@ impl Ui {
         let dmg = me.weapon.as_ref().map_or("1".to_string(), |w| weapon_dice(w).to_string());
         let saves: Vec<String> = (0..6).map(|i| format!("{}{:+}", dice::ability_names()[i], me.save_bonus(ABILITIES[i]))).collect();
         let mut lines = vec![
-            (trf!("{} ({}) nivel {}", "{} ({}) level {}", me.ch.name, text(&me.cls["dnd_class"]), me.lvl), YELLOW),
+            (trf!("{} ({}) nivel {}", "{} ({}) level {}", me.ch.name, text(game::hero::class_5e(&me.cls)), me.lvl), YELLOW),
             (abil(0..3), WHITE),
             (abil(3..6), WHITE),
             (trf!("PV {}/{}   CA {}   Competencia +{}", "HP {}/{}   AC {}   Proficiency +{}", me.ch.hp, me.ch.ht, me.armor_class(), me.proficiency()), WHITE),

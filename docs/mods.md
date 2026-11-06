@@ -22,6 +22,9 @@ Android la carpeta de datos de la app.
   rompe la partida: probalo.
 - La red compara el hash del contenido, mods incluidos: todos en la LAN tienen que tener los mismos mods.
 
+## Nombres viejos que se siguen leyendo
+- `classes.json`: `dnd_class` -> `class_5e` (0.9.43). Los mods con el nombre viejo siguen funcionando.
+
 ## mod.json, ícono y ajustes
 
 `mod.json` (opcional): `name` y `desc` (textos), `author`, `version` y `settings`, las opciones que el jugador cambia

@@ -21,10 +21,10 @@ cierre de la separación de Pixel Dungeon (`pendientes.md`). Sólo plan.
 - Avisos claros en el README y en Acerca de: proyecto no afiliado (a Watabou mientras quede algo de PD; a Wizards of
   the Coast), compatible con la 5.ª edición, la atribución del SRD (CC-BY-4.0) y la licencia GPL v3.
 
-## L2 — Nombres internos
-- `data/classes.json`: el campo `dnd_class` pasa a un nombre neutral; la API de mods es estable: el viejo se sigue
+## L2 — Nombres internos (✏️ en parte, 0.9.43: `class_5e` y `reglas5e.md`)
+- ✏️ `data/classes.json`: el campo `dnd_class` pasa a `class_5e`; la API de mods es estable: el viejo se sigue
   leyendo como alias (`docs/mods.md`).
-- `roadmap/dnd5e.md` -> `reglas5e.md`; carpeta de datos `PixelDND`, clave `~/.pddnd-signing/`, CI y `android/build.sh`.
+- ✏️ `roadmap/dnd5e.md` -> `reglas5e.md`. Falta (afecta instalaciones, decidir junto con el nombre): carpeta de datos `PixelDND`, clave `~/.pddnd-signing/`, CI y `android/build.sh`.
 - Ojo Android: cambiar el id de la app (package) la vuelve otra app (no actualiza la instalada, otra clave de datos):
   decidirlo una sola vez, junto con el nombre nuevo.
 

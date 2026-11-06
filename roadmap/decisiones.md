@@ -112,4 +112,4 @@ por hoja con un máximo (64x64); cuadros y velocidad libres por animación. Plan
 - Determinismo: `Rng` compatible con CPython, nada de `HashMap` que decida resultados.
 - Pruebas a mano; tests automáticos sólo de red. Guardados en formato nuevo, sin migración.
 - APK firmado con clave propia fuera del repo (`~/.pddnd-signing/`). Licencia GPL v3.
-- 5e manda sobre los stats de PD ([`dnd5e.md`](dnd5e.md)).
+- 5e manda sobre los stats de PD ([`reglas5e.md`](reglas5e.md)).

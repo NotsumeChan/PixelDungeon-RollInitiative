@@ -445,6 +445,12 @@ impl Hero {
     }
 }
 
+/// El nombre de la clase 5e de una entrada de `classes.json` (`class_5e`; `dnd_class` es el nombre viejo, que se sigue
+/// leyendo: API de mods estable).
+pub fn class_5e(cls: &Value) -> &Value {
+    if cls["class_5e"].is_null() { &cls["dnd_class"] } else { &cls["class_5e"] }
+}
+
 impl Dungeon {
     /// Hero.handle: decide la acción según qué hay en la celda. stairs = true sólo con click / toque: cambiar de piso
     /// (escalera o portal) hay que pedirlo; pisar la escalera no basta. Una salida del borde se usa con sólo pisarla.

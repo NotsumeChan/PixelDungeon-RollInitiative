@@ -2,7 +2,7 @@
 
 Registros que lee `game/registry.py` (los mods los pisan o suman: `docs/mods.md`). IDs `namespace:nombre` (`pdri:` = juego base). Textos: str o dict por idioma.
 
-- **classes.json** (`HERO_CLASSES`): ver el comentario en `game/hero.py` (`dnd_class`, `hit_die`, `weapon_prof`,
+- **classes.json** (`HERO_CLASSES`): ver el comentario en `game/hero.py` (`class_5e`: el nombre de la clase 5e, antes `dnd_class`, que se sigue leyendo; `hit_die`, `weapon_prof`,
   `armor_prof`, `save_prof`, `traits`, `spellcasting`, `start_weapon`, `start_armor`, `items` (id o [id, cantidad]),
   `quick`, `known`, `awareness_base`, `hunger_step`, `speed_ft` (5e, pies; 30), `ability_priority` (las 6
   características de la más a la menos importante: la creación de personaje les da las tiradas más altas),

@@ -4,7 +4,7 @@
    "es": "Guerrero",
    "en": "Warrior"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Guerrero",
    "en": "Fighter"
   },
@@ -57,7 +57,7 @@
    "es": "Mago",
    "en": "Mage"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Mago",
    "en": "Wizard"
   },
@@ -110,7 +110,7 @@
    "es": "Pícaro",
    "en": "Rogue"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Pícaro",
    "en": "Rogue"
   },
@@ -166,7 +166,7 @@
    "es": "Cazadora",
    "en": "Huntress"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Explorador",
    "en": "Ranger"
   },
@@ -222,7 +222,7 @@
    "es": "Bárbaro",
    "en": "Barbarian"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Bárbaro",
    "en": "Barbarian"
   },
@@ -276,7 +276,7 @@
    "es": "Bardo",
    "en": "Bard"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Bardo",
    "en": "Bard"
   },
@@ -334,7 +334,7 @@
    "es": "Clérigo",
    "en": "Cleric"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Clérigo",
    "en": "Cleric"
   },
@@ -384,7 +384,7 @@
    "es": "Druida",
    "en": "Druid"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Druida",
    "en": "Druid"
   },
@@ -444,7 +444,7 @@
    "es": "Monje",
    "en": "Monk"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Monje",
    "en": "Monk"
   },
@@ -491,7 +491,7 @@
    "es": "Paladín",
    "en": "Paladin"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Paladín",
    "en": "Paladin"
   },
@@ -546,7 +546,7 @@
    "es": "Hechicero",
    "en": "Sorcerer"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Hechicero",
    "en": "Sorcerer"
   },
@@ -596,7 +596,7 @@
    "es": "Brujo",
    "en": "Warlock"
   },
-  "dnd_class": {
+  "class_5e": {
    "es": "Brujo",
    "en": "Warlock"
   },

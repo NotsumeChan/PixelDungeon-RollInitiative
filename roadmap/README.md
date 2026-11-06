@@ -8,12 +8,12 @@ Leer esto primero. Un archivo por tema:
 | [`estado.md`](estado.md) | Lo escrito por fase (R0-R6, N1-N5) y qué probar |
 | [`pendientes.md`](pendientes.md) | Lo que falta, sin orden |
 | [`versiones.md`](versiones.md) | Regla de versiones e historial |
-| [`dnd5e.md`](dnd5e.md) | Reglas 5e y equipo |
+| [`reglas5e.md`](reglas5e.md) | Reglas 5e y equipo |
 | [`sprites-5e.md`](sprites-5e.md) | El arte que hace falta para 5e (personajes, equipo, mobs, interfaz) |
 | [`pasos/`](pasos/) | Próximos pasos, uno por archivo |
 
 ## Ahora
-Rama `dev`, **0.9.42** (`versionCode` 52). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
+Rama `dev`, **0.9.43** (`versionCode` 53). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
 primero.
 
 ## Próximos pasos
@@ -46,7 +46,7 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 
 ## Estado al cerrar la sesión (2026-11-06)
 **Para retomar:** leer esta sección y el plan de M1c en [`pasos/5-mapas-editor.md`](pasos/5-mapas-editor.md). No hay
-nada a medio hacer: todo está en commits en `dev` (0.9.42). El teléfono tiene una beta con el actualizador (canal
+nada a medio hacer: todo está en commits en `dev` (0.9.43). El teléfono tiene una beta con el actualizador (canal
 beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del proyecto) en `NOTAS.md`.
 
 - Hecho y sin probar (✏️): D1-D4 (releases, red por internet con el teclado del sistema, compatibilidad, actualizador
