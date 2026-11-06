@@ -87,7 +87,7 @@ partidas encontradas ("nombre - N jugadores - IP"; gris si es de otra versión o
 (conectando, rechazado, se cortó) y VOLVER.
 
 Tanda del 2026-11-04 (pedidos del dueño tras probar en el teléfono):
-- Con 2+ héroes, fuera de combate: lista de los del piso con ✓ / casilla vacía (Icons CHECKED / UNCHECKED) según ya
+- Con 2+ héroes, fuera de combate: lista de los de la zona con ✓ / casilla vacía (Icons CHECKED / UNCHECKED) según ya
   eligieron qué hacer, y "Esperando a ..." cuando la partida espera a otro (en combate, al que le toca).
 - El log muestra a cada uno sus avisos privados (`Dungeon::tell`) y los de todos.
 - Barra: botón del rasgo de clase (ícono de la clase de Icons.java; gris si el Segundo Aliento ya se usó).

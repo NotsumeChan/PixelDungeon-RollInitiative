@@ -15,7 +15,7 @@ render; el juego llama a `pump` una vez por frame.
   confianza: lo que no se entiende o no valida (`valid`: celdas en rango, ítems que existen, sólo atacar mobs, ayudar a
   otro héroe que existe, conjuros que tiene) se ignora; el juego vuelve a validar al actuar.
 - **`HostGame`**: `hello` válido (misma versión y contenido, clase cargada, características 1-20, `hero` que valida
-  `save::portable_ok`) suma un héroe al piso 1 con el nombre del personaje y su nivel, XP, oro y equipo
+  `save::portable_ok`) suma un héroe a la zona de inicio con el nombre del personaje y su nivel, XP, oro y equipo
   (`save::set_portable`); si el mismo personaje se reconecta en la sesión, vuelve a su héroe (con lo de acá). `action` va a SU
   héroe. Al irse, su héroe queda (la app lo hace descansar). Manda el estado completo como mucho cada 50 ms y sólo si
   cambió.
@@ -26,17 +26,17 @@ render; el juego llama a `pump` una vez por frame.
   irse queda libre). `cargo test -p app --lib net` (usa los puertos del juego).
 
 Personaje portátil (paso 5): el host no devuelve nada al irse; el cliente ya tiene su héroe en cada estado. La app
-(`autosave` en `lib.rs`) lo pasa a la partida de un jugador del personaje (o a una nueva) al cambiar de piso, al salir,
+(`autosave` en `lib.rs`) lo pasa a la partida de un jugador del personaje (o a una nueva) al cambiar de zona, al salir,
 al menú, al pasar al fondo y cuando se corta la conexión (antes de `Net::Off`). Si su héroe murió, se borra su partida.
 
-Pendiente (ponytail): al irse su héroe no sale de la partida, el cliente rearma la partida entera en cada estado (regenera los pisos) y no ve los dados ni
+Pendiente (ponytail): al irse su héroe no sale de la partida, el cliente rearma la partida entera en cada estado (regenera las zonas) y no ve los dados ni
 los efectos del host (ve el resultado en el log), estado completo en vez de diferencias.
 
 Sala de espera: `HostGame` empieza sin correr la partida (`started = false`): suma a los que se unen y les manda
 `{"t": "lobby", "players": [...]}` al cambiar la lista; `start` (EMPEZAR) manda la partida a todos. El estado lleva
 `wait` (por héroe, si la partida espera que elija: `needs_input`) para la lista de quién falta.
 
-Efectos y dados: el host manda `{"t": "fx", "fx": [...], "dice": [...]}` con lo que pasó en el piso de cada jugador
+Efectos y dados: el host manda `{"t": "fx", "fx": [...], "dice": [...]}` con lo que pasó en la zona de cada jugador
 (animaciones de ataque, números flotantes, muertes, casillas revisadas, dados), en el acto. El cliente los pasa a su
 partida y los ve igual que el host. Validados: animaciones conocidas, celdas en rango, dados con rangos razonables.
 

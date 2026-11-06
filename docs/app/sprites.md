@@ -1,10 +1,10 @@
 # app/src/sprites.rs
 
-`screens/charSprite.py` + los efectos de `screens/gameScreen.py`: los personajes del piso local en pantalla (`Chars`).
+`screens/charSprite.py` + los efectos de `screens/gameScreen.py`: los personajes de la zona local en pantalla (`Chars`).
 
 - `animate`: cada sprite recorre, casilla por casilla, las celdas por las que pasó su personaje (`Char::trail`; en
   combate un mob hace varios pasos de una vez y en línea recta cortaría las esquinas de las paredes), a 1 casilla cada
-  `MOVE_TIME` = 0,1 s, por dt; uno que no se ve aparece en su celda. Cada héroe del piso se suelta (`animating = false`) cuando su sprite llega: recién ahí sigue el planificador.
+  `MOVE_TIME` = 0,1 s, por dt; uno que no se ve aparece en su celda. Cada héroe de la zona se suelta (`animating = false`) cuando su sprite llega: recién ahí sigue el planificador.
 - Animaciones (`Anim`): las del héroe son `HERO_ANIMS` (HeroSprite, iguales en todas las clases); las de un mob, su
   `"anims"` en `data/mobs.json` (sin `"anims"`, el primer frame quieto). `update` elige: caído o muerto = morir (queda
   en el último frame), un ataque / operar en curso se termina, si el sprite viaja = correr (mirando hacia donde va),

@@ -6,7 +6,7 @@ tiradas de salvación de 5e.
 - Cada estado vive en su personaje (`Char::buffs`) y actúa en el planificador como `ActorId::Buff(uid)` una vez por
   turno (en combate, al final de cada ronda): su `tick` (poison: restantes / 3 + 1; bleeding: baja al azar entre la
   mitad y el total; burning: 1-5, se apaga en el agua o al azar), el daño con dados (`damage`), la duración y la
-  salvación para librarse (`save_ends` contra su `dc`). Los del héroe viajan con él entre pisos.
+  salvación para librarse (`save_ends` contra su `dc`). Los del héroe viajan con él entre zonas.
 - `add_buff` (Buff.affect + prolong: si ya lo tiene se queda con lo mayor), `detach_buff`, `has_flag`
   ("paralysed": no actúa, le atacan con ventaja, falla sola las salvaciones de FUE y DES), `buff_speed` (Lisiado =
   la mitad, también los pies por turno en combate).

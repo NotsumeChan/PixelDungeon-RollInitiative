@@ -3,7 +3,7 @@
 `game/spells.py`: conjuros de 5e como datos (`data/spells.json`) y los rasgos de clase.
 
 - Números del lanzador: bono de ataque = competencia + mod de `spellcasting.ability`; CD = 8 + bono. Espacios por
-  nivel de personaje (lanzador completo: Mago; medio: Explorador, reglas 2024); se recargan al llegar a un piso nuevo
+  nivel de personaje (lanzador completo: Mago; medio: Explorador, reglas 2024); se recargan al llegar a una zona nueva
   (`recover`, hasta que haya descansos) y suben con el nivel (`level_up_spells`).
 - `cast(héroe, k, celda)` (acción `Cast`): valida el objetivo (enemigo a la vista con línea de tiro, casilla vista,
   uno mismo o un aliado al lado), gasta un uso gratis o el menor espacio que alcance (los niveles de más suben el

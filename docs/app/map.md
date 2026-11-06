@@ -1,6 +1,6 @@
 # app/src/map.rs
 
-El piso como instancias, port de `DrawLevel` / `BuildFog` de `screens/gameScreen.py`:
+La zona como instancias, port de `DrawLevel` / `BuildFog` de `screens/gameScreen.py`:
 
 - `water`: `water0.png` en mosaico debajo de los tiles, bajando `WATER_SPEED` (5 px/s), recortado al mapa (la fila
   partida se dibuja con un quad más corto y su recorte de uv). Los tiles de agua (48..63) son transparentes.

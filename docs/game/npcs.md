@@ -4,7 +4,7 @@ NPCs (`roadmap/estado.md`, pasos N1 y N2). Un NPC es un mob con `"npc": "<id de 
 tranquilo (`State::Passive`): no caza, no entra al combate, no corta el paso del héroe y no cuenta para el respawner.
 Si lo dañan (o el diálogo lo ataca) se despierta como un mob dormido y pelea.
 
-- `create_npcs`: al crear un piso, `data/npcs.json` (piso -> [[mob, probabilidad]]) con un rng propio derivado de la
+- `create_npcs`: al crear una zona, `data/npcs.json` (profundidad -> [[mob, probabilidad]]) con un rng propio derivado de la
   seed del piso: los pisos, sus mobs y sus ítems salen igual que sin NPCs.
 - Tocar a un NPC tranquilo = `Action::Talk` (se acerca y abre el diálogo; en combate no). `Choose(k)` elige una opción,
   `Bye` cierra. No gastan tiempo. El diálogo abierto (`Hero::talking`: NPC y nodo) se guarda y viaja en el estado de

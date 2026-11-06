@@ -8,7 +8,8 @@
 - IA (Mob.java): SLEEPING (lo nota con `Int(distancia + sigilo) == 0`, tarda 1 en despertar), WANDERING (va a un
   destino al azar; si nota al héroe pasa a cazar sin gastar tiempo), HUNTING (ataca si está al lado, si no lo
   persigue; si lo pierde, vuelve a deambular). El daño lo despierta y lo alerta.
-- Al morir: XP repartida entre los héroes vivos del piso (redondeo hacia arriba) +1 al del último golpe. El rng del
+- Al morir: XP repartida entre los héroes vivos de la zona (redondeo hacia arriba) +1 al del último golpe; en combate se
+  junta y se da al terminar (`combat_exp`, ver `hero.md`). El rng del
   loot se gasta igual que el prototipo, pero no cae nada hasta que haya ítems (R5).
 - Faltan (R5): habilidades especiales, FLEEING, loot.
 

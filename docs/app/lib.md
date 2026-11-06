@@ -7,12 +7,12 @@ Bucle del juego sobre winit 0.30 (`ApplicationHandler`), el mismo para escritori
 - `ControlFlow::Poll` + `request_redraw` en `about_to_wait`: se dibuja sin parar.
 - `frame`: dt en segundos (tope 0,1 s), FPS por segundo (también al log: `adb logcat | grep FPS`).
 
-R3: **jugar un piso** con el héroe (`World`: la partida `game::dungeon::Dungeon` + dónde se dibuja cada personaje).
+R3: **jugar una zona** con el héroe (`World`: la partida `game::dungeon::Dungeon` + dónde se dibuja cada personaje).
 - Cada frame (`World::update`, en el orden del prototipo): teclas mantenidas, los sprites caminan (`sprites.rs`; el
   héroe se suelta al llegar), lo que el dado ya mostró se aplica (`resolve_pending` sólo si `DiceFx` no está
   ocupado), `process`, y después efectos y dados avanzan.
 - Input: un click / toque va primero a la UI (`ui.rs`); si no la toca, al mapa: examinar la casilla (si se eligió
-  examinar) o `Dungeon::handle` (caminar con pathfinder, atacar, ayudar a un caído, cambiar de piso en la escalera);
+  examinar) o `Dungeon::handle` (caminar con pathfinder, atacar, ayudar a un caído, cambiar de zona por la escalera, un borde abierto o un portal);
   tocar al propio héroe = usar lo que hay abajo (montón, cofre, escalera, portal, borde abierto) o, si no hay nada, buscar. WASD / flechas = un paso (diagonal si se puede, si no por un eje; atacar si hay
   alguien). Espacio = esperar, Q = buscar, I = mochila, 1 / 2 = accesos rápidos, click derecho = elegir el acceso
   rápido, Esc = cerrar ventana / cancelar examinar / menú, R = otra partida del mismo personaje.
@@ -40,7 +40,7 @@ Resolución: en escritorio la ventana se crea con `Config::window_size` y cambia
 pantalla completa).
 
 Personajes y guardado: Jugar abre la lista (`open_roster`, lee el disco); JUGAR carga la partida guardada del personaje
-si sigue vivo o empieza una nueva (`start`). Autoguardado (`autosave`) al cambiar de piso, al volver al menú principal,
+si sigue vivo o empieza una nueva (`start`). Autoguardado (`autosave`) al cambiar de zona, al volver al menú principal,
 al salir y al pasar al fondo en Android. Carpeta de datos: `data_dir()`. R = partida nueva del mismo personaje.
 
 R5d: con `ui.throwing` el próximo click en el mapa es `Action::Throw` (Esc cancela). El arco no necesita UI: tocar
@@ -53,8 +53,8 @@ partida de fondo (`App::new`) y al cambiarlo se rehacen las filas de clases. `[d
 
 Hotseat (`[dev] hotseat = true`, el modo de prueba de la red del prototipo): `World::new` suma un segundo héroe igual
 al personaje ("<nombre> 2"). Tab pasa al siguiente héroe vivo. `World::auto_switch` (cada frame): si el local murió o
-cayó, la UI pasa al primero en pie; si el piso espera la acción de otro héroe (`Dungeon::blocking`), pasa a ese. Con los
-héroes en pisos distintos, cada piso espera a su héroe: se cambia con Tab. Con 2+ héroes, `sprites.rs` dibuja el
+cayó, la UI pasa al primero en pie; si la zona espera la acción de otro héroe (`Dungeon::blocking`), pasa a ese. Con los
+héroes en zonas distintas (otra escena u otra profundidad), cada zona espera a sus héroes: se cambia con Tab. Con 2+ héroes, `sprites.rs` dibuja el
 nombre sobre cada uno (el local amarillo, otros blanco, caídos gris). La partida guarda los dos héroes.
 
 Red LAN (`net.rs`, `Net`: `Off` / `Host` / `Client`): CREAR LAN en la lista de personajes juega con el elegido y abre
