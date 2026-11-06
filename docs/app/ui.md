@@ -119,4 +119,5 @@ Atrás = `Action::Bye`).
 Configuración por pestañas (0.9.29, `draw_settings`): **Gráficos** (pantalla completa, resolución, FPS, escala),
 **Controles** (su ventana, `draw_controls`, con las mismas pestañas), **Actualizaciones** (sólo con `updater`: buscar
 al abrir Sí / No, BUSCAR AHORA, el resultado y ACTUALIZAR si hay una nueva) y **Otros** (idioma). `Ui::settings_tab`;
-en vertical, si los nombres no entran, las pestañas van de a dos.
+en vertical, si los nombres no entran, las pestañas van de a dos. En Android no hay pestaña Controles ni pantalla
+completa (0.9.33). El idioma es una lista vertical (un idioma por fila; con más de 5, flechas y `Ui::lang_scroll`).

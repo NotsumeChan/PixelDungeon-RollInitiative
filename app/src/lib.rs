@@ -692,6 +692,7 @@ impl App {
                     self.ui.window = Some(UiWindow::Settings);
                 }
             }
+            UiAction::LangScroll(d) => self.ui.lang_scroll = self.ui.lang_scroll.saturating_add_signed(d as isize),
             UiAction::CheckUpdates => {
                 if !self.upd_busy {
                     self.upd_rx = updater::check();

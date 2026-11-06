@@ -223,6 +223,8 @@ pub enum UiAction {
     SettingsTab(u8),
     /// Actualizaciones: buscar ahora (a mano).
     CheckUpdates,
+    /// Configuración -> Otros: mover la lista de idiomas (+1 abajo, -1 arriba).
+    LangScroll(i32),
     /// Rasgo de clase: Segundo Aliento o el libro de conjuros (F o el botón de la barra).
     Trait,
     /// Chat de la partida LAN: abrir (`Cr::New`), escribir, borrar, mandar (`Cr::Done`), cancelar (`Cr::Unfocus`).
@@ -325,6 +327,8 @@ pub struct Ui {
     pub updating: bool,
     /// La pestaña abierta de Configuración (ver `UiAction::SettingsTab`).
     pub settings_tab: u8,
+    /// Primer idioma visible en la lista de Otros.
+    pub lang_scroll: usize,
     /// Tienda: el ítem elegido (true = del NPC, índice).
     pub shop_sel: Option<(bool, usize)>,
     hot: Vec<Hot>,
@@ -335,7 +339,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, offer: None, update_msg: String::new(), updating: false, settings_tab: 0, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, offer: None, update_msg: String::new(), updating: false, settings_tab: 0, lang_scroll: 0, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// Escribe en el mensaje del chat (si se está escribiendo uno).
@@ -1208,7 +1212,11 @@ impl Ui {
     /// Pestañas de Configuración: Gráficos, Controles (su ventana, `draw_controls`), Actualizaciones (sólo con
     /// `updater`) y Otros. Si no entran en una fila (vertical), van de a dos.
     fn settings_tabs(font: &Font, sw: f32) -> (Vec<(u8, &'static str)>, usize) {
-        let mut tabs = vec![(0, tr!("Gráficos", "Graphics")), (1, tr!("Controles", "Controls"))];
+        // en Android no hay teclado ni ventana: sin Controles ni pantalla completa
+        let mut tabs = vec![(0, tr!("Gráficos", "Graphics"))];
+        if !cfg!(target_os = "android") {
+            tabs.push((1, tr!("Controles", "Controls")));
+        }
         if crate::updater::ENABLED {
             tabs.push((2, tr!("Actualizar", "Updates")));
         }
@@ -1279,17 +1287,24 @@ impl Ui {
         let mut rows = Vec::new();
         match tab {
             0 => {
-                rows.push((tr!("Pantalla completa (F11)", "Fullscreen (F11)"), full));
                 if desktop {
+                    rows.push((tr!("Pantalla completa (F11)", "Fullscreen (F11)"), full));
                     rows.push((tr!("Resolucion (ventana)", "Resolution (windowed)"), res));
                 }
                 rows.extend([("FPS", fps), (tr!("Escala de la interfaz (en partida)", "UI scale (in game)"), scales)]);
             }
             2 => rows.push((tr!("Buscar al abrir el juego", "Check when the game starts"), check)),
-            _ => rows.push((tr!("Idioma", "Language"), lang)),
+            _ => {}
         }
+        // Otros: el idioma como lista vertical (pueden ser muchos), LANG_ROWS a la vez con flechas si hay más
+        const LANG_ROWS: usize = 5;
+        let langs = if tab == 3 { lang } else { Vec::new() };
+        let scroll_btns = langs.len() > LANG_ROWS;
+        self.lang_scroll = self.lang_scroll.min(langs.len().saturating_sub(LANG_ROWS));
+        let shown = langs.len().min(LANG_ROWS);
         let offer = self.offer.clone().filter(|_| !self.updating);
-        let extra = if tab == 2 { MENU_BTN_H + MENU_GAP * 2.0 + LINE_H * 2.0 + if offer.is_some() { MENU_BTN_H + MENU_GAP * 2.0 } else { 0.0 } } else { 0.0 };
+        let lang_h = if tab == 3 { LINE_H + shown as f32 * (MENU_BTN_H + MENU_GAP) + if scroll_btns { MENU_BTN_H + MENU_GAP } else { 0.0 } + MENU_GAP } else { 0.0 };
+        let extra = lang_h + if tab == 2 { MENU_BTN_H + MENU_GAP * 2.0 + LINE_H * 2.0 + if offer.is_some() { MENU_BTN_H + MENU_GAP * 2.0 } else { 0.0 } } else { 0.0 };
         let tabs_h = Self::tabs_height(font, sw);
         let ch = tabs_h + rows.len() as f32 * row_h + extra + MENU_BTN_H;
         let c = [((w - sw) / 2.0).floor(), ((h - ch) / 2.0).floor(), sw, ch];
@@ -1318,6 +1333,25 @@ impl Ui {
                 }
             }
             y += MENU_BTN_H + MENU_GAP * 2.0;
+        }
+        if tab == 3 {
+            font.text(out, tr!("Idioma", "Language"), c[0], y, YELLOW);
+            y += LINE_H;
+            for (text, selected, act) in langs.into_iter().skip(self.lang_scroll).take(LANG_ROWS) {
+                let rect = [c[0], y, sw, MENU_BTN_H];
+                self.draw_button(atlas, font, out, rect, &text, act);
+                if selected {
+                    outline(out, atlas, rect, YELLOW);
+                }
+                y += MENU_BTN_H + MENU_GAP;
+            }
+            if scroll_btns {
+                let bw = ((sw - MENU_GAP) / 2.0).floor();
+                self.draw_button(atlas, font, out, [c[0], y, bw, MENU_BTN_H], "^", Some(UiAction::LangScroll(-1)));
+                self.draw_button(atlas, font, out, [c[0] + bw + MENU_GAP, y, bw, MENU_BTN_H], "v", Some(UiAction::LangScroll(1)));
+                y += MENU_BTN_H + MENU_GAP;
+            }
+            y += MENU_GAP;
         }
         if tab == 2 {
             // buscar a mano, el resultado y, si hay una versión nueva, ACTUALIZAR
