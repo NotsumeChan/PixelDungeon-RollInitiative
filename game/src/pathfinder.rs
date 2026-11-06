@@ -1,5 +1,7 @@
 //! Caminos propios: BFS en 8 direcciones sobre el mapa plano. Se expande desde el destino hasta llegar a quien camina;
-//! el paso es su vecina más cerca del destino (en un empate, la primera en `dirs`: igual en todas las máquinas).
+//! el paso es su vecina más cerca del destino. Con 8 direcciones la diagonal cuesta lo mismo que el paso recto y hay
+//! muchos caminos igual de cortos: entre ellos gana la vecina más pegada a la recta hasta el destino (sin esto,
+//! subía en diagonal y zigzagueaba). Todo en enteros: igual en todas las máquinas.
 use std::collections::VecDeque;
 
 /// Las 8 vecinas de `c` en un mapa de ancho `w` y `n` celdas, sin salirse ni dar la vuelta por los bordes.
@@ -35,5 +37,11 @@ pub fn get_step(from: i32, to: i32, passable: &[bool], w: i32) -> i32 {
     if dist[from as usize] == u32::MAX {
         return -1;
     }
-    neighbours(from, w, n).filter(|&m| dist[m as usize] < dist[from as usize]).min_by_key(|&m| dist[m as usize]).unwrap_or(-1)
+    let (fx, fy, dx, dy) = (from % w, from / w, to % w - from % w, to / w - from / w);
+    // (pasos que faltan, lejanía de la recta from -> to (producto cruz), distancia al destino al cuadrado)
+    let key = |m: i32| {
+        let (x, y) = (m % w - fx, m / w - fy);
+        (dist[m as usize], (dx * y - dy * x).abs(), (dx - x).pow(2) + (dy - y).pow(2))
+    };
+    neighbours(from, w, n).filter(|&m| dist[m as usize] < dist[from as usize]).min_by_key(|&m| key(m)).unwrap_or(-1)
 }
