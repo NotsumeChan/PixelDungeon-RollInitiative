@@ -9,6 +9,7 @@ Leer esto primero. Un archivo por tema:
 | [`pendientes.md`](pendientes.md) | Lo que falta, sin orden |
 | [`versiones.md`](versiones.md) | Regla de versiones e historial |
 | [`dnd5e.md`](dnd5e.md) | Reglas 5e y equipo |
+| [`sprites-5e.md`](sprites-5e.md) | El arte que hace falta para 5e (personajes, equipo, mobs, interfaz) |
 | [`pasos/`](pasos/) | Próximos pasos, uno por archivo |
 
 ## Ahora
@@ -49,8 +50,12 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 - Visión, pathfinder y línea de tiro propios desde 0.9.28 (falta que el dueño los pruebe: que los mobs persigan, la
   vista en esquinas y pasillos, disparos y conjuros).
 - Configuración por pestañas y BUSCAR AHORA desde 0.9.29 (falta que el dueño la vea, sobre todo en vertical).
-- M1b (`world.json`, 0.9.31) y el **generador propio** (`pdri:dungeon`, 0.9.32) hechos, sin probar. Siguiente: que el
-  dueño los pruebe; después borrar el generador de PD, y seguir con M1c (salidas por el borde y portales) o M2.
+- M1b (`world.json`, 0.9.31) y el **generador propio** (`pdri:dungeon`, 0.9.32) hechos, sin probar. Configuración
+  por pestañas, sin F11 ni controles en Android e idioma como lista (0.9.33).
+- **Siguiente: M1c** (salidas por el borde y portales): plan en [`pasos/5-mapas-editor.md`](pasos/5-mapas-editor.md).
+  Después: borrar el generador de PD cuando el dueño valide el propio, y M2 (mapas prefabricados).
+- Sprites: plan en [`pasos/6-sprites.md`](pasos/6-sprites.md) y la lista del arte para 5e en
+  [`sprites-5e.md`](sprites-5e.md).
 - Repos aparte (el dueño los crea en GitHub): editor `../pdri-editor/` y mods `../pdri-mods/` (ahí está el mod de
   ejemplo del herrero).
 

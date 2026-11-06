@@ -33,5 +33,6 @@ los PNG van compilados en el binario (`SHEETS` en `app/src/sprites.rs`): un mod 
 `"look"` en `items.json`: la armadura y el arma suman su capa (teñible) sobre el cuerpo.
 
 ## S4 — Arte
-Cuerpo base, peinados, ropas y equipo, hechos por personas (`docs/assets.md`), con la grilla de S2. Recién ahí se
+Cuerpo base, peinados, ropas y equipo, hechos por personas (`docs/assets.md`), con la grilla de S2. La lista completa
+(con prioridades) está en [`sprites-5e.md`](../sprites-5e.md). Recién ahí se
 reemplazan los héroes de PD (parte de separarse de PD).
