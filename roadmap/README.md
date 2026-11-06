@@ -41,6 +41,10 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
   `~/Documents/programacion/personal/java/pixel-dungeon/`.
 
 ## Estado al cerrar la sesión (2026-11-06)
+**Para retomar:** leer esta sección y el plan de M1c en [`pasos/5-mapas-editor.md`](pasos/5-mapas-editor.md). No hay
+nada a medio hacer: todo está en commits en `dev` (0.9.33). El teléfono tiene una beta con el actualizador (canal
+beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del proyecto) en `NOTAS.md`.
+
 - Hecho y sin probar (✏️): D1-D4 (releases, red por internet con el teclado del sistema, compatibilidad, actualizador
   con canal beta: betas `v<versión>-beta-<letra>`) y M1a (tamaño por nivel y zonas `{x, y, z}`, 0.9.26).
 - Rama `pd-core` creada en `ef30813` (0.9.25): el juego con el core de PD.
