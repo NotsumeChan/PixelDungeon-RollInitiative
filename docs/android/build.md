@@ -14,3 +14,8 @@ APK sin Gradle ni Java: `NativeActivity` carga `libapp.so` (`android.app.lib_nam
 - Permisos de red ya declarados para R6 (incluye `CHANGE_WIFI_MULTICAST_STATE` para el MulticastLock).
 - Instalar: `adb install -r target/android/pdri.apk`; abrir: `adb shell am start -n
   io.github.notsumechan.pdri/android.app.NativeActivity`; log: `adb logcat -s RustStdoutStderr:* app:*`.
+- `hasFragileUserData="true"` (Android 10+): al desinstalar, el sistema ofrece "Conservar datos de la app"
+  (desmarcada). Cubre `internal_data_path`, donde van `Local.config`, personajes y partidas. Al reinstalar, los datos
+  vuelven si el APK está firmado con la misma clave.
+- CI: el job `release` de `.github/workflows/build.yml` publica en cada push a `main` la Release `v<versión>` con
+  `pdri-linux-x86_64`, `pdri-windows-x86_64.exe` y `pdri-android.apk`; no repite un tag y falla sin la clave del dueño.

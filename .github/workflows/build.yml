@@ -51,3 +51,30 @@ jobs:
           name: pdri-android
           path: target/android/pdri.apk
           if-no-files-found: error
+
+  # D1: al llegar algo a main, Release v<versión de Cargo.toml> con los 3 archivos. Si el tag ya existe, no hace nada.
+  # Sin la clave del dueño falla: un APK con la clave descartable no actualiza el instalado.
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [desktop, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KS_B64: ${{ secrets.PDRI_KEYSTORE_B64 }}
+        run: |
+          V="v$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
+          if gh release view "$V" >/dev/null 2>&1; then echo "$V ya existe"; exit 0; fi
+          if [ -z "$KS_B64" ]; then echo "faltan los secretos PDRI_KEYSTORE_B64 / PDRI_KEYSTORE_PASS"; exit 1; fi
+          mkdir out
+          cp dist/pdri-ubuntu-latest/pdri out/pdri-linux-x86_64
+          cp dist/pdri-windows-latest/pdri.exe out/pdri-windows-x86_64.exe
+          cp dist/pdri-android/pdri.apk out/pdri-android.apk
+          gh release create "$V" out/* --title "$V" --generate-notes --target "$GITHUB_SHA"
