@@ -22,6 +22,7 @@ suben. Ante la duda, subirlo: es mejor un aviso de "actualiza" que una partida d
 | 0.5.0 | R5 | Creación de personaje con dados (4d6, 7 tiradas, asignar o escribir), lista de personajes y guardado; ya estaban el combate 5e y la ficha |
 | 0.8.0 | R5 | Hotseat (`[dev] hotseat`: 2 héroes en la misma PC, Tab, cambio automático al que le toca, nombres sobre los héroes): paridad con `python-prototipe`. La misma excepción que la 0.7 (partículas y proyectil en vuelo) |
 | 0.7.0 | R5, R5d | Arrastrar en la creación (cierra la 0.6), armas a distancia, idioma del contenido, log de tiradas de desarrollador (`[dev] dice_log`). Excepción a la regla: faltan las partículas y el proyectil en vuelo (pulido visual, pendiente) |
+| 0.9.37 | controles | Tocarse usa lo que hay abajo (montón, cofre, escalera, portal, borde) antes de buscar; antes sólo miraba los montones |
 | 0.9.36 | separación | Pathfinder: entre caminos igual de cortos, el más pegado a la recta (no más subir en diagonal ni zigzag) |
 | 0.9.35 | separación | Turnos fuera de combate propios, simultáneos: un héroe quieto no frena a los demás. Fuera de combate los aliados no cortan el camino (se cambian de lugar o se espera a que se corran) |
 | 0.9.34 | M1c | Bordes que llevan a la zona de al lado (solos si existe; `north` / `south` / `east` / `west` lo cambian o cierran; se pasa con sólo pisarlos; sin zona al lado, pared invisible) y portales (`portals`, con click / toque) en `world.json`; el mundo base no cambia. `PROTOCOL` 3 (acción `leave`) |

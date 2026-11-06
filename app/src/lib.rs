@@ -508,11 +508,11 @@ impl App {
             return;
         }
         let me = d.hero;
-        // tocarse = buscar, salvo que haya algo en el suelo: entonces recoger (o abrir el cofre / tumba de abajo)
-        if cell == d.local().ch.pos && !d.level().heaps.contains_key(&cell) {
+        // tocarse = usar lo que hay abajo (montón, cofre, escalera, portal, borde: lo que decida `handle`); si no hay
+        // nada (`handle` da caminar a la propia celda), buscar
+        d.handle(me, cell, true);
+        if cell == d.local().ch.pos && d.heroes[me].action == Some(Action::Move(cell)) {
             d.heroes[me].action = Some(Action::Search);
-        } else {
-            d.handle(me, cell, true);
         }
     }
 

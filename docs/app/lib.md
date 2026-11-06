@@ -13,7 +13,7 @@ R3: **jugar un piso** con el héroe (`World`: la partida `game::dungeon::Dungeon
   ocupado), `process`, y después efectos y dados avanzan.
 - Input: un click / toque va primero a la UI (`ui.rs`); si no la toca, al mapa: examinar la casilla (si se eligió
   examinar) o `Dungeon::handle` (caminar con pathfinder, atacar, ayudar a un caído, cambiar de piso en la escalera);
-  tocar al propio héroe = buscar. WASD / flechas = un paso (diagonal si se puede, si no por un eje; atacar si hay
+  tocar al propio héroe = usar lo que hay abajo (montón, cofre, escalera, portal, borde abierto) o, si no hay nada, buscar. WASD / flechas = un paso (diagonal si se puede, si no por un eje; atacar si hay
   alguien). Espacio = esperar, Q = buscar, I = mochila, 1 / 2 = accesos rápidos, click derecho = elegir el acceso
   rápido, Esc = cerrar ventana / cancelar examinar / menú, R = otra partida del mismo personaje.
 - Personajes animados (`sprites.rs`, hojas `CHAR_SHEETS` por el `sprite` de los JSON; sin hoja, el nombre). Lotes del
