@@ -34,7 +34,8 @@ Decisiones en [`decisiones.md`](../decisiones.md#mundo-por-zonas-2026-11-06). Ca
   - Red: las acciones nuevas validadas como las escaleras; el estado ya va por zona (no cambia `PROTOCOL` salvo que
     cambie el formato). El mundo base no cambia (sigue siendo una pila); un mod o el editor arman mundos con bordes.
   - Para probar: un mod chico con dos zonas lado a lado (`0,0,1` con `east`, `1,0,1` con `west`) y un portal.
-- **M1d — Nombre de zona y brújula:** al entrar y en la barra de estado; minimapa o brújula del mundo.
+- **M1d — Nombre de zona y brújula:** ✏️ al entrar (ya estaba, en el log) y en la barra de estado: tooltip sobre la
+  profundidad con el nombre y las coordenadas (0.9.42). Falta: minimapa o brújula del mundo (diseño con el dueño).
 
 ## M2 — Mapas prefabricados
 - Layout hecho a mano en vez del generador: terreno, salas, salidas, y mobs, ítems clave y NPC fijos.

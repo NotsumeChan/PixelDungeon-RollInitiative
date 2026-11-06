@@ -551,7 +551,12 @@ impl Ui {
         let lvl = h.lvl.to_string();
         font.text(out, &lvl, 28.0 - (font.width(&lvl) / 2.0).floor(), 25.0, GOLDEN);
         let depth = h.zone.z.to_string();
-        font.text(out, &depth, w - 24.0 - font.width(&depth) - 18.0, 6.0, DEPTH_COLOR);
+        let dx = w - 24.0 - font.width(&depth) - 18.0;
+        font.text(out, &depth, dx, 6.0, DEPTH_COLOR);
+        // M1d: el nombre de la zona y sus coordenadas (el número es sólo la profundidad)
+        let z = h.zone;
+        let tip = format!("{} ({}, {}, {})", d.zone_name(z), z.x, z.y, z.z);
+        self.hot([dx - 2.0, 2.0, font.width(&depth) + 22.0, 12.0], UiAction::Nothing, Some(&tip));
         // BuffIndicator en (32, 11): hambre y los estados del héroe (los que tienen ícono)
         let mut icons: Vec<(u32, String)> = Vec::new();
         if h.is_starving() {

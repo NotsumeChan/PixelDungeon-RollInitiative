@@ -22,6 +22,7 @@ suben. Ante la duda, subirlo: es mejor un aviso de "actualiza" que una partida d
 | 0.5.0 | R5 | Creación de personaje con dados (4d6, 7 tiradas, asignar o escribir), lista de personajes y guardado; ya estaban el combate 5e y la ficha |
 | 0.8.0 | R5 | Hotseat (`[dev] hotseat`: 2 héroes en la misma PC, Tab, cambio automático al que le toca, nombres sobre los héroes): paridad con `python-prototipe`. La misma excepción que la 0.7 (partículas y proyectil en vuelo) |
 | 0.7.0 | R5, R5d | Arrastrar en la creación (cierra la 0.6), armas a distancia, idioma del contenido, log de tiradas de desarrollador (`[dev] dice_log`). Excepción a la regla: faltan las partículas y el proyectil en vuelo (pulido visual, pendiente) |
+| 0.9.42 | M1d | Tooltip en la profundidad de la barra de estado con el nombre de la zona y sus coordenadas |
 | 0.9.41 | combate 5e | La XP de un combate a medias se guarda con la partida (antes se perdía al guardar y volver). `PROTOCOL` 4 |
 | 0.9.40 | L1 | Textos sin "D&D": "altamente compatible con la 5.ª edición de juegos de rol"; avisos en el README (sección Avisos) y en Acerca de (no afiliado, atribución del SRD); Acerca de ya no dice "sonido del original" |
 | 0.9.39 | combate 5e | Al combate entran sólo los mobs que pelean o se ven (no más "?" de mobs lejanos); termina en el momento al no quedar enemigos; la XP de la pelea se da junta al terminar, con resumen |

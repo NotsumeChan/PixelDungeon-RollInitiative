@@ -6,7 +6,7 @@ se registran zonas clickeables (`hot`, con su tooltip); `click` busca de arriba 
 que aplica la app. Un click que no toca la UI va al mapa.
 
 - Panel de estado (StatusPane): el recorte del original estirado a lo ancho; avatar de la clase (abre la ficha), barra
-  de vida, barra de experiencia arriba a lo ancho, nivel, piso, botón de menú e indicador de ocupado (mientras el
+  de vida, barra de experiencia arriba a lo ancho, nivel, profundidad (tooltip: nombre de la zona y sus coordenadas, M1d), botón de menú e indicador de ocupado (mientras el
   héroe no espera input; titila en vez de girar porque el lote no rota sprites).
 - Carrusel de iniciativa (combate 5e), arriba a la derecha: retratos por iniciativa desde el que le toca (borde
   amarillo), azul los héroes y rojo los mobs, "?" lo que no se ve; se desliza al pasar el turno. Debajo, la ronda y,
