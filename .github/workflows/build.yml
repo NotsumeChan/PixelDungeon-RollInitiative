@@ -13,7 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install stable --profile minimal
-      - run: cargo build --release --bin pdri
+      # con el actualizador (D4). PDRI_REPO: un fork se actualiza de sus propias Releases. En dev, canal beta (testers):
+      # la build ve las pre-releases y lleva su número (PDRI_BUILD)
+      - run: cargo build --release --bin pdri --features app/updater
+        env:
+          PDRI_REPO: ${{ github.repository }}
+          PDRI_CHANNEL: ${{ github.ref == 'refs/heads/dev' && 'beta' || '' }}
+          PDRI_BUILD: ${{ github.ref == 'refs/heads/dev' && format('beta.{0}', github.run_number) || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: pdri-${{ matrix.os }}
@@ -45,7 +51,11 @@ jobs:
           fi
           printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=pddnd\nkeyPassword=%s\n' "$K/release.jks" "$PASS" "$PASS" > "$K/keystore.properties"
           echo "PDRI_KEYS=$K/keystore.properties" >> "$GITHUB_ENV"
-      - run: ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME" android/build.sh
+      - run: ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME" PDRI_FEATURES=updater android/build.sh
+        env:
+          PDRI_REPO: ${{ github.repository }}
+          PDRI_CHANNEL: ${{ github.ref == 'refs/heads/dev' && 'beta' || '' }}
+          PDRI_BUILD: ${{ github.ref == 'refs/heads/dev' && format('beta.{0}', github.run_number) || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: pdri-android
@@ -78,3 +88,31 @@ jobs:
           cp dist/pdri-windows-latest/pdri.exe out/pdri-windows-x86_64.exe
           cp dist/pdri-android/pdri.apk out/pdri-android.apk
           gh release create "$V" out/* --title "$V" --generate-notes --target "$GITHUB_SHA"
+
+  # Canal beta (testers): cada push a dev publica la pre-release v<versión>-beta.<n> (las builds de dev ya tienen el
+  # actualizador en canal beta). Se guardan las 3 más nuevas.
+  beta:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: [desktop, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: publicar beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KS_B64: ${{ secrets.PDRI_KEYSTORE_B64 }}
+        run: |
+          V="v$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)-beta.${{ github.run_number }}"
+          if [ -z "$KS_B64" ]; then echo "faltan los secretos PDRI_KEYSTORE_B64 / PDRI_KEYSTORE_PASS"; exit 1; fi
+          mkdir out
+          cp dist/pdri-ubuntu-latest/pdri out/pdri-linux-x86_64
+          cp dist/pdri-windows-latest/pdri.exe out/pdri-windows-x86_64.exe
+          cp dist/pdri-android/pdri.apk out/pdri-android.apk
+          gh release create "$V" out/* --prerelease --title "$V (beta)" --notes "Beta de dev para testers: ${{ github.sha }}" --target "$GITHUB_SHA"
+          gh release list --limit 50 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName' \
+            | tail -n +4 | xargs -r -n1 gh release delete --cleanup-tag -y

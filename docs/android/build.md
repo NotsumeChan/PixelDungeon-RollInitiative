@@ -21,3 +21,6 @@ APK sin Gradle ni Java: `NativeActivity` carga `libapp.so` (`android.app.lib_nam
   `pdri-linux-x86_64`, `pdri-windows-x86_64.exe` y `pdri-android.apk`; no repite un tag y falla sin la clave del dueño.
 - `MainActivity` también maneja el teclado del sistema: `setKeyboard` (lo llama Rust) y `dispatchKeyEvent`, que pasa
   cada letra a Rust por `nativeChar` (ver `docs/app/lib.md`).
+- `PDRI_FEATURES=updater`: compila con el actualizador y agrega al manifiesto (una copia en `target/android/`) el permiso
+  `REQUEST_INSTALL_PACKAGES`; la build normal (y la de Play) no lo lleva. `MainActivity.installApk` instala con
+  PackageInstaller y su `onCreate` registra el receptor que abre la confirmación de Android.

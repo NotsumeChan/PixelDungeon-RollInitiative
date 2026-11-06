@@ -1,5 +1,9 @@
 # D4 — Actualizador
 
+✏️ Escrito (0.9.25), falta la prueba del dueño (necesita una Release publicada): `app/src/updater.rs`
+(`docs/app/updater.md`), `MainActivity.installApk`, permiso sólo en la build con `updater`, jobs `release` y `beta`.
+Canal beta para testers agregado a pedido del dueño.
+
 **Objetivo:** las builds de GitHub y las propias avisan de una versión nueva y se actualizan. Las de Play y Steam no
 traen nada de esto.
 

@@ -56,10 +56,17 @@ fn say(d: &mut Dungeon, i: usize, text: &str) {
     }
 }
 
-/// ¿`a` es una versión más nueva que `b`? ("0.10.0" > "0.9.22"; lo que no es número cuenta como 0)
+/// ¿`a` es una versión más nueva que `b`? ("0.10.0" > "0.9.22"; lo que no es número cuenta como 0). Una beta
+/// (`0.9.25-beta.3`) va antes que su estable (`0.9.25`) y después de la beta anterior.
 pub fn newer(a: &str, b: &str) -> bool {
-    let v = |s: &str| s.split('.').map(|p| p.trim().parse::<u32>().unwrap_or(0)).collect::<Vec<_>>();
-    v(a) > v(b)
+    let key = |s: &str| {
+        let s = s.trim();
+        let (core, pre) = s.split_once('-').map_or((s, None), |(c, p)| (c, Some(p)));
+        let nums: Vec<u32> = core.split('.').map(|p| p.parse().unwrap_or(0)).collect();
+        let n: u32 = pre.and_then(|p| p.rsplit('.').next()?.parse().ok()).unwrap_or(0);
+        (nums, pre.is_none(), n)
+    };
+    key(a) > key(b)
 }
 
 /// La clave de la sala normalizada: letras y números, en mayúsculas (el teclado del teléfono sólo tiene mayúsculas).
@@ -865,6 +872,9 @@ mod tests {
     fn versiones() {
         assert!(newer("0.10.0", "0.9.22") && newer("1.0.0", "0.99.99") && newer("0.9.23", "0.9.22"));
         assert!(!newer("0.9.22", "0.9.22") && !newer("0.9.3", "0.9.22"));
+        // betas de dev (testers)
+        assert!(newer("0.9.25", "0.9.25-beta.3") && newer("0.9.25-beta.4", "0.9.25-beta.3") && newer("0.9.25-beta.1", "0.9.24"));
+        assert!(!newer("0.9.25-beta.9", "0.9.25"));
     }
 
     #[test]

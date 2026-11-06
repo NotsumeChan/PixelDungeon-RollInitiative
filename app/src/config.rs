@@ -240,6 +240,16 @@ impl Config {
         self.save();
     }
 
+    /// `[general] check_updates`: buscar actualizaciones al abrir (sólo builds con `updater`); sin la clave, sí.
+    pub fn check_updates(&self) -> bool {
+        self.get("general", "check_updates").is_none_or(|v| !v.eq_ignore_ascii_case("false"))
+    }
+
+    pub fn set_check_updates(&mut self, on: bool) {
+        self.set("general", "check_updates", if on { "true" } else { "false" });
+        self.save();
+    }
+
     /// La última dirección escrita en Unirse (`[lan] address`).
     pub fn last_address(&self) -> String {
         self.get("lan", "address").unwrap_or_default()

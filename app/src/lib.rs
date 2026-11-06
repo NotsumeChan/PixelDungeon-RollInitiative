@@ -10,6 +10,7 @@ mod mods;
 mod net;
 mod sprites;
 mod ui;
+mod updater;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -232,6 +233,11 @@ struct App {
     /// Android: el teclado del sistema está abierto; volver a abrirlo (se tocó la línea: Atrás lo pudo cerrar).
     kb_shown: bool,
     kb_again: bool,
+    /// Actualizador (D4, `updater`): la respuesta que se espera, la versión que se ofrece, el aviso y si está bajando.
+    upd_rx: Option<std::sync::mpsc::Receiver<updater::Msg>>,
+    offer: Option<String>,
+    upd_msg: String,
+    upd_busy: bool,
     /// Conectando en otro hilo (DNS + connect): el resultado y el personaje con el que se entra.
     connecting: Option<(std::sync::mpsc::Receiver<std::io::Result<net::ClientGame>>, serde_json::Value)>,
 }
@@ -296,7 +302,9 @@ fn ability_order(cls: Option<&serde_json::Value>) -> [usize; 6] {
 
 /// Otra versión del protocolo: quién tiene que actualizar.
 fn version_msg(other: &str) -> String {
-    if net::newer(other, game::VERSION) {
+    if net::newer(other, game::VERSION) && updater::ENABLED {
+        trf!("La partida es de la versión {}: toca ACTUALIZAR.", "The game is on version {}: tap UPDATE.", other)
+    } else if net::newer(other, game::VERSION) {
         trf!("La partida es de la versión {}: actualiza el juego (Releases en GitHub).", "The game is on version {}: update yours (GitHub Releases).", other)
     } else {
         trf!("La partida es de la versión {}, más vieja que la tuya: el host tiene que actualizar.", "The game is on version {}, older than yours: the host has to update.", other)
@@ -316,6 +324,8 @@ fn new_seed() -> i64 {
 impl App {
     fn new() -> Self {
         let config = Config::load();
+        updater::cleanup(&data_dir());
+        let upd_rx = if config.check_updates() { updater::check() } else { None };
         for m in game::registry::load_mods(&data_dir(), &config.disabled_mods()) {
             log::info!("{m}"); // Android: logcat
             eprintln!("{m}");
@@ -373,6 +383,10 @@ impl App {
             connecting: None,
             kb_shown: false,
             kb_again: false,
+            upd_rx,
+            offer: None,
+            upd_msg: String::new(),
+            upd_busy: false,
         }
     }
 
@@ -596,7 +610,11 @@ impl App {
             UiAction::JoinGame(i) => {
                 let Some(g) = self.lan_games.get(i) else { return };
                 if g.info["protocol"] != net::PROTOCOL {
-                    self.lan_status = version_msg(g.info["version"].as_str().unwrap_or("?"));
+                    let v = g.info["version"].as_str().unwrap_or("?").to_string();
+                    self.lan_status = version_msg(&v);
+                    if updater::ENABLED && net::newer(&v, game::VERSION) {
+                        self.offer = Some(v); // ACTUALIZAR baja la versión del host, no la última
+                    }
                     return;
                 }
                 if g.info["hash"] != game::registry::content_hash().as_str() {
@@ -660,6 +678,16 @@ impl App {
             }
             UiAction::SetFps(f) => self.config.set_fps(f),
             UiAction::SetShowFps(on) => self.config.set_show_fps(on),
+            UiAction::SetCheckUpdates(on) => self.config.set_check_updates(on),
+            UiAction::UpdateLater => self.offer = None,
+            UiAction::Update(v) => {
+                if !self.upd_busy {
+                    self.upd_rx = updater::install(&v, &data_dir());
+                    self.upd_busy = self.upd_rx.is_some();
+                    self.upd_msg = trf!("Descargando la versión {}", "Downloading version {}", v);
+                    self.lan_status = self.upd_msg.clone();
+                }
+            }
             UiAction::SetLanguage(code) => {
                 // lo que ya está en la partida (nombres de mobs) cambia con lo próximo que se cargue
                 self.config.set_language(code);
@@ -917,6 +945,56 @@ impl App {
         }
     }
 
+    /// Actualizador (D4): recoge lo que contestó su hilo y lo pasa a la UI. `Ready`: en escritorio reinicia con el
+    /// ejecutable nuevo; en Android abre la instalación del APK (`MainActivity.installApk`).
+    fn update_pump(&mut self) {
+        let got = self.upd_rx.as_ref().map(|rx| rx.try_recv());
+        match got {
+            Some(Ok(m)) => {
+                self.upd_rx = None;
+                self.upd_busy = false;
+                match m {
+                    updater::Msg::Found(v) => self.offer = Some(v),
+                    updater::Msg::Failed(e) => self.upd_msg = trf!("No se pudo actualizar: {}.", "Couldn't update: {}.", e),
+                    updater::Msg::Ready(path) => self.apply_update(&path),
+                }
+                if !self.upd_msg.is_empty() && matches!(self.ui.window, Some(UiWindow::Join)) {
+                    self.lan_status = self.upd_msg.clone();
+                }
+            }
+            Some(Err(std::sync::mpsc::TryRecvError::Disconnected)) => (self.upd_rx, self.upd_busy) = (None, false),
+            _ => {}
+        }
+        self.ui.offer = self.offer.clone();
+        self.ui.update_msg = self.upd_msg.clone();
+        self.ui.updating = self.upd_busy;
+        self.ui.busy |= self.upd_busy;
+    }
+
+    fn apply_update(&mut self, path: &std::path::Path) {
+        self.offer = None;
+        #[cfg(not(target_os = "android"))]
+        {
+            self.autosave();
+            match std::process::Command::new(path).args(std::env::args_os().skip(1)).spawn() {
+                Ok(_) => self.quit = true,
+                Err(e) => self.upd_msg = trf!("Actualizado: vuelve a abrir el juego ({}).", "Updated: open the game again ({}).", e),
+            }
+        }
+        #[cfg(target_os = "android")]
+        {
+            let p = path.to_string_lossy().into_owned();
+            let r = with_activity(|env, act| {
+                let s = env.new_string(&p)?;
+                env.call_method(act, "installApk", "(Ljava/lang/String;)V", &[(&s).into()]).map(|_| ())
+            });
+            self.upd_msg = match r {
+                Ok(()) => tr!("Confirma la instalación.", "Confirm the install.").into(),
+                Err(e) => trf!("No se pudo instalar: {}.", "Couldn't install: {}.", e),
+            };
+        }
+    }
+
     /// Texto en Android: el teclado del sistema abierto mientras se escribe (dirección, clave, chat, nombre o
     /// características) y sus letras (`TYPED`) a lo que se está escribiendo. En escritorio llegan por winit.
     fn text_input(&mut self) {
@@ -1022,6 +1100,7 @@ impl App {
                 self.world.d.dice_events.append(&mut c.dice);
                 if c.closed || c.refused.is_some() {
                     let need_pass = c.need_pass;
+                    let host_v = c.host_version.clone();
                     let why = c.refused.clone().map_or(tr!("Se corto la conexion con el host.", "Lost the connection to the host.").to_string(), |w| trf!("El host no te dejo entrar: {w}.", "The host didn't let you in: {w}."));
                     let why = c.host_version.as_deref().map_or(why, version_msg);
                     self.autosave(); // antes de Net::Off: guarda su héroe, no la partida del host
@@ -1033,6 +1112,9 @@ impl App {
                     self.ui.window = Some(UiWindow::Join);
                     if need_pass {
                         self.ui.prompt = Some((ui::Ask::Pass, String::new()));
+                    }
+                    if let Some(v) = host_v.filter(|v| updater::ENABLED && net::newer(v, game::VERSION)) {
+                        self.offer = Some(v); // ACTUALIZAR baja la versión del host, no la última
                     }
                     self.title = true;
                     if self.browser.is_none() {
@@ -1220,6 +1302,7 @@ impl App {
         }
         self.net_pump();
         self.text_input();
+        self.update_pump();
         if self.title {
             self.frame_title(dt);
             return;

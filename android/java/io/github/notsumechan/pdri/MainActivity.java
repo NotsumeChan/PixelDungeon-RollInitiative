@@ -1,7 +1,14 @@
 package io.github.notsumechan.pdri;
 
 import android.app.NativeActivity;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageInstaller;
+import android.os.Build;
+import android.os.Bundle;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
@@ -15,6 +22,7 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -33,6 +41,50 @@ public class MainActivity extends NativeActivity {
         } catch (UnsatisfiedLinkError e) {
             // todavía sin registrar: se pierde la letra
         }
+    }
+
+    private static final String INSTALLED = "io.github.notsumechan.pdri.INSTALL";
+
+    /** El estado de una instalación del actualizador: si Android pide confirmar, se abre su ventana. */
+    @Override
+    protected void onCreate(Bundle b) {
+        super.onCreate(b);
+        BroadcastReceiver r = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent i) {
+                if (i.getIntExtra(PackageInstaller.EXTRA_STATUS, -99) != PackageInstaller.STATUS_PENDING_USER_ACTION) return;
+                Intent confirm = i.getParcelableExtra(Intent.EXTRA_INTENT);
+                if (confirm != null) startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            }
+        };
+        IntentFilter f = new IntentFilter(INSTALLED);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(r, f, Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(r, f);
+    }
+
+    /** Lo llama Rust (JNI, actualizador D4): instala el APK bajado con PackageInstaller (sin FileProvider ni Gradle).
+     *  Pide el permiso REQUEST_INSTALL_PACKAGES, que sólo tiene la build con `updater` (android/build.sh). */
+    public void installApk(String path) {
+        new Thread(() -> {
+            try {
+                PackageInstaller pi = getPackageManager().getPackageInstaller();
+                int id = pi.createSession(new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL));
+                try (PackageInstaller.Session s = pi.openSession(id)) {
+                    File apk = new File(path);
+                    try (InputStream in = new FileInputStream(apk); OutputStream out = s.openWrite("pdri.apk", 0, apk.length())) {
+                        byte[] buf = new byte[65536];
+                        int n;
+                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                        s.fsync(out);
+                    }
+                    Intent i = new Intent(INSTALLED).setPackage(getPackageName());
+                    PendingIntent p = PendingIntent.getBroadcast(this, id, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+                    s.commit(p.getIntentSender());
+                }
+            } catch (Exception e) {
+                android.util.Log.w("pdri", "instalar la actualización: " + e);
+            }
+        }).start();
     }
 
     private View input;

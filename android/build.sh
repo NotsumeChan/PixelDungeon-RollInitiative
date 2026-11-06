@@ -6,6 +6,7 @@
 #   ANDROID_HOME      SDK de Android (build-tools + platforms)
 #   ANDROID_NDK_HOME  NDK
 #   PDRI_KEYS         keystore.properties (storeFile, storePassword, keyAlias, keyPassword); ver README
+#   PDRI_FEATURES     features del crate app (p. ej. "updater": el actualizador, sólo en la build de GitHub)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -20,8 +21,15 @@ prop() { grep "^$1=" "$KEYS" | cut -d= -f2-; }
 OUT=target/android
 rm -rf "$OUT"
 mkdir -p "$OUT/apk/lib"
-cargo ndk -t arm64-v8a -o "$OUT/apk/lib" build --release -p app --lib
-"$BT/aapt2" link -o "$OUT/unsigned.apk" --manifest android/AndroidManifest.xml -I "$JAR"
+FEATURES=${PDRI_FEATURES:-}
+cargo ndk -t arm64-v8a -o "$OUT/apk/lib" build --release -p app --lib ${FEATURES:+--features "$FEATURES"}
+# el actualizador instala APKs: el permiso sólo en esa build (Play Store no lo acepta)
+MANIFEST=android/AndroidManifest.xml
+if [[ ",$FEATURES," == *",updater,"* ]]; then
+    MANIFEST="$OUT/AndroidManifest.xml"
+    sed 's#^    <application #    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n    <application #' android/AndroidManifest.xml > "$MANIFEST"
+fi
+"$BT/aapt2" link -o "$OUT/unsigned.apk" --manifest "$MANIFEST" -I "$JAR"
 # MainActivity (selector de archivos para los mods): javac + d8 -> classes.dex
 mkdir -p "$OUT/java"
 javac -source 11 -target 11 -nowarn -cp "$JAR" -d "$OUT/java" android/java/io/github/notsumechan/pdri/MainActivity.java

@@ -22,7 +22,8 @@ No se vuelven a discutir salvo que el dueño lo pida.
 - **Compatibilidad:** por versión de protocolo + hash del contenido. El cliente actualiza a la versión **del host**,
   no a la última. Android no baja de versión. → [D3](pasos/3-compatibilidad.md)
 - **Actualizador:** feature `updater`, sólo builds de GitHub o propias (nunca Play ni Steam). Avisa y descarga, sólo
-  estables, apagable en Configuración (prendido por defecto). → [D4](pasos/4-updater.md)
+  estables, apagable en Configuración (prendido por defecto). Canal beta sólo para testers (2026-11-06): builds
+  compiladas con `PDRI_CHANNEL=beta`, que reciben las pre-releases que la CI publica desde `dev`. → [D4](pasos/4-updater.md)
 - **Steam:** primero sin SDK (como Shattered PD). Amigos y logros: a futuro, sin implementar (revisar licencia).
 - **Play Store:** sólo publicar, sin Play Games; la clave del dueño en Play App Signing.
 - **Orden:** releases → red → compatibilidad → actualizador → mapas y editor.

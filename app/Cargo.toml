@@ -22,6 +22,12 @@ bytemuck = { version = "1.25.2", features = ["derive"] }
 png = "0.18.1"
 # importar mods (zip)
 zip = { version = "2", default-features = false, features = ["deflate"] }
+# actualizador (D4): HTTPS a las Releases de GitHub, sólo con la feature `updater`
+ureq = { version = "2", optional = true, default-features = false, features = ["tls"] }
+
+[features]
+# Actualizador (D4): sólo las builds de GitHub (job release) o propias (`--features app/updater`); nunca Play ni Steam
+updater = ["dep:ureq"]
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 env_logger = "0.11.11"

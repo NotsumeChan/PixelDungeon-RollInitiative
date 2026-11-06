@@ -216,6 +216,10 @@ pub enum UiAction {
     Ask(Ask),
     /// Esa línea: escribir, borrar, listo (`Cr::Done`), cancelar (`Cr::Unfocus`).
     Prompt(Cr),
+    /// Actualizador (D4): bajar e instalar esa versión, dejarlo para después, buscar al abrir (Configuración).
+    Update(String),
+    UpdateLater,
+    SetCheckUpdates(bool),
     /// Rasgo de clase: Segundo Aliento o el libro de conjuros (F o el botón de la barra).
     Trait,
     /// Chat de la partida LAN: abrir (`Cr::New`), escribir, borrar, mandar (`Cr::Done`), cancelar (`Cr::Unfocus`).
@@ -312,6 +316,10 @@ pub struct Ui {
     pub prompt: Option<(Ask, String)>,
     /// Buscando o conectando (Unirse): el aviso lleva puntos animados.
     pub busy: bool,
+    /// Actualizador (D4): la versión que se ofrece, el aviso y si está bajando (los pone la app cada frame).
+    pub offer: Option<String>,
+    pub update_msg: String,
+    pub updating: bool,
     /// Tienda: el ítem elegido (true = del NPC, índice).
     pub shop_sel: Option<(bool, usize)>,
     hot: Vec<Hot>,
@@ -322,7 +330,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, offer: None, update_msg: String::new(), updating: false, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// Escribe en el mensaje del chat (si se está escribiendo uno).
@@ -1236,6 +1244,12 @@ impl Ui {
         let mut y = c[1];
         for (label, options) in rows {
             font.text(out, label, c[0], y, YELLOW);
+            if crate::updater::ENABLED && label == tr!("Idioma", "Language") {
+                // buscar actualizaciones al abrir (sólo builds con `updater`): un botón chico en la línea del título
+                let t = if cfg.check_updates() { tr!("Actualizaciones: Si", "Updates: Yes") } else { tr!("Actualizaciones: No", "Updates: No") };
+                let tw = font.width(t) + 8.0;
+                self.draw_button(atlas, font, out, [c[0] + sw - tw, y - 1.0, tw, LINE_H], t, Some(UiAction::SetCheckUpdates(!cfg.check_updates())));
+            }
             if label == "FPS" {
                 // ver el contador en la partida: un botón chico en la línea del título (no suma una fila)
                 let t = if cfg.show_fps { tr!("Mostrar: Si", "Show: Yes") } else { tr!("Mostrar: No", "Show: No") };
@@ -1510,9 +1524,15 @@ impl Ui {
             let y = h - 24.0 - (lines.len() - k) as f32 * LINE_H;
             font.text(out, l, 8.0, y, if k == 0 && !status.is_empty() { YELLOW } else { GREY });
         }
-        let bw = ((w - 16.0 - 2.0) / 2.0).floor();
-        self.draw_button(atlas, font, out, [8.0, h - 20.0, bw, 16.0], tr!("DIRECCIÓN", "ADDRESS"), Some(UiAction::Ask(Ask::Addr)));
-        self.draw_button(atlas, font, out, [8.0 + bw + 2.0, h - 20.0, bw, 16.0], tr!("VOLVER", "BACK"), Some(UiAction::OpenRoster));
+        let mut buttons = vec![(tr!("DIRECCIÓN", "ADDRESS"), UiAction::Ask(Ask::Addr)), (tr!("VOLVER", "BACK"), UiAction::OpenRoster)];
+        if let (Some(v), false) = (self.offer.clone(), self.updating) {
+            buttons.insert(0, (tr!("ACTUALIZAR", "UPDATE"), UiAction::Update(v))); // a la versión del host (D3)
+        }
+        let n = buttons.len() as f32;
+        let bw = ((w - 16.0 - 2.0 * (n - 1.0)) / n).floor();
+        for (k, (label, act)) in buttons.into_iter().enumerate() {
+            self.draw_button(atlas, font, out, [8.0 + k as f32 * (bw + 2.0), h - 20.0, bw, 16.0], label, Some(act));
+        }
     }
 
     /// Sala de espera del host: quién se unió, la IP, EMPEZAR y VOLVER (cierra la partida).
@@ -1735,6 +1755,10 @@ impl Ui {
             (w - font.width(&v) - 1.0, h - font.height() - 1.0)
         };
         font.text(out, &v, vx, vy, GREY);
+        // actualizador (D4): hay una versión nueva, o se está bajando
+        if self.window.is_none() && (self.offer.is_some() || !self.update_msg.is_empty()) {
+            self.draw_update(atlas, font, out, w);
+        }
         match self.window.clone() {
             Some(Window::Settings) => self.draw_settings(atlas, font, cfg, out, w, h),
             Some(Window::Controls) => self.draw_controls(atlas, font, cfg, out, w, h),
@@ -1750,6 +1774,26 @@ impl Ui {
         }
         if self.prompt.is_some() {
             self.draw_prompt(atlas, font, out, w, h);
+        }
+    }
+
+    /// Arriba del título: "Versión X disponible" con ACTUALIZAR y LUEGO, o el aviso de la descarga (con puntos).
+    fn draw_update(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32) {
+        let r = [4.0, 2.0, w - 26.0, 38.0];
+        out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], [0.0, 0.0, 0.0, 0.8]));
+        self.hot(r, UiAction::Nothing, None);
+        let dots = &"..."[..1 + (self.t * 3.0) as usize % 3];
+        let text = match (&self.offer, self.update_msg.is_empty()) {
+            (_, false) if self.updating => format!("{}{dots}", self.update_msg),
+            (_, false) => self.update_msg.clone(),
+            (Some(v), true) => trf!("Versión {} disponible", "Version {} available", v),
+            (None, true) => String::new(),
+        };
+        font.text(out, &text, r[0] + 3.0, r[1] + 3.0, YELLOW);
+        if let (Some(v), false) = (self.offer.clone(), self.updating) {
+            let bw = ((r[2] - 8.0) / 2.0).floor();
+            self.draw_button(atlas, font, out, [r[0] + 3.0, r[1] + 19.0, bw, 16.0], tr!("ACTUALIZAR", "UPDATE"), Some(UiAction::Update(v)));
+            self.draw_button(atlas, font, out, [r[0] + 5.0 + bw, r[1] + 19.0, bw, 16.0], tr!("LUEGO", "LATER"), Some(UiAction::UpdateLater));
         }
     }
 

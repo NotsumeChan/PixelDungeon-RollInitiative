@@ -24,6 +24,8 @@ Desde [Releases](../../releases).
 ```sh
 cargo run --release                                   # escritorio
 android/build.sh && adb install -r target/android/pdri.apk   # Android (cargo-ndk, SDK, NDK y la clave)
+cargo run --release --features app/updater           # con el actualizador (como las Releases)
+PDRI_CHANNEL=beta cargo build --release --features app/updater   # beta para testers: se actualiza desde dev
 ```
 Las opciones se guardan en `Local.config`, en la carpeta de datos (`%APPDATA%/PixelDND` o `~/.local/share/PixelDND`). La clave de firma de Android vive fuera del repo, en `~/.pddnd-signing/` (en CI, desde
 secretos de GitHub): respaldarla, porque sin ella no se puede actualizar el APK.
