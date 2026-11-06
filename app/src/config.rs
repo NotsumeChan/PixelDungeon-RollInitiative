@@ -30,11 +30,26 @@ pub enum Bind {
     Bag,
     Quick1,
     Quick2,
+    /// La acción rápida (atacar al enemigo más cerca, recoger / abrir lo más cerca).
+    Action,
+    /// Seguir la caminata cortada.
+    Resume,
 }
 
 impl Bind {
-    pub const ALL: [Bind; 9] =
-        [Bind::Up, Bind::Down, Bind::Left, Bind::Right, Bind::Wait, Bind::Search, Bind::Bag, Bind::Quick1, Bind::Quick2];
+    pub const ALL: [Bind; 11] = [
+        Bind::Up,
+        Bind::Down,
+        Bind::Left,
+        Bind::Right,
+        Bind::Wait,
+        Bind::Search,
+        Bind::Bag,
+        Bind::Quick1,
+        Bind::Quick2,
+        Bind::Action,
+        Bind::Resume,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
@@ -47,6 +62,8 @@ impl Bind {
             Bind::Bag => tr!("Mochila", "Bag"),
             Bind::Quick1 => tr!("Rapido 1", "Quick 1"),
             Bind::Quick2 => tr!("Rapido 2", "Quick 2"),
+            Bind::Action => tr!("Accion", "Action"),
+            Bind::Resume => tr!("Seguir", "Resume"),
         }
     }
 
@@ -62,6 +79,8 @@ impl Bind {
             Bind::Bag => "bag",
             Bind::Quick1 => "quick1",
             Bind::Quick2 => "quick2",
+            Bind::Action => "action",
+            Bind::Resume => "resume",
         }
     }
 
@@ -76,6 +95,8 @@ impl Bind {
             Bind::Bag => KeyCode::KeyI,
             Bind::Quick1 => KeyCode::Digit1,
             Bind::Quick2 => KeyCode::Digit2,
+            Bind::Action => KeyCode::KeyE,
+            Bind::Resume => KeyCode::KeyX,
         }
     }
 }

@@ -976,6 +976,17 @@ impl App {
                 Some(Bind::Bag) => self.ui.window = None,
                 Some(Bind::Quick1) if free => self.ui_action(UiAction::UseQuick(0)),
                 Some(Bind::Quick2) if free => self.ui_action(UiAction::UseQuick(1)),
+                Some(Bind::Action) if free => {
+                    let d = &self.world.d;
+                    if let Some(a) = d.quick_action(d.hero) {
+                        self.ui_action(UiAction::Act(a));
+                    }
+                }
+                Some(Bind::Resume) if free && self.world.d.floor().scheduler.order.is_none() => {
+                    if let Some(a) = self.ui.resumable(&self.world.d) {
+                        self.ui_action(UiAction::Act(a));
+                    }
+                }
                 _ => {}
             },
         }

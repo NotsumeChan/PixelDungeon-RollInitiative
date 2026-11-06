@@ -13,7 +13,7 @@ Leer esto primero. Un archivo por tema:
 | [`pasos/`](pasos/) | Próximos pasos, uno por archivo |
 
 ## Ahora
-Rama `dev`, **0.9.43** (`versionCode` 53). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
+Rama `dev`, **0.9.44** (`versionCode` 54). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
 primero.
 
 ## Próximos pasos
@@ -46,7 +46,7 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 
 ## Estado al cerrar la sesión (2026-11-06)
 **Para retomar:** leer esta sección y el plan de M1c en [`pasos/5-mapas-editor.md`](pasos/5-mapas-editor.md). No hay
-nada a medio hacer: todo está en commits en `dev` (0.9.43). El teléfono tiene una beta con el actualizador (canal
+nada a medio hacer: todo está en commits en `dev` (0.9.44). El teléfono tiene una beta con el actualizador (canal
 beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del proyecto) en `NOTAS.md`.
 
 - Hecho y sin probar (✏️): D1-D4 (releases, red por internet con el teclado del sistema, compatibilidad, actualizador
@@ -76,7 +76,8 @@ beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del 
   encontrar algo oculto corta la caminata, Seguir (celeste, arriba a la derecha, sólo fuera de combate) la retoma;
   al llegar desaparece. Arrojadiza en un acceso rápido:
   tocarlo dice a quién apunta; tocarlo otra vez la lanza al más cerca (tocar una casilla sigue funcionando). En LAN
-  también. Revisar en vertical que los botones no tapen el log.
+  también. Revisar en vertical que los botones no tapen el log. Teclas (0.9.44): E = acción rápida, X = Seguir
+  (en Configuración -> Controles se cambian; que la pestaña siga entrando con 4 filas).
 - Combate (0.9.39), sin probar: el carrusel sólo con los que pelean o se ven (sin "?" de mobs lejanos); al matar
   al último, "Fin del combate" en el momento y "Experiencia del combate: +N" (durante la pelea no sube la XP). Un
   mob que llega a mitad de pelea se suma al final de la ronda. Guardar y salir a mitad de una pelea, volver y

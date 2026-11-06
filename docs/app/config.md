@@ -18,3 +18,6 @@ a mano; el juego nunca la genera.
 - `[dev] hotseat = true`: modo de prueba de la red, 2 héroes en la misma PC (ver `docs/app/lib.md`).
 
 `ui_scale` (escala de la interfaz, como el prototipo): la app la pasa a `Gpu::set_ui_scale`; `ui_base` es el zoom que entra, para armar las opciones.
+
+Teclas de la acción rápida y de Seguir (0.9.44): `Bind::Action` (E) y `Bind::Resume` (X), configurables como las demás
+(`[keys] action` / `resume`).

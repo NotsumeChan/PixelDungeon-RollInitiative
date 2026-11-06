@@ -762,7 +762,7 @@ impl Ui {
                     tr!("Abrir", "Open").to_string()
                 }
             };
-            self.hot(r, UiAction::Act(a), Some(&tip));
+            self.hot(r, UiAction::Act(a), Some(&format!("{tip} (E)")));
         }
         if d.floor().scheduler.order.is_none()
             && let Some(a) = self.resumable(d)
@@ -773,7 +773,7 @@ impl Ui {
             out.push(atlas.rect([r[0], r[1]], [bw, bh], RESUME_EDGE));
             out.push(atlas.rect([r[0] + 1.0, r[1] + 1.0], [bw - 2.0, bh - 2.0], RESUME_BG));
             font.text(out, label, r[0] + 4.0, r[1] + 3.0, RESUME_TEXT);
-            self.hot(r, UiAction::Act(a), Some(tr!("Seguir caminando", "Keep walking")));
+            self.hot(r, UiAction::Act(a), Some(tr!("Seguir caminando (X)", "Keep walking (X)")));
         }
     }
 
