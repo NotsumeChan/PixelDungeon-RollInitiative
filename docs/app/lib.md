@@ -80,8 +80,10 @@ lo manda al host (`HostGame::chat`) o al host remoto (`ClientGame::send_chat`). 
 está asignado a otra acción.
 
 ## Teclado del sistema en Android (0.9.23)
-NativeActivity no le da a la app el carácter de cada tecla. `MainActivity.dispatchKeyEvent` lo saca
-(`getUnicodeChar`, o el texto entero de un `ACTION_MULTIPLE`) y llama a `nativeChar`, que `android_main` registra por
+NativeActivity no le da a la app el texto del teclado: el teclado del sistema lo manda por una InputConnection
+(`commitText`) y NativeActivity no tiene. `MainActivity.input()` es una vista invisible de 1x1 que se presenta como
+campo de texto (`VISIBLE_PASSWORD`: letra por letra, sin sugerencias); su `commitText` llama a `nativeChar`, y Enter
+y borrar los manda como teclas. `dispatchKeyEvent` cubre un teclado físico (`getUnicodeChar`). `nativeChar` que `android_main` registra por
 JNI (`native_char` -> `TYPED`). Enter, borrar y Atrás siguen por winit. `App::text_input`, una vez por frame, abre o
 cierra el teclado (`MainActivity.setKeyboard`) según haya algo que escribir (dirección, clave, chat, nombre o
 características) y pasa las letras de `TYPED` a eso. En Android se ignoran los `Key::Character` de winit para no

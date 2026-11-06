@@ -5,8 +5,13 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
+import android.text.InputType;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.inputmethod.BaseInputConnection;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 
 import java.io.File;
@@ -30,18 +35,73 @@ public class MainActivity extends NativeActivity {
         }
     }
 
+    private View input;
+
+    /** Vista invisible (1x1) que se presenta como campo de texto: el teclado del sistema le manda el texto por su
+     *  InputConnection (commitText), que NativeActivity no tiene. El texto va a Rust; Enter y borrar se mandan como
+     *  teclas (llegan a Rust por winit). VISIBLE_PASSWORD: el teclado escribe letra por letra, sin sugerencias. */
+    private View input() {
+        if (input == null) {
+            input = new View(this) {
+                @Override
+                public boolean onCheckIsTextEditor() {
+                    return true;
+                }
+
+                @Override
+                public InputConnection onCreateInputConnection(EditorInfo out) {
+                    out.inputType = InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD;
+                    out.imeOptions = EditorInfo.IME_ACTION_DONE | EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_FLAG_NO_EXTRACT_UI;
+                    return new BaseInputConnection(this, false) {
+                        @Override
+                        public boolean commitText(CharSequence t, int pos) {
+                            t.toString().codePoints().forEach(MainActivity::typed);
+                            return true;
+                        }
+
+                        @Override
+                        public boolean setComposingText(CharSequence t, int pos) {
+                            return true; // sin texto a medio escribir: llega entero en commitText
+                        }
+
+                        @Override
+                        public boolean deleteSurroundingText(int before, int after) {
+                            for (int i = 0; i < Math.max(before, 1); i++) key(KeyEvent.KEYCODE_DEL);
+                            return true;
+                        }
+
+                        @Override
+                        public boolean performEditorAction(int action) {
+                            key(KeyEvent.KEYCODE_ENTER);
+                            return true;
+                        }
+
+                        private void key(int code) {
+                            sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, code));
+                            sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, code));
+                        }
+                    };
+                }
+            };
+            input.setFocusable(true);
+            input.setFocusableInTouchMode(true);
+            addContentView(input, new ViewGroup.LayoutParams(1, 1));
+        }
+        return input;
+    }
+
     /** Lo llama Rust (JNI): abre o cierra el teclado del sistema (escribir una dirección, una clave, el chat...). */
     public void setKeyboard(boolean on) {
         runOnUiThread(() -> {
             InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-            View v = getWindow().getDecorView();
+            View v = input();
             if (on) {
-                v.setFocusable(true);
-                v.setFocusableInTouchMode(true);
                 v.requestFocus();
-                imm.showSoftInput(v, InputMethodManager.SHOW_FORCED);
+                imm.restartInput(v);
+                imm.showSoftInput(v, 0);
             } else {
                 imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                v.clearFocus();
             }
         });
     }
