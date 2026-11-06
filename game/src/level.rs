@@ -93,7 +93,7 @@ pub struct Level {
     pub heaps: BTreeMap<i32, Heap>,
 }
 
-const SECRET_TRAPS: [u8; 8] = [
+pub(crate) const SECRET_TRAPS: [u8; 8] = [
     t::SECRET_TOXIC_TRAP,
     t::SECRET_FIRE_TRAP,
     t::SECRET_PARALYTIC_TRAP,
@@ -107,12 +107,40 @@ const SECRET_TRAPS: [u8; 8] = [
 impl Level {
     /// La zona `zone` generada con las Alcantarillas (el generador de PD).
     pub fn new(seed: i64, zone: Zone) -> Self {
+        let mut level = Self::blank(seed, zone, SEWER_SIZE, SEWER_SIZE);
+        level.create();
+        level
+    }
+
+    /// La zona según su `map` de `world.json`: `{"gen": "pdri:dungeon", "size": [ancho, alto]}` (el generador propio,
+    /// `dungeon_gen`; 32x32 si no dice) o `{"gen": "pdri:sewers"}` (las Alcantarillas de PD, hasta que se validen las
+    /// propias).
+    pub fn generate(seed: i64, zone: Zone, map: &serde_json::Value) -> Self {
+        if map["gen"] == "pdri:sewers" {
+            return Self::new(seed, zone);
+        }
+        let dim = |k: usize| map["size"][k].as_i64().map_or(SEWER_SIZE, |v| (v as i32).clamp(16, geom::MAX_SIZE));
+        let (w, h) = (dim(0), dim(1));
+        let mut level = Self::blank(seed, zone, w, h);
+        let mut tries = 0;
+        while !crate::dungeon_gen::build(&mut level) {
+            tries += 1;
+            assert!(tries < 200, "no se pudo generar la zona {}", zone.key());
+            level.map = vec![t::WALL; (w * h) as usize];
+        }
+        level.build_flag_maps();
+        level.clean_walls();
+        level
+    }
+
+    /// Un nivel de `w` x `h` todo pared, con el rng de su zona: lo llena un generador.
+    fn blank(seed: i64, zone: Zone, w: i32, h: i32) -> Self {
         let depth = zone.z;
-        let n = (SEWER_SIZE * SEWER_SIZE) as usize;
-        let mut level = Self {
+        let n = (w * h) as usize;
+        Self {
             zone,
-            width: SEWER_SIZE,
-            height: SEWER_SIZE,
+            width: w,
+            height: h,
             boss: boss_level(depth),
             boss_next: boss_level(depth + 1),
             rng: Rng::new(level_seed(seed, zone)),
@@ -139,9 +167,7 @@ impl Level {
             visited: vec![false; n],
             mapped: vec![false; n],
             heaps: BTreeMap::new(),
-        };
-        level.create();
-        level
+        }
     }
 
     /// Cantidad de celdas.

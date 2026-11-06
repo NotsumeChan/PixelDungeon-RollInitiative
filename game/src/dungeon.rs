@@ -235,6 +235,11 @@ impl Dungeon {
         i
     }
 
+    /// El nivel de una zona, según su `map` en `world.json` (generador propio o el de PD).
+    pub(crate) fn new_level(&self, zone: Zone) -> Level {
+        Level::generate(self.seed, zone, self.world.get(&zone.key()).map_or(&Value::Null, |z| &z["map"]))
+    }
+
     /// La zona de inicio: la de `"start": true` en `world.json` (si no hay, (0, 0, 1)).
     fn start_zone(&self) -> Zone {
         self.world.iter().find(|(_, v)| v["start"] == true).and_then(|(k, _)| Zone::parse(k)).unwrap_or(Zone::depth(1))
@@ -510,7 +515,7 @@ impl Dungeon {
             self.heroes[i].ch.pos = self.free_near(cell);
             self.floor_mut().scheduler.add(ActorId::Hero(i), 0.0);
         } else {
-            let level = Level::new(self.seed, zone);
+            let level = self.new_level(zone);
             self.heroes[i].ch.pos = level.entrance;
             self.heroes[i].recover(); // ponytail: hasta que haya descansos, se recupera en cada piso nuevo
             self.floors.insert(zone, Floor { level, mobs: Vec::new(), scheduler: Scheduler::default() });

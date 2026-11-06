@@ -40,8 +40,9 @@ Registros que lee `game/registry.py` (los mods los pisan o suman: `docs/mods.md`
 El mundo: zona `"x,y,z"` (z = profundidad, también el nivel de peligro) -> entrada:
 - `start`: `true` en la zona donde se empieza (una sola).
 - `name`: texto (`str` o `{"es", "en"}`): se muestra al entrar.
-- `map`: cómo se arma su mapa. Por ahora `{"gen": "pdri:sewers"}` (las Alcantarillas); los mapas prefabricados
-  llegan con M2.
+- `map`: cómo se arma su mapa: `{"gen": "pdri:dungeon", "size": [ancho, alto]}` (el generador propio; 32x32 si no
+  dice; de 16 a 128) o `{"gen": "pdri:sewers"}` (las Alcantarillas de PD, mientras se valida el propio). Los mapas
+  prefabricados llegan con M2.
 - `up` / `down`: la zona a la que llevan sus escaleras (`"x,y,z"`). Sin `down`, bajar dice "Fin de la demo"; sin `up`,
   no se puede subir.
 Un mod suma zonas o pisa las del base (como cualquier registro): p. ej. un `"0,0,5"` y un `down` en `"0,0,4"` que lleve

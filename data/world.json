@@ -6,7 +6,11 @@
    "en": "Sewers 1"
   },
   "map": {
-   "gen": "pdri:sewers"
+   "gen": "pdri:dungeon",
+   "size": [
+    32,
+    32
+   ]
   },
   "down": "0,0,2"
  },
@@ -16,7 +20,11 @@
    "en": "Sewers 2"
   },
   "map": {
-   "gen": "pdri:sewers"
+   "gen": "pdri:dungeon",
+   "size": [
+    32,
+    32
+   ]
   },
   "up": "0,0,1",
   "down": "0,0,3"
@@ -27,7 +35,11 @@
    "en": "Sewers 3"
   },
   "map": {
-   "gen": "pdri:sewers"
+   "gen": "pdri:dungeon",
+   "size": [
+    32,
+    32
+   ]
   },
   "up": "0,0,2",
   "down": "0,0,4"
@@ -38,7 +50,11 @@
    "en": "Sewers 4"
   },
   "map": {
-   "gen": "pdri:sewers"
+   "gen": "pdri:dungeon",
+   "size": [
+    32,
+    32
+   ]
   },
   "up": "0,0,3"
  }

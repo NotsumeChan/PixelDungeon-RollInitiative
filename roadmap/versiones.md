@@ -22,6 +22,7 @@ suben. Ante la duda, subirlo: es mejor un aviso de "actualiza" que una partida d
 | 0.5.0 | R5 | Creación de personaje con dados (4d6, 7 tiradas, asignar o escribir), lista de personajes y guardado; ya estaban el combate 5e y la ficha |
 | 0.8.0 | R5 | Hotseat (`[dev] hotseat`: 2 héroes en la misma PC, Tab, cambio automático al que le toca, nombres sobre los héroes): paridad con `python-prototipe`. La misma excepción que la 0.7 (partículas y proyectil en vuelo) |
 | 0.7.0 | R5, R5d | Arrastrar en la creación (cierra la 0.6), armas a distancia, idioma del contenido, log de tiradas de desarrollador (`[dev] dice_log`). Excepción a la regla: faltan las partículas y el proyectil en vuelo (pulido visual, pendiente) |
+| 0.9.32 | separación | Generador propio de zonas (`pdri:dungeon`: salas y pasillos, sin código de PD) en el mundo base; las Alcantarillas de PD siguen como `pdri:sewers` hasta validarlo. Las partidas guardadas de la 0.9.31 cambian de mapa |
 | 0.9.31 | M1b | El mundo como datos (`data/world.json`): zonas con nombre, mapa y escaleras (`up` / `down`); el base reproduce las 4 Alcantarillas; al entrar se ve el nombre de la zona; un mod puede sumar zonas |
 | 0.9.30 | separación | La música y los sonidos de PD salen del repo (el juego no los usaba): serán un mod opcional cuando haya audio |
 | 0.9.29 | configuración | Configuración por pestañas (Gráficos, Controles, Actualizaciones, Otros) y BUSCAR AHORA para las actualizaciones |

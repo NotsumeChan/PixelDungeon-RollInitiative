@@ -14,7 +14,7 @@ use crate::characters::{now, write_atomic};
 use crate::dungeon::{Dungeon, Floor, Rules};
 use crate::hero::{Hero, BACKPACK_SIZE};
 use crate::items::{Heap, HeapKind, Item};
-use crate::level::{Level, Zone};
+use crate::level::Zone;
 use crate::mobs::{Mob, State};
 use crate::rng::Rng;
 
@@ -319,7 +319,7 @@ pub fn load(data: &Value) -> Option<Dungeon> {
     d.floors.clear();
     for (key, f) in data["floors"].as_object()? {
         let zone = Zone::parse(key)?;
-        let mut level = Level::new(seed, zone);
+        let mut level = d.new_level(zone);
         let map: Vec<u8> = ints(&f["map"])?;
         for (c, &t) in map.iter().enumerate() {
             if level.map.get(c) != Some(&t) {

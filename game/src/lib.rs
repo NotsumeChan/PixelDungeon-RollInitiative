@@ -8,6 +8,7 @@ pub mod char;
 pub mod characters;
 pub mod dice;
 pub mod dungeon;
+pub mod dungeon_gen;
 pub mod fov;
 pub mod geom;
 pub mod hero;
