@@ -1727,7 +1727,7 @@ impl Ui {
             (0u32, tr!("Jugar", "Play"), x0, UiAction::OpenRoster),
             (2, "Mods", x0 + step, UiAction::Open(Window::Mods)),
             (1, tr!("Acerca de", "About"), x0 + step * 2.0, UiAction::Open(Window::Page(vec![
-                (format!("PixelDungeon-RollInitiative v{}", game::VERSION), YELLOW),
+                (format!("PixelDungeon-RollInitiative v{}", crate::updater::version_label()), YELLOW),
                 (tr!("Roguelike basado en Pixel Dungeon de Watabou (GPL v3), con las reglas de D&D 5e y multijugador cooperativo.", "Roguelike based on Watabou's Pixel Dungeon (GPL v3), with D&D 5e rules and co-op multiplayer.").into(), WHITE),
                 (tr!("Arte y sonido del original. Todo el proyecto se distribuye como GPL v3.", "Art and sound from the original. The whole project is distributed under GPL v3.").into(), rgba(190, 190, 190, 255)),
             ]))),
@@ -1747,7 +1747,7 @@ impl Ui {
         self.hot([w - 18.0, 0.0, 18.0, 18.0], UiAction::Quit, Some(tr!("Salir", "Quit")));
         // en vertical la esquina queda bajo la curva de la pantalla del teléfono (se cortaba "v 0.9"): al centro, con
         // margen
-        let v = format!("v {}", game::VERSION);
+        let v = format!("v {}", crate::updater::version_label());
         let (vx, vy) = if h > w {
             (((w - font.width(&v)) / 2.0).floor(), h - font.height() - 6.0)
         } else {

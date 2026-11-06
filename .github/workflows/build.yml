@@ -4,11 +4,41 @@ on:
   push:
   pull_request:
 
+# en dev, un push nuevo cancela la beta que se estaba armando (así dos no toman la misma letra)
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/dev' }}
+
 jobs:
+  # Nombre de la beta (canal de testers): en un push a dev, "beta-<letra>" siguiente a la última beta publicada de
+  # esta versión (a, b, ... z, aa); vacío en lo demás (main, PRs: builds estables).
+  beta-name:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.n.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: n
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != push ] || [ "$GITHUB_REF" != refs/heads/dev ]; then echo "build=" >> "$GITHUB_OUTPUT"; exit 0; fi
+          V=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          LAST=$(gh release list --limit 100 --json tagName --jq ".[].tagName | select(startswith(\"v$V-beta-\")) | ltrimstr(\"v$V-beta-\")" \
+            | awk '{ print length($0), $0 }' | sort -n | tail -1 | cut -d' ' -f2)
+          NEXT=$(python3 -c 'import sys
+          n = 0
+          for c in sys.argv[1]: n = n * 26 + ord(c) - 96
+          n += 1; o = ""
+          while n: n -= 1; o = chr(97 + n % 26) + o; n //= 26
+          print(o)' "$LAST")
+          echo "build=beta-$NEXT" >> "$GITHUB_OUTPUT"
+
   desktop:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
+    needs: beta-name
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -18,8 +48,8 @@ jobs:
       - run: cargo build --release --bin pdri --features app/updater
         env:
           PDRI_REPO: ${{ github.repository }}
-          PDRI_CHANNEL: ${{ github.ref == 'refs/heads/dev' && 'beta' || '' }}
-          PDRI_BUILD: ${{ github.ref == 'refs/heads/dev' && format('beta.{0}', github.run_number) || '' }}
+          PDRI_CHANNEL: ${{ needs.beta-name.outputs.build != '' && 'beta' || '' }}
+          PDRI_BUILD: ${{ needs.beta-name.outputs.build }}
       - uses: actions/upload-artifact@v4
         with:
           name: pdri-${{ matrix.os }}
@@ -29,6 +59,7 @@ jobs:
           if-no-files-found: error
 
   android:
+    needs: beta-name
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,8 +85,8 @@ jobs:
       - run: ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME" PDRI_FEATURES=updater android/build.sh
         env:
           PDRI_REPO: ${{ github.repository }}
-          PDRI_CHANNEL: ${{ github.ref == 'refs/heads/dev' && 'beta' || '' }}
-          PDRI_BUILD: ${{ github.ref == 'refs/heads/dev' && format('beta.{0}', github.run_number) || '' }}
+          PDRI_CHANNEL: ${{ needs.beta-name.outputs.build != '' && 'beta' || '' }}
+          PDRI_BUILD: ${{ needs.beta-name.outputs.build }}
       - uses: actions/upload-artifact@v4
         with:
           name: pdri-android
@@ -89,11 +120,11 @@ jobs:
           cp dist/pdri-android/pdri.apk out/pdri-android.apk
           gh release create "$V" out/* --title "$V" --generate-notes --target "$GITHUB_SHA"
 
-  # Canal beta (testers): cada push a dev publica la pre-release v<versión>-beta.<n> (las builds de dev ya tienen el
+  # Canal beta (testers): cada push a dev publica la pre-release v<versión>-beta-<letra> (las builds de dev ya tienen el
   # actualizador en canal beta). Se guardan las 3 más nuevas.
   beta:
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    needs: [desktop, android]
+    needs: [beta-name, desktop, android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -107,7 +138,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           KS_B64: ${{ secrets.PDRI_KEYSTORE_B64 }}
         run: |
-          V="v$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)-beta.${{ github.run_number }}"
+          V="v$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)-${{ needs.beta-name.outputs.build }}"
           if [ -z "$KS_B64" ]; then echo "faltan los secretos PDRI_KEYSTORE_B64 / PDRI_KEYSTORE_PASS"; exit 1; fi
           mkdir out
           cp dist/pdri-ubuntu-latest/pdri out/pdri-linux-x86_64

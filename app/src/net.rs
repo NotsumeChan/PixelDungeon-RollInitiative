@@ -56,13 +56,17 @@ fn say(d: &mut Dungeon, i: usize, text: &str) {
 }
 
 /// ¿`a` es una versión más nueva que `b`? ("0.10.0" > "0.9.22"; lo que no es número cuenta como 0). Una beta
-/// (`0.9.25-beta.3`) va antes que su estable (`0.9.25`) y después de la beta anterior.
+/// (`0.9.26-beta-c`) va antes que su estable (`0.9.26`) y después de la beta anterior: la letra es un número en base
+/// 26 (a = 1 ... z = 26, aa = 27); `beta` sola (una build propia sin letra) = 0.
 pub fn newer(a: &str, b: &str) -> bool {
     let key = |s: &str| {
         let s = s.trim();
         let (core, pre) = s.split_once('-').map_or((s, None), |(c, p)| (c, Some(p)));
         let nums: Vec<u32> = core.split('.').map(|p| p.parse().unwrap_or(0)).collect();
-        let n: u32 = pre.and_then(|p| p.rsplit('.').next()?.parse().ok()).unwrap_or(0);
+        let tag = pre.map_or("", |p| p.trim_start_matches("beta").trim_start_matches(['-', '.']));
+        let n = tag.parse::<u32>().unwrap_or_else(|_| {
+            tag.bytes().filter(u8::is_ascii_lowercase).fold(0u32, |n, c| n.saturating_mul(26).saturating_add(u32::from(c - b'a' + 1)))
+        });
         (nums, pre.is_none(), n)
     };
     key(a) > key(b)
@@ -881,9 +885,9 @@ mod tests {
     fn versiones() {
         assert!(newer("0.10.0", "0.9.22") && newer("1.0.0", "0.99.99") && newer("0.9.23", "0.9.22"));
         assert!(!newer("0.9.22", "0.9.22") && !newer("0.9.3", "0.9.22"));
-        // betas de dev (testers)
-        assert!(newer("0.9.25", "0.9.25-beta.3") && newer("0.9.25-beta.4", "0.9.25-beta.3") && newer("0.9.25-beta.1", "0.9.24"));
-        assert!(!newer("0.9.25-beta.9", "0.9.25"));
+        // betas de dev (testers): letra por versión
+        assert!(newer("0.9.26", "0.9.26-beta-c") && newer("0.9.26-beta-b", "0.9.26-beta-a") && newer("0.9.26-beta-a", "0.9.25"));
+        assert!(newer("0.9.26-beta-aa", "0.9.26-beta-z") && newer("0.9.26-beta-a", "0.9.26-beta") && !newer("0.9.26-beta-z", "0.9.26"));
     }
 
     #[test]

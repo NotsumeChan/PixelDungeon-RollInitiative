@@ -15,9 +15,10 @@ permiso de instalar APKs. Sin la feature, `check` e `install` devuelven `None` y
   **la versión del host**, no la última.
 - **Repo:** `PDRI_REPO` al compilar (la CI pone el suyo: un fork se actualiza de sus Releases); si no, el del juego.
 - **Canal beta (testers):** compilado con `PDRI_CHANNEL=beta`, también ve las pre-releases (`releases?per_page=20`, la
-  más nueva). La CI publica una en cada push a `dev` (`v<versión>-beta.<n>`, job `beta`, se guardan 3) y esas builds
-  llevan su número (`PDRI_BUILD` = `beta.<n>`, `current()`), así cada build nueva de dev se ofrece aunque la versión
-  no cambie. `net::newer`: una beta va antes que su estable. Compilar una a mano:
+  más nueva). La CI publica una en cada push a `dev` (`v<versión>-beta-<letra>`: a, b, ... z, aa; la letra vuelve a `a`
+  con cada versión; job `beta-name` la calcula antes de compilar, `beta` publica, se guardan 3) y esas builds llevan
+  su letra (`PDRI_BUILD` = `beta-a`, `current()`; el título muestra "v 0.9.26 beta-a"), así cada build nueva de dev
+  se ofrece aunque la versión no cambie. `net::newer`: una beta va antes que su estable. Compilar una a mano:
   `PDRI_CHANNEL=beta cargo build --release --features app/updater` (Android:
   `PDRI_CHANNEL=beta PDRI_FEATURES=updater android/build.sh`).
 - ponytail: confía en HTTPS y en el repo (sin firma propia del binario).

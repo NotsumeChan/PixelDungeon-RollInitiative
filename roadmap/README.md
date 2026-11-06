@@ -37,6 +37,15 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 - Referencias: prototipo en la rama `python-prototipe` (con sus planes viejos en `roadmap/`), Java original en
   `~/Documents/programacion/personal/java/pixel-dungeon/`.
 
+## Estado al cerrar la sesión (2026-11-06)
+- Hecho y sin probar (✏️): D1-D4 (releases, red por internet con el teclado del sistema, compatibilidad, actualizador
+  con canal beta: betas `v<versión>-beta-<letra>`) y M1a (tamaño por nivel y zonas `{x, y, z}`, 0.9.26).
+- Rama `pd-core` creada en `ef30813` (0.9.25): el juego con el core de PD.
+- Teléfono: 0.9.26 beta (con actualizador en canal beta), compilada antes de las zonas: se actualiza desde la
+  primera beta que publique la CI al pushear `dev`.
+- Siguiente: **M1b** (`world.json`: el mundo como datos; el base reproduce las 4 zonas de las Alcantarillas).
+- Repo del editor: `../pdri-editor/` (README, ROADMAP, LICENSE; el dueño crea el repo).
+
 ## Pendiente del dueño
 - `git push -u origin dev`; al validar una fase, `merge: dev -> main`.
 - Respaldar `~/.pddnd-signing/`.

@@ -19,6 +19,16 @@ pub enum Msg {
 
 pub const ENABLED: bool = cfg!(feature = "updater");
 
+/// La beta de esta build (`PDRI_BUILD`, "beta-a"...; la pone la CI en `dev`), si es una.
+pub fn build() -> Option<&'static str> {
+    option_env!("PDRI_BUILD").filter(|b| !b.is_empty())
+}
+
+/// La versión para mostrar: "0.9.26" o "0.9.26 beta-a".
+pub fn version_label() -> String {
+    build().map_or_else(|| game::VERSION.to_string(), |b| format!("{} {b}", game::VERSION))
+}
+
 #[cfg(not(feature = "updater"))]
 pub fn check() -> Option<Receiver<Msg>> {
     None
@@ -65,11 +75,12 @@ mod imp {
         option_env!("PDRI_CHANNEL") == Some("beta")
     }
 
-    /// La versión de esta build: la del juego y, en una beta de la CI, su número (`PDRI_BUILD` = "beta.<n>").
+    /// La versión de esta build para comparar: la del juego y, en una beta, su letra ("0.9.26-beta-a").
     pub(super) fn current() -> String {
-        match option_env!("PDRI_BUILD") {
-            Some(b) if !b.is_empty() => format!("{}-{b}", game::VERSION),
-            _ => game::VERSION.to_string(),
+        match super::build() {
+            Some(b) => format!("{}-{b}", game::VERSION),
+            None if beta() => format!("{}-beta", game::VERSION), // beta compilada a mano: antes que cualquier beta-a
+            None => game::VERSION.to_string(),
         }
     }
 
