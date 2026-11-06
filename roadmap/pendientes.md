@@ -54,7 +54,7 @@ Meta a largo plazo ([`decisiones.md`](decisiones.md#meta-un-juego-propio-2026-11
 | Generación | ✏️ Generador propio (`pdri:dungeon`, 0.9.32), ya en el mundo base. Cuando el dueño lo valide, borrar el de PD (`level` build, `painters`, `room`, `patch`, `pdri:sewers`) |
 | Código portado | ✅ FOV (symmetric shadowcasting), pathfinder y línea de tiro propios (0.9.28). Falta: turnos fuera de combate (planificador de PD) |
 | UI | Layout propio (con la conversación de estética) |
-| Arte | Tiles, personajes, ítems y UI hechos por personas, de a uno |
+| Arte | Tiles, personajes, ítems y UI hechos por personas, de a uno. Personajes por capas: [S](pasos/6-sprites.md) |
 | Fuente | ✅ **Silkscreen** (OFL) en vez de `font1x.png` de PD (0.9.27) |
 | Sonido | ✅ El audio de PD salió del repo (0.9.30). Lo propio, cuando haya audio; el de PD como mod opcional |
 | Cierre | Borrar `Assets/` del original, revisar que no quede nada derivado, nombre nuevo |

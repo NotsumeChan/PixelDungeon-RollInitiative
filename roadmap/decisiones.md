@@ -47,6 +47,10 @@ del actualizador. → [M](pasos/5-mapas-editor.md)
   El mapa de cada zona sí puede ser prefabricado o generado con la seed (p. ej. las Alcantarillas), según diga el JSON.
 - **Guardados:** las partidas viejas no se cargan (los personajes sí quedan). Sube `PROTOCOL`.
 
+## Sprites y apariencias (2026-11-06)
+Sprites como datos, también desde mods; apariencias por capas teñidas (piel, pelo, ropa); tamaño de cuadro libre
+por hoja con un máximo (64x64); cuadros y velocidad libres por animación. Plan en [S](pasos/6-sprites.md).
+
 ## NPCs (2026-11-05)
 1. Contenido inicial: Fabricante de varitas y Mercader; el Fantasma, no.
 2. Misiones, flags y actitud son de la partida (compartidas en la LAN); las recompensas, del héroe.

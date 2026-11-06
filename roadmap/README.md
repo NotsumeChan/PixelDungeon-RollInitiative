@@ -24,6 +24,8 @@ primero.
 | 4 | ✏️ [Actualizador](pasos/4-updater.md) | `#D4` |
 | 5 | ✏️ M1a, M1b · [Zonas, mapas y editor](pasos/5-mapas-editor.md) | `#M1`… |
 
+| 6 | [Sprites como datos y apariencias por capas](pasos/6-sprites.md) | `#S1`… |
+
 Estética: en conversación, sin paso.
 
 **Meta a largo plazo:** separarse por completo de Pixel Dungeon (ver [`decisiones.md`](decisiones.md#meta-un-juego-propio-2026-11-06)).
