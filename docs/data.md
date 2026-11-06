@@ -45,13 +45,15 @@ El mundo: zona `"x,y,z"` (z = profundidad, también el nivel de peligro) -> entr
   prefabricados llegan con M2.
 - `up` / `down`: la zona a la que llevan sus escaleras (`"x,y,z"`). Sin `down`, bajar dice "Fin de la demo"; sin `up`,
   no se puede subir.
-- `north` / `south` / `east` / `west` (M1c, 0.9.34): salida por ese borde a la zona `"x,y,z"`. El generador abre un
-  pasillo hasta el borde; pisar la última casilla pasa a la otra zona, a la abertura del borde de enfrente (o a su
-  entrada si no tiene). Lo natural es que la otra zona tenga la vuelta (`east` <-> `west`).
+- Bordes (M1c, 0.9.34): si existe la zona de al lado (este = x + 1, oeste = x - 1, sur = y + 1, norte = y - 1, misma
+  z), ese borde lleva a ella: sus casillas transitables son salidas y pisarlas pasa a la otra zona, al borde de
+  enfrente, a la casilla transitable más cerca de la misma posición (o a su entrada si ese borde no tiene). Si no hay
+  zona al lado, el borde es pared invisible. `north` / `south` / `east` / `west` lo cambian: `"x,y,z"` lleva a otra
+  zona, `null` o `false` lo cierra. El generador propio abre un pasillo hasta cada borde abierto.
 - `portals` (M1c): `[{"id": "cripta", "to": "x,y,z"}]`. Cada uno es una casilla especial en una sala; se usa con
   click / toque y se aparece en el portal con el mismo `id` de la otra zona (o en su entrada).
-Ejemplo (dos zonas lado a lado con un portal): `"0,0,1": {..., "east": "1,0,1", "portals": [{"id": "p", "to":
-"1,0,1"}]}` y `"1,0,1": {"name": "Al este", "map": {"gen": "pdri:dungeon"}, "west": "0,0,1", "portals": [{"id": "p",
-"to": "0,0,1"}]}`.
+Ejemplo (dos zonas lado a lado con un portal; el borde se abre solo): `"0,0,1": {..., "portals": [{"id": "p", "to":
+"1,0,1"}]}` y `"1,0,1": {"name": "Al este", "map": {"gen": "pdri:dungeon"}, "portals": [{"id": "p", "to":
+"0,0,1"}]}`.
 Un mod suma zonas o pisa las del base (como cualquier registro): p. ej. un `"0,0,5"` y un `down` en `"0,0,4"` que lleve
 ahí. Sólo existe lo que está en el JSON (decisión del dueño: el mundo es sólo datos).

@@ -51,13 +51,16 @@ impl Zone {
     }
 }
 
-/// Una salida que no es escalera (M1c): la abertura en un borde (`"north"`, `"south"`, `"east"`, `"west"`) o un
-/// portal con su `id`. Adónde lleva lo dice `world.json`.
+/// Una salida que no es escalera (M1c): una casilla de un borde abierto (el lado y la posición a lo largo del borde)
+/// o un portal con su `id`. Adónde lleva lo dice `world.json`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Exit {
-    Edge(String),
+    Edge(String, i32),
     Portal(String),
 }
+
+/// Los cuatro bordes y hacia dónde queda la zona vecina: norte = y - 1, sur = y + 1, este = x + 1, oeste = x - 1.
+pub const DIRS: [(&str, i32, i32); 4] = [("north", 0, -1), ("south", 0, 1), ("east", 1, 0), ("west", -1, 0)];
 
 /// El borde de enfrente: se sale por el este y se llega por el oeste.
 pub fn opposite(dir: &str) -> &'static str {
@@ -109,8 +112,11 @@ pub struct Level {
     pub mapped: Vec<bool>,
     /// Montones de ítems por celda (cofres, tumbas, restos o un montón suelto).
     pub heaps: BTreeMap<i32, Heap>,
-    /// Salidas por el borde y portales (M1c): (celda, salida). Las arma el generador desde `world.json`.
+    /// Portales (M1c): (celda, salida). Los pone el generador desde `world.json`.
     pub exits: Vec<(i32, Exit)>,
+    /// Bordes abiertos (M1c): los lados que llevan a otra zona. Sus casillas transitables son salidas; el resto del
+    /// borde es pared invisible (no se pisa aunque el mapa no tenga pared ahí).
+    pub edges: Vec<String>,
 }
 
 pub(crate) const SECRET_TRAPS: [u8; 8] = [
@@ -135,7 +141,8 @@ impl Level {
     /// La zona según su entrada `def` de `world.json` (su `map`, y las salidas por el borde y portales): `{"gen": "pdri:dungeon", "size": [ancho, alto]}` (el generador propio,
     /// `dungeon_gen`; 32x32 si no dice) o `{"gen": "pdri:sewers"}` (las Alcantarillas de PD, hasta que se validen las
     /// propias).
-    pub fn generate(seed: i64, zone: Zone, def: &serde_json::Value) -> Self {
+    /// `edges`: los bordes que llevan a otra zona (los decide `Dungeon`, que conoce el mundo).
+    pub fn generate(seed: i64, zone: Zone, def: &serde_json::Value, edges: Vec<String>) -> Self {
         let map = &def["map"];
         if map["gen"] == "pdri:sewers" {
             return Self::new(seed, zone); // ponytail: sin bordes ni portales; se borra al validar el propio
@@ -143,6 +150,7 @@ impl Level {
         let dim = |k: usize| map["size"][k].as_i64().map_or(SEWER_SIZE, |v| (v as i32).clamp(16, geom::MAX_SIZE));
         let (w, h) = (dim(0), dim(1));
         let mut level = Self::blank(seed, zone, w, h);
+        level.edges = edges;
         let mut tries = 0;
         while !crate::dungeon_gen::build(&mut level, def) {
             tries += 1;
@@ -190,21 +198,56 @@ impl Level {
             mapped: vec![false; n],
             heaps: BTreeMap::new(),
             exits: Vec::new(),
+            edges: Vec::new(),
         }
     }
 
-    /// La salida (borde o portal) de la celda, si hay.
-    pub fn exit_at(&self, c: i32) -> Option<&Exit> {
-        self.exits.iter().find(|e| e.0 == c).map(|e| &e.1)
+    /// ¿La celda está en el borde `dir`?
+    pub fn on_side(&self, c: i32, dir: &str) -> bool {
+        let (x, y) = (c % self.width, c / self.width);
+        match dir {
+            "north" => y == 0,
+            "south" => y == self.height - 1,
+            "east" => x == self.width - 1,
+            _ => x == 0,
+        }
     }
 
-    /// Dónde aparece quien llega por `via`: la abertura del borde de enfrente o el portal con el mismo id.
+    /// La posición de la celda a lo largo del borde `dir` (x en norte / sur, y en este / oeste).
+    fn along(&self, c: i32, dir: &str) -> i32 {
+        if dir == "north" || dir == "south" { c % self.width } else { c / self.width }
+    }
+
+    /// La salida de la celda, si hay: un portal o una casilla transitable de un borde abierto.
+    pub fn exit_at(&self, c: i32) -> Option<Exit> {
+        if let Some(e) = self.exits.iter().find(|e| e.0 == c) {
+            return Some(e.1.clone());
+        }
+        if !self.inside(c) || !self.passable[c as usize] {
+            return None;
+        }
+        let d = self.edges.iter().find(|d| self.on_side(c, d))?;
+        Some(Exit::Edge(d.clone(), self.along(c, d)))
+    }
+
+    /// Dónde aparece quien llega por `via`: en el borde de enfrente, la casilla transitable más cerca de la misma
+    /// posición, o el portal con el mismo id. None: no hay (se aparece en la entrada).
     pub fn arrival(&self, via: &Exit) -> Option<i32> {
-        let want = match via {
-            Exit::Edge(d) => Exit::Edge(opposite(d).to_string()),
-            Exit::Portal(_) => via.clone(),
-        };
-        self.exits.iter().find(|e| e.1 == want).map(|e| e.0)
+        match via {
+            Exit::Edge(d, pos) => {
+                let side = opposite(d);
+                (0..self.len())
+                    .filter(|&c| self.on_side(c, side) && self.passable[c as usize])
+                    .min_by_key(|&c| (self.along(c, side) - pos).abs())
+            }
+            Exit::Portal(_) => self.exits.iter().find(|e| &e.1 == via).map(|e| e.0),
+        }
+    }
+
+    /// Las celdas `c + o` (offsets de `n4` / `n8` / `n9`) que están en el mapa, sin dar la vuelta por los costados.
+    pub fn around(&self, c: i32, offs: &[i32]) -> Vec<i32> {
+        let w = self.width;
+        offs.iter().map(|o| c + o).filter(|&m| self.inside(m) && ((m % w) - (c % w)).abs() <= 1).collect()
     }
 
     /// Cantidad de celdas.
@@ -620,10 +663,11 @@ impl Level {
         self.water = has(t::LIQUID);
         self.pit = has(t::PIT);
 
-        // El borde del mapa nunca es transitable.
+        // El borde del mapa no es transitable (pared invisible), salvo en los lados que llevan a otra zona (M1c).
         for i in 0..self.len() {
             let (x, y) = (i % self.width, i / self.width);
-            if x == 0 || x == self.width - 1 || y == 0 || y == self.height - 1 {
+            let border = x == 0 || x == self.width - 1 || y == 0 || y == self.height - 1;
+            if border && !self.edges.iter().any(|d| self.on_side(i, d)) {
                 self.passable[i as usize] = false;
                 self.avoid[i as usize] = false;
             }
@@ -660,8 +704,7 @@ impl Level {
     fn clean_walls(&mut self) {
         self.discoverable = (0..self.len())
             .map(|i| {
-                let near: Vec<usize> =
-                    self.n9().iter().map(|n| i + n).filter(|&c| (0..self.len()).contains(&c)).map(|c| c as usize).collect();
+                let near: Vec<usize> = self.around(i, &self.n9()).into_iter().map(|c| c as usize).collect();
                 near.iter().any(|&c| self.map[c] != t::WALL && self.map[c] != t::WALL_DECO)
                     && near.iter().any(|&c| !self.pit[c])
             })

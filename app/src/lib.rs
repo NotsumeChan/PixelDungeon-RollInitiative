@@ -166,7 +166,8 @@ impl World {
         let l = self.d.level();
         let open = |c: i32| l.inside(c) && (l.passable[c as usize] || self.d.find_char(c).is_some());
         let tries = [(dx, dy), (dx, 0), (0, dy)];
-        let found = tries.iter().filter(|t| **t != (0, 0)).map(|(x, y)| pos + x + y * l.width).find(|&c| open(c));
+        let in_row = |t: &&(i32, i32)| (0..l.width).contains(&(pos % l.width + t.0)); // sin dar la vuelta por el costado
+        let found = tries.iter().filter(|t| **t != (0, 0)).filter(in_row).map(|(x, y)| pos + x + y * l.width).find(|&c| open(c));
         if let Some(c) = found {
             self.d.handle(me, c, false);
         }

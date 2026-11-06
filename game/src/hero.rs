@@ -462,7 +462,7 @@ impl Dungeon {
             _ if seen && level.heaps.contains_key(&cell) => {
                 if level.heaps[&cell].kind == HeapKind::Heap { Action::PickUp(cell) } else { Action::Open(cell) }
             }
-            _ if level.exit_at(cell).is_some_and(|e| stairs || matches!(e, Exit::Edge(_))) => Action::Leave(cell),
+            _ if level.exit_at(cell).is_some_and(|e| stairs || matches!(e, Exit::Edge(..))) => Action::Leave(cell),
             _ if stairs && cell == level.exit => Action::Descend(cell),
             _ if stairs && cell == level.entrance => Action::Ascend(cell),
             _ => Action::Move(cell),
@@ -660,8 +660,8 @@ impl Dungeon {
     fn search(&mut self, i: usize, intentional: bool) {
         let pos = self.heroes[i].ch.pos;
         let mut found = false;
-        for n in self.level().n9() {
-            let p = pos + n;
+        let l = self.level();
+        for p in l.around(pos, &l.n9()) {
             if !self.heroes[i].fov[p as usize] {
                 continue;
             }

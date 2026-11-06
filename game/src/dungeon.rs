@@ -12,7 +12,7 @@ use crate::dice;
 use crate::fov::MAX_DISTANCE;
 use crate::hero::Hero;
 use crate::items::{make_gold, Generator, HeapKind, POTION_LOOKS, SCROLL_LOOKS};
-use crate::level::{Exit, Level, Zone};
+use crate::level::{Exit, Level, Zone, DIRS};
 use crate::mobs::{pick_mob, Mob, State};
 use crate::pathfinder;
 use crate::registry;
@@ -237,7 +237,8 @@ impl Dungeon {
 
     /// El nivel de una zona, según su `map` en `world.json` (generador propio o el de PD).
     pub(crate) fn new_level(&self, zone: Zone) -> Level {
-        Level::generate(self.seed, zone, self.world.get(&zone.key()).unwrap_or(&Value::Null))
+        let edges = DIRS.iter().map(|d| d.0).filter(|d| self.edge_to(zone, d).is_some()).map(String::from).collect();
+        Level::generate(self.seed, zone, self.world.get(&zone.key()).unwrap_or(&Value::Null), edges)
     }
 
     /// La zona de inicio: la de `"start": true` en `world.json` (si no hay, (0, 0, 1)).
@@ -486,15 +487,33 @@ impl Dungeon {
         }
     }
 
+    /// Adónde lleva el borde `dir` de `zone` (M1c): lo que diga su entrada en `world.json` (`"x,y,z"`; `null` o
+    /// `false` = cerrado) o, si no lo declara, la zona de al lado en esa dirección (`DIRS`). Sin zona que exista, el
+    /// borde es pared invisible.
+    pub(crate) fn edge_to(&self, zone: Zone, dir: &str) -> Option<Zone> {
+        let to = match self.world.get(&zone.key()).and_then(|z| z.get(dir)) {
+            Some(v) => Zone::parse(v.as_str()?)?,
+            None => {
+                let (_, dx, dy) = DIRS.iter().find(|d| d.0 == dir)?;
+                Zone { x: zone.x + dx, y: zone.y + dy, z: zone.z }
+            }
+        };
+        self.world.contains_key(&to.key()).then_some(to)
+    }
+
     /// Usa la salida (borde o portal) de la celda `c` del héroe `i` (M1c): adónde lleva lo dice `world.json`.
     pub(crate) fn leave(&mut self, i: usize, c: i32) {
-        let Some(via) = self.level().exit_at(c).cloned() else { return };
-        let here = self.world.get(&self.heroes[i].zone.key()).unwrap_or(&Value::Null);
+        let Some(via) = self.level().exit_at(c) else { return };
+        let zone = self.heroes[i].zone;
         let to = match &via {
-            Exit::Edge(dir) => here[dir.as_str()].as_str(),
-            Exit::Portal(id) => here["portals"].as_array().into_iter().flatten().find(|p| p["id"] == id.as_str()).and_then(|p| p["to"].as_str()),
+            Exit::Edge(dir, _) => self.edge_to(zone, dir),
+            Exit::Portal(id) => {
+                let here = self.world.get(&zone.key()).unwrap_or(&Value::Null);
+                let p = here["portals"].as_array().into_iter().flatten().find(|p| p["id"] == id.as_str());
+                p.and_then(|p| p["to"].as_str()).and_then(Zone::parse).filter(|z| self.world.contains_key(&z.key()))
+            }
         };
-        match to.and_then(Zone::parse).filter(|z| self.world.contains_key(&z.key())) {
+        match to {
             Some(z) => self.go_to(i, z, Some(via)),
             None => self.tell(i, crate::tr!("Por acá no se puede seguir", "You can't go any further this way")),
         }
@@ -561,10 +580,9 @@ impl Dungeon {
 
     /// `cell`, o una vecina libre y transitable (otro héroe o un mob ya está en la escalera).
     fn free_near(&self, cell: i32) -> i32 {
-        self.level()
-            .n9()
-            .iter()
-            .map(|n| cell + n)
+        let l = self.level();
+        l.around(cell, &l.n9())
+            .into_iter()
             .find(|&c| self.level().passable[c as usize] && self.find_char(c).is_none())
             .unwrap_or(cell) // ponytail: todo ocupado, comparte celda hasta que alguien se mueva
     }

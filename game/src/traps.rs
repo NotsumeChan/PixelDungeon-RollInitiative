@@ -120,9 +120,8 @@ impl Dungeon {
                 }
                 let level = self.level();
                 let mut cands: Vec<i32> = level
-                    .n8()
-                    .iter()
-                    .map(|o| cell + o)
+                    .around(cell, &level.n8())
+                    .into_iter()
                     .filter(|&p| self.find_char(p).is_none() && (level.passable[p as usize] || level.avoid[p as usize]))
                     .collect();
                 while n > 0 && !cands.is_empty() {

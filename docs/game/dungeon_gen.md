@@ -8,9 +8,8 @@ Generador propio de zonas (`"gen": "pdri:dungeon"` en `world.json`; 0.9.32), sin
 4. Entrada en la primera sala; salida en la más lejana a pie. Si alguna sala no se alcanza, se reintenta con el rng
    como quedó (`build` devuelve false; `Level::generate` limpia el mapa y vuelve a probar).
 5. Agua y pasto: ruido suavizado dos veces (queda si 5 o más del vecindario 3x3). Trampas ocultas desde z = 2.
-6. Salidas de `world.json` (M1c, 0.9.34; sin ellas no se gasta rng: el mundo base sale igual). Por cada borde con
-   salida, un pasillo recto desde la sala más cercana a ese borde hasta la casilla de al lado del borde (esa casilla
-   es la salida; el borde sigue de pared para que ninguna vecina caiga fuera del mapa). Cada portal, en una casilla
-   libre de una sala Standard, como `EMPTY_SP` hasta que haya sprite. Quedan en `Level::exits`.
+6. Salidas (M1c, 0.9.34; sin ellas no se gasta rng: el mundo base sale igual). Por cada borde abierto
+   (`Level::edges`), un pasillo recto desde la sala más cercana a ese borde hasta el borde mismo. Cada portal, en una
+   casilla libre de una sala Standard, como `EMPTY_SP` hasta que haya sprite (`Level::exits`).
 Las salas quedan en `Level::rooms` (Entrada, Salida, el resto Standard) para dónde aparecen mobs, ítems y NPC.
 Usa los tiles de siempre. Revisar a mano: `cargo run -q -p game --example level -- <seed> <piso>`.

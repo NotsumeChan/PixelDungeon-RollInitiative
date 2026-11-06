@@ -3,13 +3,13 @@
 //! más algunos pasillos extra para que haya vueltas; cada pasillo sale por una puerta en la pared que mira a la otra
 //! sala y busca su camino por fuera de las salas (BFS). Entrada en una sala, salida en la más lejana a pie. Agua y
 //! pasto con ruido suavizado; trampas ocultas desde z = 2. Usa los tiles de siempre (`terrain`).
-//! M1c: aberturas en los bordes que pide `world.json` y portales en salas Standard.
+//! M1c: aberturas en los bordes que llevan a otra zona y portales en salas Standard.
 use std::collections::VecDeque;
 
 use serde_json::Value;
 
 use crate::geom::Rect;
-use crate::level::{Exit, Level, SECRET_TRAPS};
+use crate::level::{Exit, Level, DIRS, SECRET_TRAPS};
 use crate::rng::Rng;
 use crate::room::{Room, RoomType};
 use crate::terrain as t;
@@ -76,18 +76,17 @@ fn try_build(level: &mut Level, rng: &mut Rng, def: &Value) -> bool {
             }
         }
     }
-    edges(level, rng, &rects, def);
+    edges(level, rng, &rects);
     portals(level, rng, &rects, def);
     true
 }
 
-/// Una abertura por cada borde que tenga salida en `def`: un pasillo recto desde la sala más cercana a ese borde
-/// (nada se cruza: otra sala en el camino estaría más cerca) hasta la casilla de al lado del borde, que es la salida.
-/// El borde queda de pared: así ninguna vecina de una celda transitable cae fuera del mapa.
-fn edges(level: &mut Level, rng: &mut Rng, rects: &[Rect], def: &Value) {
+/// Una abertura por cada borde abierto (`level.edges`): un pasillo recto desde la sala más cercana a ese borde (nada
+/// se cruza: otra sala en el camino estaría más cerca) hasta el borde mismo, que es la salida.
+fn edges(level: &mut Level, rng: &mut Rng, rects: &[Rect]) {
     let w = level.width;
-    for (dir, dx, dy) in [("north", 0, -1), ("south", 0, 1), ("east", 1, 0), ("west", -1, 0)] {
-        if def[dir].as_str().is_none() {
+    for (dir, dx, dy) in DIRS {
+        if !level.edges.iter().any(|d| d == dir) {
             continue;
         }
         let near = |r: &&Rect| match dir {
@@ -103,13 +102,11 @@ fn edges(level: &mut Level, rng: &mut Rng, rects: &[Rect], def: &Value) {
             (rng.int_range(r.left + 1, r.right), if dy > 0 { r.bottom } else { r.top })
         };
         let door = x + y * w;
-        while (1..w - 1).contains(&(x + dx)) && (1..level.height - 1).contains(&(y + dy)) {
+        while (0..w).contains(&(x + dx)) && (0..level.height).contains(&(y + dy)) {
             (x, y) = (x + dx, y + dy);
             level.map[(x + y * w) as usize] = t::EMPTY;
         }
-        let cell = x + y * w;
-        level.map[door as usize] = if door == cell { t::EMPTY } else { t::DOOR };
-        level.exits.push((cell, Exit::Edge(dir.to_string())));
+        level.map[door as usize] = t::DOOR;
     }
 }
 

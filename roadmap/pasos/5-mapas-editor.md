@@ -10,11 +10,13 @@ Decisiones en [`decisiones.md`](../decisiones.md#mundo-por-zonas-2026-11-06). Ca
 - ✏️ **M1b — `world.json`** (0.9.31, falta la prueba del dueño: bajar y subir, el nombre de la zona al entrar, el fin del piso 4): el mundo como datos (zonas, nombre, mapa generado o prefabricado, conexiones). El base
   reproduce las Alcantarillas de hoy. `docs/data.md` y la API de mods estable.
 - ✏️ **M1c — Salidas con dirección** (0.9.34, falta la prueba del dueño). Para probar: un mod con el ejemplo de
-  `docs/data.md` (world.json: `0,0,1` con `east` y un portal; `1,0,1` con `west` y el portal de vuelta). Caminar por
-  el pasillo hasta el borde este (con mouse y con teclado) -> aparece en el borde oeste de la otra zona; volver;
+  `docs/data.md` (world.json: `0,0,1` con un portal; `1,0,1` al lado, con el portal de vuelta: el borde este / oeste
+  se abre solo). Caminar por el pasillo hasta el borde este (con mouse y con teclado) -> aparece en el borde oeste de
+  la otra zona; volver; los otros bordes no se pisan (pared invisible);
   click en el portal (piso especial en una sala) -> aparece en el portal de la otra. En LAN, que el otro jugador
-  también pase. El juego sin mods debe verse igual que en la 0.9.33. Decisión al hacerlo: la salida es la casilla
-  de al lado del borde (el borde sigue de pared) y el portal se dibuja como piso especial hasta que tenga sprite.
+  también pase. El juego sin mods debe verse igual que en la 0.9.33. Decisiones: un borde con zona al lado se abre solo
+  si no se declara (pedido del dueño, 2026-11-06: escenas de paso sin portales ni casillas obligadas); sin zona al
+  lado es pared invisible; el portal se dibuja como piso especial hasta que tenga sprite.
   Plan (hecho así):
   - `world.json`: además de `up` / `down`, cada zona puede tener `north`, `south`, `east`, `west` (salida por el
     borde) y `portals`: `[{"id": "cripta", "to": "x,y,z"}]` (casilla especial: puerta, portal).

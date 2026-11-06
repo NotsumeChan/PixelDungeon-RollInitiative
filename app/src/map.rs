@@ -57,19 +57,22 @@ pub fn tiles(out: &mut Vec<Sprite>, atlas: &Atlas, sheet: [u32; 4], level: &Leve
     }
 }
 
-/// Esquinas de la niebla: visible si las 4 celdas que tocan la esquina se ven, recordada si se vieron... El borde del
-/// mapa queda negro. Se sube como textura de FOG_SIZE x FOG_SIZE; el mapa usa la esquina de arriba a la izquierda,
+/// Esquinas de la niebla: visible si las celdas (hasta 4, las del mapa) que tocan la esquina se ven, recordada si se
+/// vieron... (el borde puede ser transitable, M1c: ya no queda negro). Se sube como textura de FOG_SIZE x FOG_SIZE; el mapa usa la esquina de arriba a la izquierda,
 /// (ancho + 1) x (alto + 1); lo demás queda negro.
 pub fn fog_corners(level: &Level) -> Vec<u8> {
     let (w, h) = (level.width, level.height);
     let mut rgba = Vec::with_capacity((FOG_SIZE * FOG_SIZE * 4) as usize);
     for i in 0..FOG_SIZE as i32 {
         for j in 0..FOG_SIZE as i32 {
-            let c = if i == 0 || j == 0 || i >= h || j >= w {
+            let c = if i > h || j > w {
                 FOG_INVISIBLE
             } else {
-                let pos = i * w + j;
-                let corner = [pos, pos - w, pos - 1, pos - w - 1].map(|c| c as usize);
+                let corner: Vec<usize> = [(j, i), (j, i - 1), (j - 1, i), (j - 1, i - 1)]
+                    .into_iter()
+                    .filter(|&(x, y)| (0..w).contains(&x) && (0..h).contains(&y))
+                    .map(|(x, y)| (x + y * w) as usize)
+                    .collect();
                 if corner.iter().all(|&c| level.visible[c]) {
                     FOG_VISIBLE
                 } else if corner.iter().all(|&c| level.visited[c]) {

@@ -34,7 +34,9 @@ Alcantarillas; `Zone::NONE` = ninguna (héroe que todavía no entró); `key` / `
 tiene `width` / `height`; el generador de las Alcantarillas genera `SEWER_SIZE` = 32.
 
 ## Bordes y portales (M1c, 0.9.34)
-`generate(seed, zone, def)` recibe la entrada entera de la zona en `world.json` (`def["map"]` y sus salidas).
-`exits: Vec<(celda, Exit)>` con `Exit::Edge("north" | "south" | "east" | "west")` o `Exit::Portal(id)`; los arma el
-generador propio (las Alcantarillas de PD no tienen). `exit_at(c)`: la salida de una celda. `arrival(via)`: dónde
-aparece quien llega por `via` (el borde de enfrente, `opposite`, o el portal con el mismo id).
+`generate(seed, zone, def, edges)` recibe la entrada de la zona en `world.json` (`def["map"]`, `def["portals"]`) y
+los bordes abiertos (`edges`: los lados que llevan a otra zona; los decide `Dungeon::edge_to`). En `build_flag_maps`
+el borde es pared invisible salvo en esos lados. `exits`: los portales (`Exit::Portal(id)`). `exit_at(c)`: un portal
+o una casilla transitable de un borde abierto (`Exit::Edge(lado, posición a lo largo)`). `arrival(via)`: en el borde
+de enfrente (`opposite`) la casilla transitable más cerca de la misma posición, o el portal con el mismo id.
+`around(c, offs)`: vecinas sin salirse del mapa ni dar la vuelta (el borde puede ser transitable).
