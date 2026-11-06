@@ -1297,6 +1297,16 @@ impl ApplicationHandler for App {
 }
 
 pub fn run(el: EventLoop<()>) {
+    // Escritorio: Local.config en la carpeta de datos, no donde se corre el binario (Descargas, Archivos de programa).
+    // La primera vez se copia el de la carpeta actual, si hay. En Android ya lo puso `android_main`.
+    if config::DIR.get().is_none() {
+        let dir = data_dir();
+        let to = dir.join("Local.config");
+        if !to.exists() && std::fs::create_dir_all(&dir).is_ok() {
+            let _ = std::fs::copy("Local.config", &to);
+        }
+        let _ = config::DIR.set(dir);
+    }
     el.set_control_flow(ControlFlow::Poll);
     el.run_app(&mut App::new()).expect("bucle de eventos");
 }

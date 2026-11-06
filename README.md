@@ -25,7 +25,7 @@ Desde [Releases](../../releases).
 cargo run --release                                   # escritorio
 android/build.sh && adb install -r target/android/pdri.apk   # Android (cargo-ndk, SDK, NDK y la clave)
 ```
-Opciones en `Local.config`. La clave de firma de Android vive fuera del repo, en `~/.pddnd-signing/` (en CI, desde
+Las opciones se guardan en `Local.config`, en la carpeta de datos (`%APPDATA%/PixelDND` o `~/.local/share/PixelDND`). La clave de firma de Android vive fuera del repo, en `~/.pddnd-signing/` (en CI, desde
 secretos de GitHub): respaldarla, porque sin ella no se puede actualizar el APK.
 
 ## 🗺️ Roadmap
