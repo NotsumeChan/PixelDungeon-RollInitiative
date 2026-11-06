@@ -317,3 +317,21 @@ coquetear o atacar, con tiradas 5e), todo como datos. Decisiones en [`decisiones
   - Para probar: comprimir `mods/ejemplo-herrero` en un zip, importarlo en el teléfono y en la PC, reiniciar, el
     herrero en el piso 3 (apuesta, ajustes), desactivar el mercader ambulante, y en la LAN los dos con los mismos mods.
 
+## Sesión 2026-11-06 (tarde): M1c, separación de PD, controles, combate, mods, L1 (0.9.34-0.9.45)
+Todo ✏️. El "Para probar" detallado de cada versión está en [`README.md`](README.md#qué-probar-todo--lo-que-falle-va-primero)
+y en [`versiones.md`](versiones.md); los docs de cada archivo, en `docs/`.
+- **M1c** (0.9.34): bordes abiertos hacia la zona de al lado (solos si existe; `north` / `south` / `east` / `west`
+  cambian o cierran; sin zona al lado, pared invisible) y portales (`portals`); `Exit`, `Level::edges`,
+  `Dungeon::edge_to` / `leave`, acción de red `leave`. **M1d** a medias (0.9.42): nombre y coordenadas en la barra.
+- **Separación de PD** (0.9.35-0.9.36): turnos fuera de combate propios y simultáneos; aliados que no cortan el
+  camino (cambio de lugar o espera); pathfinder sin zigzag (desempate por la recta al destino).
+- **Controles** (0.9.37, 0.9.38, 0.9.44): tocarse usa lo de abajo; acción rápida, Seguir, arrojadizas que apuntan
+  solas; teclas E / X.
+- **Combate** (0.9.39, 0.9.41): entran sólo los que pelean o se ven; termina en el momento; XP al final con resumen
+  y guardada a mitad de pelea (`PROTOCOL` 4).
+- **Mods** (0.9.45): lista a todo el ancho, texto recortado, menú por mod con BORRAR, scroll.
+- **L1 / L2** (0.9.40, 0.9.43): textos sin D&D y avisos (README, Acerca de); `class_5e` (alias `dnd_class`);
+  `roadmap/reglas5e.md`.
+- **Planes nuevos** (sólo documentos): [P](pasos/7-progresion-5e.md), [C](pasos/8-personajes-mundos.md),
+  [N6](pasos/9-packs-mods.md), [L](pasos/10-nombre-avisos.md); decisiones en `decisiones.md`.
+
