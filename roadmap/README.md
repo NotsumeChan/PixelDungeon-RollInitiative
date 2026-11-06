@@ -39,7 +39,6 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 
 ## Pendiente del dueño
 - `git push -u origin dev`; al validar una fase, `merge: dev -> main`.
-- Secretos de GitHub `PDRI_KEYSTORE_B64` (`base64 -w0 release.jks`) y `PDRI_KEYSTORE_PASS` (para D1).
 - Respaldar `~/.pddnd-signing/`.
 - ufw: `sudo ufw allow 47810/udp` y `sudo ufw allow 47811/tcp`.
 - ¿`Local.config` versionado o al `.gitignore`?

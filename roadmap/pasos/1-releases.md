@@ -15,7 +15,7 @@ sale sin permiso de ejecución (los artifacts no lo guardan): `chmod +x` al baja
 3. `android:hasFragileUserData="true"` en el manifiesto; verificar que `data_dir()` (`app/src/lib.rs`) sea
    almacenamiento interno de la app.
 
-**Del dueño:** cargar los dos secretos.
+**Secretos:** cargados en GitHub (2026-11-06).
 
 ## Para probar
 - Merge a `main` → Release con 3 archivos; otro push sin subir versión no la duplica.
