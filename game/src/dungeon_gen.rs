@@ -3,24 +3,27 @@
 //! más algunos pasillos extra para que haya vueltas; cada pasillo sale por una puerta en la pared que mira a la otra
 //! sala y busca su camino por fuera de las salas (BFS). Entrada en una sala, salida en la más lejana a pie. Agua y
 //! pasto con ruido suavizado; trampas ocultas desde z = 2. Usa los tiles de siempre (`terrain`).
+//! M1c: aberturas en los bordes que pide `world.json` y portales en salas Standard.
 use std::collections::VecDeque;
 
+use serde_json::Value;
+
 use crate::geom::Rect;
-use crate::level::{Level, SECRET_TRAPS};
+use crate::level::{Exit, Level, SECRET_TRAPS};
 use crate::rng::Rng;
 use crate::room::{Room, RoomType};
 use crate::terrain as t;
 
 /// Arma el mapa de `level` (vacío, todo pared, con su tamaño y su rng). false = no salió: se reintenta con el rng
 /// como quedó (así el próximo intento es otro).
-pub fn build(level: &mut Level) -> bool {
+pub fn build(level: &mut Level, def: &Value) -> bool {
     let mut rng = level.rng.clone();
-    let ok = try_build(level, &mut rng);
+    let ok = try_build(level, &mut rng, def);
     level.rng = rng;
     ok
 }
 
-fn try_build(level: &mut Level, rng: &mut Rng) -> bool {
+fn try_build(level: &mut Level, rng: &mut Rng, def: &Value) -> bool {
     let (w, h) = (level.width, level.height);
     let rects = place_rooms(rng, w, h);
     if rects.len() < 3 {
@@ -73,7 +76,61 @@ fn try_build(level: &mut Level, rng: &mut Rng) -> bool {
             }
         }
     }
+    edges(level, rng, &rects, def);
+    portals(level, rng, &rects, def);
     true
+}
+
+/// Una abertura por cada borde que tenga salida en `def`: un pasillo recto desde la sala más cercana a ese borde
+/// (nada se cruza: otra sala en el camino estaría más cerca) hasta la casilla de al lado del borde, que es la salida.
+/// El borde queda de pared: así ninguna vecina de una celda transitable cae fuera del mapa.
+fn edges(level: &mut Level, rng: &mut Rng, rects: &[Rect], def: &Value) {
+    let w = level.width;
+    for (dir, dx, dy) in [("north", 0, -1), ("south", 0, 1), ("east", 1, 0), ("west", -1, 0)] {
+        if def[dir].as_str().is_none() {
+            continue;
+        }
+        let near = |r: &&Rect| match dir {
+            "north" => -r.top,
+            "south" => r.bottom,
+            "east" => r.right,
+            _ => -r.left,
+        };
+        let Some(r) = rects.iter().max_by_key(near) else { return };
+        let (mut x, mut y) = if dx != 0 {
+            (if dx > 0 { r.right } else { r.left }, rng.int_range(r.top + 1, r.bottom))
+        } else {
+            (rng.int_range(r.left + 1, r.right), if dy > 0 { r.bottom } else { r.top })
+        };
+        let door = x + y * w;
+        while (1..w - 1).contains(&(x + dx)) && (1..level.height - 1).contains(&(y + dy)) {
+            (x, y) = (x + dx, y + dy);
+            level.map[(x + y * w) as usize] = t::EMPTY;
+        }
+        let cell = x + y * w;
+        level.map[door as usize] = if door == cell { t::EMPTY } else { t::DOOR };
+        level.exits.push((cell, Exit::Edge(dir.to_string())));
+    }
+}
+
+/// Cada portal de `def` en una casilla libre de una sala Standard (o de cualquiera, si no hay).
+/// ponytail: se dibuja como EMPTY_SP hasta que haya sprite de portal (`roadmap/sprites-5e.md`)
+fn portals(level: &mut Level, rng: &mut Rng, rects: &[Rect], def: &Value) {
+    let w = level.width;
+    let standard: Vec<usize> = (0..rects.len()).filter(|&i| level.rooms[i].kind == RoomType::Standard).collect();
+    let pool: Vec<usize> = if standard.is_empty() { (0..rects.len()).collect() } else { standard };
+    for p in def["portals"].as_array().into_iter().flatten() {
+        let Some(id) = p["id"].as_str() else { continue };
+        for _ in 0..50 {
+            let r = &rects[pool[rng.int(pool.len() as i32) as usize]];
+            let c = random_in(rng, r, w);
+            if matches!(level.map[c as usize], t::EMPTY | t::GRASS | t::WATER) {
+                level.map[c as usize] = t::EMPTY_SP;
+                level.exits.push((c, Exit::Portal(id.to_string())));
+                break;
+            }
+        }
+    }
 }
 
 fn contains(r: &Rect, x: i32, y: i32) -> bool {

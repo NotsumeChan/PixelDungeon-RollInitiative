@@ -9,7 +9,13 @@ Decisiones en [`decisiones.md`](../decisiones.md#mundo-por-zonas-2026-11-06). Ca
   coordenadas. Las partidas viejas no se cargan; sube `PROTOCOL`. El juego se ve igual: 4 zonas (0,0,1)..(0,0,4).
 - ✏️ **M1b — `world.json`** (0.9.31, falta la prueba del dueño: bajar y subir, el nombre de la zona al entrar, el fin del piso 4): el mundo como datos (zonas, nombre, mapa generado o prefabricado, conexiones). El base
   reproduce las Alcantarillas de hoy. `docs/data.md` y la API de mods estable.
-- **M1c — Salidas con dirección** (lo siguiente). Plan:
+- ✏️ **M1c — Salidas con dirección** (0.9.34, falta la prueba del dueño). Para probar: un mod con el ejemplo de
+  `docs/data.md` (world.json: `0,0,1` con `east` y un portal; `1,0,1` con `west` y el portal de vuelta). Caminar por
+  el pasillo hasta el borde este (con mouse y con teclado) -> aparece en el borde oeste de la otra zona; volver;
+  click en el portal (piso especial en una sala) -> aparece en el portal de la otra. En LAN, que el otro jugador
+  también pase. El juego sin mods debe verse igual que en la 0.9.33. Decisión al hacerlo: la salida es la casilla
+  de al lado del borde (el borde sigue de pared) y el portal se dibuja como piso especial hasta que tenga sprite.
+  Plan (hecho así):
   - `world.json`: además de `up` / `down`, cada zona puede tener `north`, `south`, `east`, `west` (salida por el
     borde) y `portals`: `[{"id": "cripta", "to": "x,y,z"}]` (casilla especial: puerta, portal).
   - **Borde:** el generador deja una abertura en ese borde (un pasillo desde la sala más cercana hasta el borde, de

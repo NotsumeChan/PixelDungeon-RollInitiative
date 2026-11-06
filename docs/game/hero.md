@@ -11,7 +11,8 @@
   arma o armadura que pide más FUE, o armadura sin competencia. CA = `armor_ac`.
 - `Action` (Hero.curAction), se repite turno a turno: `Move`, `Attack`, `Help` (estabilizar a un aliado caído),
   `Rest` (1 de tiempo), `Search` (2), `Descend` / `Ascend` (hay que pedirlo con click; pisar la escalera no basta).
-  `handle(i, celda, stairs)` elige la acción según lo que hay en la celda.
+  `handle(i, celda, stairs)` elige la acción según lo que hay en la celda. `Leave(celda)` (M1c): una salida del
+  borde con sólo pisarla (también con el teclado), un portal sólo con click / toque (`stairs`).
 - Sólo camina por celdas ya vistas; un mob nuevo a la vista corta la acción (`check_visible_mobs`). Tras cada paso,
   búsqueda pasiva con probabilidad `awareness`.
 - `animating`: tras un paso el planificador espera a que el render termine el movimiento (lo baja la app).

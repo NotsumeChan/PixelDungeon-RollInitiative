@@ -22,7 +22,7 @@ use serde_json::{json, Map, Value};
 /// Versión del protocolo: dos versiones del juego juegan juntas si coincide (y el hash del contenido). Sube cuando
 /// cambia algo que el cliente interpreta: los mensajes de este archivo, el formato de `save::dump` o lo que el
 /// cliente regenera con la seed (generación de pisos, rng). Regla en `roadmap/versiones.md`.
-pub const PROTOCOL: u32 = 2; // 2: zonas por coordenadas (M1a)
+pub const PROTOCOL: u32 = 3; // 2: zonas por coordenadas (M1a); 3: acción "leave" (bordes y portales, M1c)
 pub const UDP_PORT: u16 = 47810;
 pub const TCP_PORT: u16 = 47811;
 const MAGIC: &str = "pdri";
@@ -326,6 +326,7 @@ pub fn action_v(a: Action) -> Value {
         Action::Search => json!(["search"]),
         Action::Descend(c) => json!(["descend", c]),
         Action::Ascend(c) => json!(["ascend", c]),
+        Action::Leave(c) => json!(["leave", c]),
         Action::PickUp(c) => json!(["pickup", c]),
         Action::Open(c) => json!(["open", c]),
         Action::Use(s, v, t) => json!(["use", slot_v(s), VERBS.iter().position(|x| *x == v), t.map(slot_v)]),
@@ -351,6 +352,7 @@ pub fn action_of(v: &Value) -> Option<Action> {
         "search" => Action::Search,
         "descend" => Action::Descend(cell(1)?),
         "ascend" => Action::Ascend(cell(1)?),
+        "leave" => Action::Leave(cell(1)?),
         "pickup" => Action::PickUp(cell(1)?),
         "open" => Action::Open(cell(1)?),
         "use" => {
@@ -419,7 +421,7 @@ fn dice_of(v: &Value) -> Option<DiceEvent> {
 /// La celda de una acción, si tiene (para validarla contra el mapa del héroe).
 fn action_cell(a: Action) -> Option<i32> {
     match a {
-        Action::Move(c) | Action::Descend(c) | Action::Ascend(c) | Action::PickUp(c) | Action::Open(c) | Action::Cast(_, c) | Action::Throw(_, c) => Some(c),
+        Action::Move(c) | Action::Descend(c) | Action::Ascend(c) | Action::Leave(c) | Action::PickUp(c) | Action::Open(c) | Action::Cast(_, c) | Action::Throw(_, c) => Some(c),
         _ => None,
     }
 }
@@ -760,6 +762,7 @@ mod tests {
             Action::Search,
             Action::Descend(10),
             Action::Ascend(11),
+            Action::Leave(14),
             Action::PickUp(12),
             Action::Open(13),
             Action::Use(Slot::Pack(2), Verb::Read, Some(Slot::Weapon)),

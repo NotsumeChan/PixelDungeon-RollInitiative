@@ -12,7 +12,7 @@ use crate::dice;
 use crate::fov::MAX_DISTANCE;
 use crate::hero::Hero;
 use crate::items::{make_gold, Generator, HeapKind, POTION_LOOKS, SCROLL_LOOKS};
-use crate::level::{Level, Zone};
+use crate::level::{Exit, Level, Zone};
 use crate::mobs::{pick_mob, Mob, State};
 use crate::pathfinder;
 use crate::registry;
@@ -231,13 +231,13 @@ impl Dungeon {
         self.heroes.push(hero);
         let i = self.heroes.len() - 1;
         let start = self.start_zone();
-        self.go_to(i, start);
+        self.go_to(i, start, None);
         i
     }
 
     /// El nivel de una zona, según su `map` en `world.json` (generador propio o el de PD).
     pub(crate) fn new_level(&self, zone: Zone) -> Level {
-        Level::generate(self.seed, zone, self.world.get(&zone.key()).map_or(&Value::Null, |z| &z["map"]))
+        Level::generate(self.seed, zone, self.world.get(&zone.key()).unwrap_or(&Value::Null))
     }
 
     /// La zona de inicio: la de `"start": true` en `world.json` (si no hay, (0, 0, 1)).
@@ -474,21 +474,36 @@ impl Dungeon {
     // --- pisos ---
     pub(crate) fn descend(&mut self, i: usize) {
         match self.exit_to(i, "down") {
-            Some(z) => self.go_to(i, z),
+            Some(z) => self.go_to(i, z, None),
             None => self.tell(i, crate::tr!("Fin de la demo: no hay más pisos", "End of the demo: there are no more depths")),
         }
     }
 
     pub(crate) fn ascend(&mut self, i: usize) {
         match self.exit_to(i, "up") {
-            Some(z) => self.go_to(i, z),
+            Some(z) => self.go_to(i, z, None),
             None => self.tell(i, crate::tr!("No puedes salir de la mazmorra", "You can't leave the dungeon")),
         }
     }
 
+    /// Usa la salida (borde o portal) de la celda `c` del héroe `i` (M1c): adónde lleva lo dice `world.json`.
+    pub(crate) fn leave(&mut self, i: usize, c: i32) {
+        let Some(via) = self.level().exit_at(c).cloned() else { return };
+        let here = self.world.get(&self.heroes[i].zone.key()).unwrap_or(&Value::Null);
+        let to = match &via {
+            Exit::Edge(dir) => here[dir.as_str()].as_str(),
+            Exit::Portal(id) => here["portals"].as_array().into_iter().flatten().find(|p| p["id"] == id.as_str()).and_then(|p| p["to"].as_str()),
+        };
+        match to.and_then(Zone::parse).filter(|z| self.world.contains_key(&z.key())) {
+            Some(z) => self.go_to(i, z, Some(via)),
+            None => self.tell(i, crate::tr!("Por acá no se puede seguir", "You can't go any further this way")),
+        }
+    }
+
     /// Cambia de zona a un héroe (InterlevelScene). Una zona sin héroes vivos no se procesa (su tiempo no avanza).
-    /// El héroe se lleva lo suyo (la regeneración).
-    fn go_to(&mut self, i: usize, zone: Zone) {
+    /// El héroe se lleva lo suyo (la regeneración). `via`: llega por un borde o portal (si la zona no tiene el par, a
+    /// su entrada); sin `via`, por la escalera.
+    fn go_to(&mut self, i: usize, zone: Zone, via: Option<Exit>) {
         let old = self.heroes[i].zone;
         let going_down = zone.z > old.z;
         self.heroes[i].zone = zone;
@@ -511,12 +526,17 @@ impl Dungeon {
         self.pending.clear();
         if self.floors.contains_key(&zone) {
             self.zone = zone;
-            let cell = if going_down { self.level().entrance } else { self.level().exit };
+            let l = self.level();
+            let cell = match &via {
+                Some(v) => l.arrival(v).unwrap_or(l.entrance),
+                None if going_down => l.entrance,
+                None => l.exit,
+            };
             self.heroes[i].ch.pos = self.free_near(cell);
             self.floor_mut().scheduler.add(ActorId::Hero(i), 0.0);
         } else {
             let level = self.new_level(zone);
-            self.heroes[i].ch.pos = level.entrance;
+            self.heroes[i].ch.pos = via.as_ref().and_then(|v| level.arrival(v)).unwrap_or(level.entrance);
             self.heroes[i].recover(); // ponytail: hasta que haya descansos, se recupera en cada piso nuevo
             self.floors.insert(zone, Floor { level, mobs: Vec::new(), scheduler: Scheduler::default() });
             self.zone = zone;

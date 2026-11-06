@@ -13,7 +13,7 @@ Leer esto primero. Un archivo por tema:
 | [`pasos/`](pasos/) | Próximos pasos, uno por archivo |
 
 ## Ahora
-Rama `dev`, **0.9.33** (`versionCode` 43). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
+Rama `dev`, **0.9.34** (`versionCode` 44). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
 primero.
 
 ## Próximos pasos
@@ -23,7 +23,7 @@ primero.
 | 2 | ✏️ [Red por internet](pasos/2-red-internet.md) | `#D2` |
 | 3 | ✏️ [Compatibilidad entre versiones](pasos/3-compatibilidad.md) | `#D3` |
 | 4 | ✏️ [Actualizador](pasos/4-updater.md) | `#D4` |
-| 5 | ✏️ M1a, M1b · [Zonas, mapas y editor](pasos/5-mapas-editor.md) | `#M1`… |
+| 5 | ✏️ M1a, M1b, M1c · [Zonas, mapas y editor](pasos/5-mapas-editor.md) | `#M1`… |
 
 | 6 | [Sprites como datos y apariencias por capas](pasos/6-sprites.md) | `#S1`… |
 
@@ -42,7 +42,7 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 
 ## Estado al cerrar la sesión (2026-11-06)
 **Para retomar:** leer esta sección y el plan de M1c en [`pasos/5-mapas-editor.md`](pasos/5-mapas-editor.md). No hay
-nada a medio hacer: todo está en commits en `dev` (0.9.33). El teléfono tiene una beta con el actualizador (canal
+nada a medio hacer: todo está en commits en `dev` (0.9.34). El teléfono tiene una beta con el actualizador (canal
 beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del proyecto) en `NOTAS.md`.
 
 - Hecho y sin probar (✏️): D1-D4 (releases, red por internet con el teclado del sistema, compatibilidad, actualizador
@@ -56,8 +56,10 @@ beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del 
 - Configuración por pestañas y BUSCAR AHORA desde 0.9.29 (falta que el dueño la vea, sobre todo en vertical).
 - M1b (`world.json`, 0.9.31) y el **generador propio** (`pdri:dungeon`, 0.9.32) hechos, sin probar. Configuración
   por pestañas, sin F11 ni controles en Android e idioma como lista (0.9.33).
-- **Siguiente: M1c** (salidas por el borde y portales): plan en [`pasos/5-mapas-editor.md`](pasos/5-mapas-editor.md).
-  Después: borrar el generador de PD cuando el dueño valide el propio, y M2 (mapas prefabricados).
+- M1c (salidas por el borde y portales, 0.9.34) hecho, sin probar: cómo probarlo en
+  [`pasos/5-mapas-editor.md`](pasos/5-mapas-editor.md) (hace falta un mod con dos zonas: ejemplo en `docs/data.md`).
+- **Siguiente: M1d** (nombre de zona y brújula). Después: borrar el generador de PD cuando el dueño valide el propio,
+  y M2 (mapas prefabricados).
 - Sprites: plan en [`pasos/6-sprites.md`](pasos/6-sprites.md) y la lista del arte para 5e en
   [`sprites-5e.md`](sprites-5e.md).
 - Repos aparte (el dueño los crea en GitHub): editor `../pdri-editor/` y mods `../pdri-mods/` (ahí está el mod de

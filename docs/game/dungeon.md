@@ -56,3 +56,6 @@ al cargar una partida para jugar solo: los héroes de otra sesión LAN no siguen
 ## Zonas (M1a, 0.9.26)
 `floors` va por `Zone` (no por profundidad) y cada héroe tiene su `zone`; `Dungeon::zone` es la zona en contexto.
 `descend` / `ascend` van a (x, y, z ± 1). `net_fx` / `net_dice` llevan la zona de cada efecto.
+M1c: `leave(i, celda)` usa el borde o portal de esa celda (la zona destino sale de `world.json`: la clave del borde o
+el `to` del portal con ese id). `go_to(i, zona, via)`: con `via` aparece en `Level::arrival` (o en la entrada si la
+zona no tiene el par); sin `via`, en la escalera como siempre.

@@ -51,6 +51,24 @@ impl Zone {
     }
 }
 
+/// Una salida que no es escalera (M1c): la abertura en un borde (`"north"`, `"south"`, `"east"`, `"west"`) o un
+/// portal con su `id`. Adónde lleva lo dice `world.json`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Exit {
+    Edge(String),
+    Portal(String),
+}
+
+/// El borde de enfrente: se sale por el este y se llega por el oeste.
+pub fn opposite(dir: &str) -> &'static str {
+    match dir {
+        "north" => "south",
+        "south" => "north",
+        "east" => "west",
+        _ => "east",
+    }
+}
+
 /// Seed del rng de una zona: estable entre procesos y peers. En (0, 0, z) es la de siempre (seed * 1000 + z).
 pub fn level_seed(seed: i64, zone: Zone) -> i64 {
     (seed * 1000 + zone.z as i64).wrapping_add((zone.x as i64) << 20).wrapping_add((zone.y as i64) << 40)
@@ -91,6 +109,8 @@ pub struct Level {
     pub mapped: Vec<bool>,
     /// Montones de ítems por celda (cofres, tumbas, restos o un montón suelto).
     pub heaps: BTreeMap<i32, Heap>,
+    /// Salidas por el borde y portales (M1c): (celda, salida). Las arma el generador desde `world.json`.
+    pub exits: Vec<(i32, Exit)>,
 }
 
 pub(crate) const SECRET_TRAPS: [u8; 8] = [
@@ -112,21 +132,23 @@ impl Level {
         level
     }
 
-    /// La zona según su `map` de `world.json`: `{"gen": "pdri:dungeon", "size": [ancho, alto]}` (el generador propio,
+    /// La zona según su entrada `def` de `world.json` (su `map`, y las salidas por el borde y portales): `{"gen": "pdri:dungeon", "size": [ancho, alto]}` (el generador propio,
     /// `dungeon_gen`; 32x32 si no dice) o `{"gen": "pdri:sewers"}` (las Alcantarillas de PD, hasta que se validen las
     /// propias).
-    pub fn generate(seed: i64, zone: Zone, map: &serde_json::Value) -> Self {
+    pub fn generate(seed: i64, zone: Zone, def: &serde_json::Value) -> Self {
+        let map = &def["map"];
         if map["gen"] == "pdri:sewers" {
-            return Self::new(seed, zone);
+            return Self::new(seed, zone); // ponytail: sin bordes ni portales; se borra al validar el propio
         }
         let dim = |k: usize| map["size"][k].as_i64().map_or(SEWER_SIZE, |v| (v as i32).clamp(16, geom::MAX_SIZE));
         let (w, h) = (dim(0), dim(1));
         let mut level = Self::blank(seed, zone, w, h);
         let mut tries = 0;
-        while !crate::dungeon_gen::build(&mut level) {
+        while !crate::dungeon_gen::build(&mut level, def) {
             tries += 1;
             assert!(tries < 200, "no se pudo generar la zona {}", zone.key());
             level.map = vec![t::WALL; (w * h) as usize];
+            level.exits.clear();
         }
         level.build_flag_maps();
         level.clean_walls();
@@ -167,7 +189,22 @@ impl Level {
             visited: vec![false; n],
             mapped: vec![false; n],
             heaps: BTreeMap::new(),
+            exits: Vec::new(),
         }
+    }
+
+    /// La salida (borde o portal) de la celda, si hay.
+    pub fn exit_at(&self, c: i32) -> Option<&Exit> {
+        self.exits.iter().find(|e| e.0 == c).map(|e| &e.1)
+    }
+
+    /// Dónde aparece quien llega por `via`: la abertura del borde de enfrente o el portal con el mismo id.
+    pub fn arrival(&self, via: &Exit) -> Option<i32> {
+        let want = match via {
+            Exit::Edge(d) => Exit::Edge(opposite(d).to_string()),
+            Exit::Portal(_) => via.clone(),
+        };
+        self.exits.iter().find(|e| e.1 == want).map(|e| e.0)
     }
 
     /// Cantidad de celdas.

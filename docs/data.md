@@ -45,5 +45,13 @@ El mundo: zona `"x,y,z"` (z = profundidad, también el nivel de peligro) -> entr
   prefabricados llegan con M2.
 - `up` / `down`: la zona a la que llevan sus escaleras (`"x,y,z"`). Sin `down`, bajar dice "Fin de la demo"; sin `up`,
   no se puede subir.
+- `north` / `south` / `east` / `west` (M1c, 0.9.34): salida por ese borde a la zona `"x,y,z"`. El generador abre un
+  pasillo hasta el borde; pisar la última casilla pasa a la otra zona, a la abertura del borde de enfrente (o a su
+  entrada si no tiene). Lo natural es que la otra zona tenga la vuelta (`east` <-> `west`).
+- `portals` (M1c): `[{"id": "cripta", "to": "x,y,z"}]`. Cada uno es una casilla especial en una sala; se usa con
+  click / toque y se aparece en el portal con el mismo `id` de la otra zona (o en su entrada).
+Ejemplo (dos zonas lado a lado con un portal): `"0,0,1": {..., "east": "1,0,1", "portals": [{"id": "p", "to":
+"1,0,1"}]}` y `"1,0,1": {"name": "Al este", "map": {"gen": "pdri:dungeon"}, "west": "0,0,1", "portals": [{"id": "p",
+"to": "0,0,1"}]}`.
 Un mod suma zonas o pisa las del base (como cualquier registro): p. ej. un `"0,0,5"` y un `down` en `"0,0,4"` que lleve
 ahí. Sólo existe lo que está en el JSON (decisión del dueño: el mundo es sólo datos).

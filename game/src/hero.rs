@@ -7,7 +7,7 @@
 //! desventaja más allá del alcance normal o con un enemigo al lado, y el estado que pone un dardo al acertar.
 use serde_json::{Map, Value};
 
-use crate::level::Zone;
+use crate::level::{Exit, Zone};
 use crate::actor::ActorId;
 use crate::char::Char;
 use crate::dice;
@@ -81,6 +81,8 @@ pub enum Action {
     Search,
     Descend(i32),
     Ascend(i32),
+    /// Usar la salida por el borde o el portal de esa celda (M1c).
+    Leave(i32),
     /// Recoger el montón de esa celda (parado encima).
     PickUp(i32),
     /// Abrir el cofre / tumba / restos de esa celda (desde al lado o encima).
@@ -442,7 +444,7 @@ impl Hero {
 
 impl Dungeon {
     /// Hero.handle: decide la acción según qué hay en la celda. stairs = true sólo con click / toque: cambiar de piso
-    /// hay que pedirlo; pisar la escalera no basta.
+    /// (escalera o portal) hay que pedirlo; pisar la escalera no basta. Una salida del borde se usa con sólo pisarla.
     pub fn handle(&mut self, i: usize, cell: i32, stairs: bool) {
         if !self.floors.get(&self.heroes[i].zone).is_some_and(|f| f.level.inside(cell)) {
             return;
@@ -460,6 +462,7 @@ impl Dungeon {
             _ if seen && level.heaps.contains_key(&cell) => {
                 if level.heaps[&cell].kind == HeapKind::Heap { Action::PickUp(cell) } else { Action::Open(cell) }
             }
+            _ if level.exit_at(cell).is_some_and(|e| stairs || matches!(e, Exit::Edge(_))) => Action::Leave(cell),
             _ if stairs && cell == level.exit => Action::Descend(cell),
             _ if stairs && cell == level.entrance => Action::Ascend(cell),
             _ => Action::Move(cell),
@@ -592,15 +595,16 @@ impl Dungeon {
                 self.heroes[i].action = None;
                 self.open_heap(i, c);
             }
-            Action::Descend(c) | Action::Ascend(c) | Action::PickUp(c) if pos == c => {
+            Action::Descend(c) | Action::Ascend(c) | Action::Leave(c) | Action::PickUp(c) if pos == c => {
                 self.heroes[i].action = None;
                 match action {
                     Action::Descend(_) => self.descend(i),
                     Action::Ascend(_) => self.ascend(i),
+                    Action::Leave(_) => self.leave(i, c),
                     _ => self.pick_up(i),
                 }
             }
-            Action::Move(c) | Action::Descend(c) | Action::Ascend(c) | Action::PickUp(c) | Action::Open(c) => {
+            Action::Move(c) | Action::Descend(c) | Action::Ascend(c) | Action::Leave(c) | Action::PickUp(c) | Action::Open(c) => {
                 if !self.hero_get_closer(i, c) {
                     self.heroes[i].action = None;
                 }

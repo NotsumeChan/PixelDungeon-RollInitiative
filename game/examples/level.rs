@@ -7,7 +7,7 @@ fn main() {
     let seed: i64 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
     let depth: i32 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(1);
     let generator = args.get(3).map_or("pdri:dungeon", String::as_str);
-    let l = Level::generate(seed, game::level::Zone::depth(depth), &serde_json::json!({"gen": generator}));
+    let l = Level::generate(seed, game::level::Zone::depth(depth), &serde_json::json!({"map": {"gen": generator}}));
     println!(
         "seed={seed} depth={depth} feeling={} salas={} puertas secretas={}",
         l.feeling.name(),

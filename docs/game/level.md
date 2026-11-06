@@ -32,3 +32,9 @@ de lo que depende del piso (mobs, ítems, trampas, NPC: usan `zone.z`). `Zone::d
 Alcantarillas; `Zone::NONE` = ninguna (héroe que todavía no entró); `key` / `parse` = "x,y,z" (guardados).
 `level_seed(seed, zone)`: en (0, 0, z) es la de siempre (seed * 1000 + z), así los pisos salen iguales. Cada nivel
 tiene `width` / `height`; el generador de las Alcantarillas genera `SEWER_SIZE` = 32.
+
+## Bordes y portales (M1c, 0.9.34)
+`generate(seed, zone, def)` recibe la entrada entera de la zona en `world.json` (`def["map"]` y sus salidas).
+`exits: Vec<(celda, Exit)>` con `Exit::Edge("north" | "south" | "east" | "west")` o `Exit::Portal(id)`; los arma el
+generador propio (las Alcantarillas de PD no tienen). `exit_at(c)`: la salida de una celda. `arrival(via)`: dónde
+aparece quien llega por `via` (el borde de enfrente, `opposite`, o el portal con el mismo id).
