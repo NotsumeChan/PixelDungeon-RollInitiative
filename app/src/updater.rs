@@ -12,6 +12,8 @@ use std::{path::Path, sync::mpsc::Receiver};
 pub enum Msg {
     /// Hay una versión más nueva (la última Release estable).
     Found(String),
+    /// No hay nada más nuevo.
+    UpToDate,
     /// Bajada y lista: el ejecutable nuevo (escritorio) o el APK (Android).
     Ready(PathBuf),
     Failed(String),
@@ -121,15 +123,16 @@ mod imp {
         Ok(list.iter().filter_map(pick).map(|(v, _)| v).reduce(|a, b| if crate::net::newer(&b, &a) { b } else { a }))
     }
 
-    /// Al abrir: si hay una versión más nueva que esta build, `Found`. Sin red o sin Releases, no contesta nada.
+    /// ¿Hay una versión más nueva que esta build? `Found`, `UpToDate` o `Failed` (sin red...). Al abrir el juego la
+    /// app sólo muestra `Found`; buscando a mano (Configuración), todo.
     pub fn check() -> Option<Receiver<Msg>> {
         let (tx, rx) = channel();
         std::thread::spawn(move || {
-            if let Ok(Some(v)) = newest()
-                && crate::net::newer(&v, &current())
-            {
-                let _ = tx.send(Msg::Found(v));
-            }
+            let _ = tx.send(match newest() {
+                Ok(Some(v)) if crate::net::newer(&v, &current()) => Msg::Found(v),
+                Ok(_) => Msg::UpToDate,
+                Err(e) => Msg::Failed(e),
+            });
         });
         Some(rx)
     }

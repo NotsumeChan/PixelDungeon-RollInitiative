@@ -13,6 +13,8 @@ permiso de instalar APKs. Sin la feature, `check` e `install` devuelven `None` y
   `MainActivity.installApk` (PackageInstaller; Android pide confirmar y exige la misma clave).
 - **Al unirse (D3):** si el host tiene un protocolo distinto y una versión más nueva, Unirse muestra ACTUALIZAR, que baja
   **la versión del host**, no la última.
+- **Buscar a mano** (Configuración -> Actualizaciones -> BUSCAR AHORA): `check` contesta `Found`, `UpToDate` o
+  `Failed`; al abrir el juego sólo se muestra `Found` (`upd_manual` en la app).
 - **Repo:** `PDRI_REPO` al compilar (la CI pone el suyo: un fork se actualiza de sus Releases); si no, el del juego.
 - **Canal beta (testers):** compilado con `PDRI_CHANNEL=beta`, también ve las pre-releases (`releases?per_page=20`, la
   más nueva). La CI publica una en cada push a `dev` (`v<versión>-beta-<letra>`: a, b, ... z, aa; la letra vuelve a `a`

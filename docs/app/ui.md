@@ -115,3 +115,8 @@ clases de `data/classes.json` (también las de los mods) y todas las skins de `d
 Tienda (`draw_shop`): si el héroe local tiene una tienda abierta (`Dungeon::shop`), tapa el resto: lo que vende el NPC
 y tu mochila en ranuras de 24, el ítem elegido (`Ui::shop_sel`) con su precio y COMPRAR / VENDER, y CERRAR (o Esc /
 Atrás = `Action::Bye`).
+
+Configuración por pestañas (0.9.29, `draw_settings`): **Gráficos** (pantalla completa, resolución, FPS, escala),
+**Controles** (su ventana, `draw_controls`, con las mismas pestañas), **Actualizaciones** (sólo con `updater`: buscar
+al abrir Sí / No, BUSCAR AHORA, el resultado y ACTUALIZAR si hay una nueva) y **Otros** (idioma). `Ui::settings_tab`;
+en vertical, si los nombres no entran, las pestañas van de a dos.

@@ -219,6 +219,10 @@ pub enum UiAction {
     Update(String),
     UpdateLater,
     SetCheckUpdates(bool),
+    /// Configuración: pestaña 0 Gráficos, 1 Controles (su ventana), 2 Actualizaciones, 3 Otros.
+    SettingsTab(u8),
+    /// Actualizaciones: buscar ahora (a mano).
+    CheckUpdates,
     /// Rasgo de clase: Segundo Aliento o el libro de conjuros (F o el botón de la barra).
     Trait,
     /// Chat de la partida LAN: abrir (`Cr::New`), escribir, borrar, mandar (`Cr::Done`), cancelar (`Cr::Unfocus`).
@@ -319,6 +323,8 @@ pub struct Ui {
     pub offer: Option<String>,
     pub update_msg: String,
     pub updating: bool,
+    /// La pestaña abierta de Configuración (ver `UiAction::SettingsTab`).
+    pub settings_tab: u8,
     /// Tienda: el ítem elegido (true = del NPC, índice).
     pub shop_sel: Option<(bool, usize)>,
     hot: Vec<Hot>,
@@ -329,7 +335,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, offer: None, update_msg: String::new(), updating: false, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, offer: None, update_msg: String::new(), updating: false, settings_tab: 0, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// Escribe en el mensaje del chat (si se está escribiendo uno).
@@ -1199,17 +1205,48 @@ impl Ui {
     /// WndSettings: FPS, pantalla completa y controles (toca uno y presiona la tecla nueva). Cada cambio se aplica y
     /// se guarda al momento en Local.config. Volver = al menú.
     #[allow(clippy::too_many_arguments)]
+    /// Pestañas de Configuración: Gráficos, Controles (su ventana, `draw_controls`), Actualizaciones (sólo con
+    /// `updater`) y Otros. Si no entran en una fila (vertical), van de a dos.
+    fn settings_tabs(font: &Font, sw: f32) -> (Vec<(u8, &'static str)>, usize) {
+        let mut tabs = vec![(0, tr!("Gráficos", "Graphics")), (1, tr!("Controles", "Controls"))];
+        if crate::updater::ENABLED {
+            tabs.push((2, tr!("Actualizar", "Updates")));
+        }
+        tabs.push((3, tr!("Otros", "Other")));
+        let n = tabs.len() as f32;
+        let bw = ((sw - MENU_GAP * (n - 1.0)) / n).floor();
+        let cols = if tabs.iter().all(|t| font.width(t.1) + 6.0 <= bw) { tabs.len() } else { 2 };
+        (tabs, cols)
+    }
+
+    fn tabs_height(font: &Font, sw: f32) -> f32 {
+        let (tabs, cols) = Self::settings_tabs(font, sw);
+        tabs.len().div_ceil(cols) as f32 * (MENU_BTN_H + MENU_GAP) + MENU_GAP
+    }
+
+    fn draw_tabs(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, c: [f32; 4], current: u8) {
+        let (tabs, cols) = Self::settings_tabs(font, c[2]);
+        let bw = ((c[2] - MENU_GAP * (cols as f32 - 1.0)) / cols as f32).floor();
+        for (k, (id, label)) in tabs.into_iter().enumerate() {
+            let r = [c[0] + (k % cols) as f32 * (bw + MENU_GAP), c[1] + (k / cols) as f32 * (MENU_BTN_H + MENU_GAP), bw, MENU_BTN_H];
+            self.draw_button(atlas, font, out, r, label, Some(UiAction::SettingsTab(id)));
+            if id == current {
+                outline(out, atlas, r, YELLOW);
+            }
+        }
+    }
+
+    /// Volver desde Configuración: al título o al menú de la partida.
+    fn settings_back(&self) -> UiAction {
+        if self.in_title { UiAction::Close } else { UiAction::Open(Window::Menu) }
+    }
+
     fn draw_settings(&mut self, atlas: &Atlas, font: &Font, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32) {
-        // WndSettings: idioma, pantalla completa, FPS y escala de la interfaz; los controles en su ventana
+        // WndSettings por pestañas: Gráficos (pantalla, resolución, FPS, escala), Actualizaciones, Otros (idioma)
+        let tab = if self.settings_tab == 2 && !crate::updater::ENABLED { 0 } else { self.settings_tab };
         let sw = SETTINGS_W.min(w - 16.0);
         let row_h = LINE_H + MENU_BTN_H + MENU_GAP * 2.0;
         let desktop = !cfg!(target_os = "android");
-        let ch = if desktop { 5.0 } else { 4.0 } * row_h + MENU_BTN_H;
-        let c = [((w - sw) / 2.0).floor(), ((h - ch) / 2.0).floor(), sw, ch];
-        let back = if self.in_title { UiAction::Close } else { UiAction::Open(Window::Menu) };
-        self.hot([0.0, 0.0, w, h], back.clone(), None); // click afuera = volver
-        self.hot(c, UiAction::Nothing, None);
-        Self::draw_window(atlas, out, c);
         // idioma del contenido (nombres y descripciones de los JSON); los textos del código siguen en español
         let lang: Vec<(String, bool, Option<UiAction>)> = game::registry::LANGS
             .iter()
@@ -1235,20 +1272,35 @@ impl Ui {
             .iter()
             .map(|&(k, rw, rh)| (format!("{rw}x{rh}"), cfg.resolution == k, Some(UiAction::SetResolution(k))))
             .collect();
-        let mut rows = vec![(tr!("Idioma", "Language"), lang), (tr!("Pantalla completa (F11)", "Fullscreen (F11)"), full)];
-        if desktop {
-            rows.push((tr!("Resolucion (ventana)", "Resolution (windowed)"), res));
+        let check: Vec<(String, bool, Option<UiAction>)> = vec![
+            (tr!("Si", "Yes").to_string(), cfg.check_updates(), Some(UiAction::SetCheckUpdates(true))),
+            ("No".to_string(), !cfg.check_updates(), Some(UiAction::SetCheckUpdates(false))),
+        ];
+        let mut rows = Vec::new();
+        match tab {
+            0 => {
+                rows.push((tr!("Pantalla completa (F11)", "Fullscreen (F11)"), full));
+                if desktop {
+                    rows.push((tr!("Resolucion (ventana)", "Resolution (windowed)"), res));
+                }
+                rows.extend([("FPS", fps), (tr!("Escala de la interfaz (en partida)", "UI scale (in game)"), scales)]);
+            }
+            2 => rows.push((tr!("Buscar al abrir el juego", "Check when the game starts"), check)),
+            _ => rows.push((tr!("Idioma", "Language"), lang)),
         }
-        rows.extend([("FPS", fps), (tr!("Escala de la interfaz (en partida)", "UI scale (in game)"), scales)]);
-        let mut y = c[1];
+        let offer = self.offer.clone().filter(|_| !self.updating);
+        let extra = if tab == 2 { MENU_BTN_H + MENU_GAP * 2.0 + LINE_H * 2.0 + if offer.is_some() { MENU_BTN_H + MENU_GAP * 2.0 } else { 0.0 } } else { 0.0 };
+        let tabs_h = Self::tabs_height(font, sw);
+        let ch = tabs_h + rows.len() as f32 * row_h + extra + MENU_BTN_H;
+        let c = [((w - sw) / 2.0).floor(), ((h - ch) / 2.0).floor(), sw, ch];
+        let back = self.settings_back();
+        self.hot([0.0, 0.0, w, h], back.clone(), None); // click afuera = volver
+        self.hot(c, UiAction::Nothing, None);
+        Self::draw_window(atlas, out, c);
+        self.draw_tabs(atlas, font, out, c, tab);
+        let mut y = c[1] + tabs_h;
         for (label, options) in rows {
             font.text(out, label, c[0], y, YELLOW);
-            if crate::updater::ENABLED && label == tr!("Idioma", "Language") {
-                // buscar actualizaciones al abrir (sólo builds con `updater`): un botón chico en la línea del título
-                let t = if cfg.check_updates() { tr!("Actualizaciones: Si", "Updates: Yes") } else { tr!("Actualizaciones: No", "Updates: No") };
-                let tw = font.width(t) + 8.0;
-                self.draw_button(atlas, font, out, [c[0] + sw - tw, y - 1.0, tw, LINE_H], t, Some(UiAction::SetCheckUpdates(!cfg.check_updates())));
-            }
             if label == "FPS" {
                 // ver el contador en la partida: un botón chico en la línea del título (no suma una fila)
                 let t = if cfg.show_fps { tr!("Mostrar: Si", "Show: Yes") } else { tr!("Mostrar: No", "Show: No") };
@@ -1267,22 +1319,44 @@ impl Ui {
             }
             y += MENU_BTN_H + MENU_GAP * 2.0;
         }
-        let bw = ((sw - MENU_GAP) / 2.0).floor();
-        self.draw_button(atlas, font, out, [c[0], y, bw, MENU_BTN_H], tr!("Controles", "Controls"), Some(UiAction::Open(Window::Controls)));
-        self.draw_button(atlas, font, out, [c[0] + bw + MENU_GAP, y, bw, MENU_BTN_H], tr!("Volver", "Back"), Some(back));
+        if tab == 2 {
+            // buscar a mano, el resultado y, si hay una versión nueva, ACTUALIZAR
+            let check_now = (!self.updating).then_some(UiAction::CheckUpdates);
+            self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], tr!("BUSCAR AHORA", "CHECK NOW"), check_now);
+            y += MENU_BTN_H + MENU_GAP * 2.0;
+            let dots = &"..."[..1 + (self.t * 3.0) as usize % 3];
+            let text = match (&self.offer, self.update_msg.is_empty()) {
+                (_, false) if self.updating => format!("{}{dots}", self.update_msg),
+                (_, false) => self.update_msg.clone(),
+                (Some(v), true) => trf!("Versión {} disponible.", "Version {} available.", v),
+                (None, true) => trf!("Tienes la versión {}.", "You have version {}.", crate::updater::version_label()),
+            };
+            for (k, l) in wrap(font, &text, sw).iter().take(2).enumerate() {
+                font.text(out, l, c[0], y + k as f32 * LINE_H, GREY);
+            }
+            y += LINE_H * 2.0;
+            if let Some(v) = offer {
+                self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], tr!("ACTUALIZAR", "UPDATE"), Some(UiAction::Update(v)));
+                y += MENU_BTN_H + MENU_GAP * 2.0;
+            }
+        }
+        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], tr!("Volver", "Back"), Some(back));
     }
 
     /// Controles: toca una acción y presiona la tecla nueva (Esc cancela). Se guarda al momento.
     fn draw_controls(&mut self, atlas: &Atlas, font: &Font, cfg: &Config, out: &mut Vec<Sprite>, w: f32, h: f32) {
         let sw = SETTINGS_W.min(w - 16.0);
         let rows = Bind::ALL.len().div_ceil(3);
-        let ch = LINE_H + rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP + MENU_BTN_H;
+        let tabs_h = Self::tabs_height(font, sw);
+        let ch = tabs_h + LINE_H + rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP + MENU_BTN_H;
         let c = [((w - sw) / 2.0).floor(), ((h - ch) / 2.0).floor(), sw, ch];
-        self.hot([0.0, 0.0, w, h], UiAction::Open(Window::Settings), None);
+        let back = self.settings_back();
+        self.hot([0.0, 0.0, w, h], back.clone(), None);
         self.hot(c, UiAction::Nothing, None);
         Self::draw_window(atlas, out, c);
-        font.text(out, tr!("Controles (toca uno y presiona la tecla)", "Controls (tap one and press the key)"), c[0], c[1], YELLOW);
-        let y = c[1] + LINE_H;
+        self.draw_tabs(atlas, font, out, c, 1);
+        font.text(out, tr!("Controles (toca uno y presiona la tecla)", "Controls (tap one and press the key)"), c[0], c[1] + tabs_h, YELLOW);
+        let y = c[1] + tabs_h + LINE_H;
         let bw = ((sw - MENU_GAP * 2.0) / 3.0).floor();
         for (k, b) in Bind::ALL.into_iter().enumerate() {
             let rect = [c[0] + (k % 3) as f32 * (bw + MENU_GAP), y + (k / 3) as f32 * (CTRL_H + MENU_GAP), bw, CTRL_H];
@@ -1294,7 +1368,7 @@ impl Ui {
             }
         }
         let y = y + rows as f32 * (CTRL_H + MENU_GAP) + MENU_GAP;
-        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], tr!("Volver", "Back"), Some(UiAction::Open(Window::Settings)));
+        self.draw_button(atlas, font, out, [c[0], y, sw, MENU_BTN_H], tr!("Volver", "Back"), Some(back));
     }
 
     /// Lista de personajes (rosterScreen.py): elegir uno para jugar (su partida guardada si sigue vivo), crear uno

@@ -239,6 +239,8 @@ struct App {
     offer: Option<String>,
     upd_msg: String,
     upd_busy: bool,
+    /// La respuesta que se espera la pidió el jugador (buscar a mano, actualizar): se muestra todo, no sólo `Found`.
+    upd_manual: bool,
     /// Conectando en otro hilo (DNS + connect): el resultado y el personaje con el que se entra.
     connecting: Option<(std::sync::mpsc::Receiver<std::io::Result<net::ClientGame>>, serde_json::Value)>,
 }
@@ -388,6 +390,7 @@ impl App {
             offer: None,
             upd_msg: String::new(),
             upd_busy: false,
+            upd_manual: false,
         }
     }
 
@@ -681,11 +684,28 @@ impl App {
             UiAction::SetFps(f) => self.config.set_fps(f),
             UiAction::SetShowFps(on) => self.config.set_show_fps(on),
             UiAction::SetCheckUpdates(on) => self.config.set_check_updates(on),
+            UiAction::SettingsTab(t) => {
+                if t == 1 {
+                    self.ui.window = Some(UiWindow::Controls);
+                } else {
+                    self.ui.settings_tab = t;
+                    self.ui.window = Some(UiWindow::Settings);
+                }
+            }
+            UiAction::CheckUpdates => {
+                if !self.upd_busy {
+                    self.upd_rx = updater::check();
+                    self.upd_busy = self.upd_rx.is_some();
+                    self.upd_manual = true;
+                    self.upd_msg = tr!("Buscando actualizaciones", "Checking for updates").into();
+                }
+            }
             UiAction::UpdateLater => self.offer = None,
             UiAction::Update(v) => {
                 if !self.upd_busy {
                     self.upd_rx = updater::install(&v, &data_dir());
                     self.upd_busy = self.upd_rx.is_some();
+                    self.upd_manual = true;
                     self.upd_msg = trf!("Descargando la versión {}", "Downloading version {}", v);
                     self.lan_status = self.upd_msg.clone();
                 }
@@ -955,9 +975,15 @@ impl App {
             Some(Ok(m)) => {
                 self.upd_rx = None;
                 self.upd_busy = false;
+                let manual = std::mem::take(&mut self.upd_manual);
                 match m {
-                    updater::Msg::Found(v) => self.offer = Some(v),
-                    updater::Msg::Failed(e) => self.upd_msg = trf!("No se pudo actualizar: {}.", "Couldn't update: {}.", e),
+                    updater::Msg::Found(v) => {
+                        self.offer = Some(v);
+                        self.upd_msg.clear();
+                    }
+                    updater::Msg::UpToDate if manual => self.upd_msg = tr!("Ya tienes la última versión.", "You already have the latest version.").into(),
+                    updater::Msg::Failed(e) if manual => self.upd_msg = trf!("No se pudo actualizar: {}.", "Couldn't update: {}.", e),
+                    updater::Msg::UpToDate | updater::Msg::Failed(_) => {} // al abrir: sin red o al día, nada
                     updater::Msg::Ready(path) => self.apply_update(&path),
                 }
                 if !self.upd_msg.is_empty() && matches!(self.ui.window, Some(UiWindow::Join)) {
