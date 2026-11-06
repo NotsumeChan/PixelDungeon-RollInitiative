@@ -62,4 +62,4 @@ Al unirse no se compara la versión exacta sino `PROTOCOL` (y el hash del conten
 juegan juntas si el protocolo es el mismo. El anuncio de la LAN y el `hello` llevan `protocol` y `version`. Si no
 coincide, el host contesta `refused` con `need: "update"` y su `version`; el cliente (`host_version`) avisa quién
 tiene que actualizar (`newer`): él si el host es más nuevo, el host si no (en Android no se baja de versión). El
-botón Actualizar llega con el actualizador (D4). Cuándo subir `PROTOCOL`: `roadmap/versiones.md`. 3 (0.9.34): acción `["leave", celda]` (bordes y portales, M1c).
+botón Actualizar llega con el actualizador (D4). Cuándo subir `PROTOCOL`: `roadmap/versiones.md`. 3 (0.9.34): acción `["leave", celda]` (bordes y portales, M1c). 4 (0.9.41): `combat_exp` del héroe en el estado.

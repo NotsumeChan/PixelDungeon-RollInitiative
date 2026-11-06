@@ -22,7 +22,7 @@ use serde_json::{json, Map, Value};
 /// Versión del protocolo: dos versiones del juego juegan juntas si coincide (y el hash del contenido). Sube cuando
 /// cambia algo que el cliente interpreta: los mensajes de este archivo, el formato de `save::dump` o lo que el
 /// cliente regenera con la seed (generación de pisos, rng). Regla en `roadmap/versiones.md`.
-pub const PROTOCOL: u32 = 3; // 2: zonas por coordenadas (M1a); 3: acción "leave" (bordes y portales, M1c)
+pub const PROTOCOL: u32 = 4; // 2: zonas por coordenadas (M1a); 3: acción "leave" (M1c); 4: combat_exp en el estado
 pub const UDP_PORT: u16 = 47810;
 pub const TCP_PORT: u16 = 47811;
 const MAGIC: &str = "pdri";

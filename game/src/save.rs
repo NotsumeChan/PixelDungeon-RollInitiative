@@ -99,7 +99,7 @@ fn char_v(c: &Char) -> Value {
 
 fn hero_v(h: &Hero) -> Value {
     json!({"name": h.ch.name, "class": h.class_key, "abilities": h.abilities, "lvl": h.lvl, "exp": h.exp,
-           "zone": h.zone.key(), "hunger": h.hunger, "gold": h.gold,
+           "combat_exp": h.combat_exp, "zone": h.zone.key(), "hunger": h.hunger, "gold": h.gold,
            "weapon": h.weapon.as_ref().map(item_v), "armor": h.armor.as_ref().map(item_v),
            "backpack": h.backpack.iter().map(item_v).collect::<Vec<_>>(), "quick": h.quickslots,
            "second_wind": h.second_wind, "slots": h.slots, "free_casts": h.free_casts,
@@ -289,6 +289,7 @@ pub fn load(data: &Value) -> Option<Dungeon> {
         h.ch.name = hd["name"].as_str()?.to_string();
         h.lvl = hd["lvl"].as_i64()? as i32;
         h.exp = hd["exp"].as_i64()? as i32;
+        h.combat_exp = hd["combat_exp"].as_i64().unwrap_or(0).max(0) as i32; // la XP del combate en curso (0.9.41)
         h.zone = Zone::parse(hd["zone"].as_str()?)?;
         h.hunger = hd["hunger"].as_f64()?;
         h.gold = hd["gold"].as_i64()? as i32;
