@@ -1,5 +1,5 @@
 # game/src/ballistica.rs
 
-`game/ballistica.py` (mechanics/Ballistica.java): Bresenham de `from` a `to`; se frena en la primera criatura
-(`stops`) o en lo que bloquea la vista, y contra una pared queda en la celda anterior. Devuelve `to` si el camino está
-libre. La usan los conjuros (`Dungeon::shot`) y las armas a distancia (R5d).
+Línea de tiro propia (0.9.28; antes, el port de Ballistica de PD): Bresenham de `from` a `to`. Se frena en la primera
+criatura (`stops`) o en lo que tapa la vista; contra una pared queda en la celda anterior. Si devuelve `to`, el camino
+está libre.

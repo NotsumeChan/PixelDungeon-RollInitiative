@@ -401,7 +401,7 @@ impl Gpu {
             }
             _ => return, // timeout u oculta: se salta el frame
         };
-        if (sprites.len() * size_of::<Sprite>()) as u64 > self.instances.size() {
+        if size_of_val(sprites) as u64 > self.instances.size() {
             self.instances = Self::instance_buffer(&self.device, sprites.len().next_power_of_two());
         }
         self.queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(sprites));

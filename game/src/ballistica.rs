@@ -1,24 +1,24 @@
-//! mechanics/Ballistica.java (`game/ballistica.py`): línea de tiro de proyectiles y conjuros.
+//! Línea de tiro propia (Bresenham): por dónde pasa un proyectil o un conjuro.
 use crate::level::Level;
 
-/// Ballistica.cast(from, to, magic=false, hitChars=true): la celda donde se detiene algo que va de `from` a `to`.
-/// Se frena en la primera criatura (`stops(celda)`) o en lo que bloquea la vista; contra una pared queda en la celda
-/// anterior. Si devuelve `to`, el camino está libre.
+/// La celda donde se detiene algo que va de `from` a `to`: en la primera criatura (`stops(celda)`) o en lo que tapa la
+/// vista; contra una pared queda en la celda anterior. Si devuelve `to`, el camino está libre.
 pub fn cast(level: &Level, from: i32, to: i32, stops: impl Fn(i32) -> bool) -> i32 {
-    let (x0, y0, x1, y1) = (from % level.width, from / level.width, to % level.width, to / level.width);
-    let (dx, dy) = (x1 - x0, y1 - y0);
-    let (sx, sy) = (if dx > 0 { 1 } else { -1 }, if dy > 0 { 1 } else { -1 });
-    let (dx, dy) = (dx.abs(), dy.abs());
-    let (step_a, step_b, da, db) = if dx > dy { (sx, sy * level.width, dx, dy) } else { (sy * level.width, sx, dy, dx) };
-    let (mut cell, mut err) = (from, da / 2);
-    while cell != to {
-        let prev = cell;
-        cell += step_a;
-        err += db;
-        if err >= da {
-            err -= da;
-            cell += step_b;
+    let w = level.width;
+    let (mut x, mut y, x1, y1) = (from % w, from / w, to % w, to / w);
+    let (dx, dy, sx, sy) = ((x1 - x).abs(), -(y1 - y).abs(), (x1 - x).signum(), (y1 - y).signum());
+    let (mut err, mut prev) = (dx + dy, from);
+    while (x, y) != (x1, y1) {
+        let e2 = 2 * err;
+        if e2 >= dy {
+            err += dy;
+            x += sx;
         }
+        if e2 <= dx {
+            err += dx;
+            y += sy;
+        }
+        let cell = x + y * w;
         let c = cell as usize;
         if !level.passable[c] && !level.avoid[c] {
             return prev;
@@ -26,6 +26,7 @@ pub fn cast(level: &Level, from: i32, to: i32, stops: impl Fn(i32) -> bool) -> i
         if level.los_blocking[c] || stops(cell) {
             return cell;
         }
+        prev = cell;
     }
     to
 }

@@ -1,47 +1,39 @@
-//! utils/PathFinder.java (`game/pathfinder.py`): BFS en 8 direcciones sobre el mapa plano.
+//! Caminos propios: BFS en 8 direcciones sobre el mapa plano. Se expande desde el destino hasta llegar a quien camina;
+//! el paso es su vecina más cerca del destino (en un empate, la primera en `dirs`: igual en todas las máquinas).
 use std::collections::VecDeque;
 
-fn dirs(w: i32) -> [i32; 8] {
-    [-1, 1, -w, w, -w - 1, -w + 1, w - 1, w + 1]
+/// Las 8 vecinas de `c` en un mapa de ancho `w` y `n` celdas, sin salirse ni dar la vuelta por los bordes.
+fn neighbours(c: i32, w: i32, n: i32) -> impl Iterator<Item = i32> {
+    [-w - 1, -w, -w + 1, -1, 1, w - 1, w, w + 1]
+        .into_iter()
+        .map(move |d| c + d)
+        .filter(move |&m| (0..n).contains(&m) && ((m % w) - (c % w)).abs() <= 1)
 }
 
-/// Distancias desde `to` hasta encontrar `from` (que no necesita ser transitable). None si no hay camino.
-/// Igual que el prototipo, `from` puede anotarse más de una vez antes de salir de la cola (decide el paso).
-fn distance_map(from: i32, to: i32, passable: &[bool], w: i32) -> Option<Vec<i32>> {
-    let len = passable.len() as i32;
-    if from == to {
-        return None;
+/// Siguiente celda desde `from` hacia `to` por lo transitable (`to` no necesita serlo: un mob, un cofre), o -1 si no
+/// hay camino. `w` = ancho del mapa (`passable` tiene una celda por casilla).
+pub fn get_step(from: i32, to: i32, passable: &[bool], w: i32) -> i32 {
+    let n = passable.len() as i32;
+    if from == to || !(0..n).contains(&from) || !(0..n).contains(&to) {
+        return -1;
     }
-    let mut dist = vec![i32::MAX; len as usize];
+    let mut dist = vec![u32::MAX; n as usize];
     dist[to as usize] = 0;
     let mut queue = VecDeque::from([to]);
-    while let Some(step) = queue.pop_front() {
-        if step == from {
-            return Some(dist);
-        }
-        let nd = dist[step as usize] + 1;
-        for d in dirs(w) {
-            let n = step + d;
-            if n == from || ((0..len).contains(&n) && passable[n as usize] && dist[n as usize] > nd) {
-                dist[n as usize] = nd;
-                queue.push_back(n);
+    'bfs: while let Some(c) = queue.pop_front() {
+        for m in neighbours(c, w, n) {
+            if dist[m as usize] != u32::MAX || !(m == from || passable[m as usize]) {
+                continue;
             }
+            dist[m as usize] = dist[c as usize] + 1;
+            if m == from {
+                break 'bfs;
+            }
+            queue.push_back(m);
         }
     }
-    None
-}
-
-/// Siguiente celda desde `from` hacia `to`, o -1.
-/// `w` = ancho del mapa (`passable` tiene una celda por casilla).
-pub fn get_step(from: i32, to: i32, passable: &[bool], w: i32) -> i32 {
-    let len = passable.len() as i32;
-    let Some(dist) = distance_map(from, to, passable, w) else { return -1 };
-    let (mut best, mut min) = (from, dist[from as usize]);
-    for d in dirs(w) {
-        let n = from + d;
-        if (0..len).contains(&n) && dist[n as usize] < min {
-            (best, min) = (n, dist[n as usize]);
-        }
+    if dist[from as usize] == u32::MAX {
+        return -1;
     }
-    best
+    neighbours(from, w, n).filter(|&m| dist[m as usize] < dist[from as usize]).min_by_key(|&m| dist[m as usize]).unwrap_or(-1)
 }

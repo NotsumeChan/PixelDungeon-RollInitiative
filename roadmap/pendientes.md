@@ -52,7 +52,7 @@ Meta a largo plazo ([`decisiones.md`](decisiones.md#meta-un-juego-propio-2026-11
 | Mobs | Monstruos del SRD 5.2 (sólo los que están en el SRD) |
 | Ítems | Pociones, pergaminos y armas del SRD |
 | Generación | Generador propio para las zonas (M1), en vez de las Alcantarillas |
-| Código portado | FOV, pathfinder y turnos fuera de combate reescritos desde cero |
+| Código portado | ✅ FOV (symmetric shadowcasting), pathfinder y línea de tiro propios (0.9.28). Falta: turnos fuera de combate (planificador de PD) |
 | UI | Layout propio (con la conversación de estética) |
 | Arte | Tiles, personajes, ítems y UI hechos por personas, de a uno |
 | Fuente | ✅ **Silkscreen** (OFL) en vez de `font1x.png` de PD (0.9.27) |

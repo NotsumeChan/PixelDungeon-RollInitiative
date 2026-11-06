@@ -12,7 +12,7 @@ Leer esto primero. Un archivo por tema:
 | [`pasos/`](pasos/) | Próximos pasos, uno por archivo |
 
 ## Ahora
-Rama `dev`, **0.9.27** (`versionCode` 37). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
+Rama `dev`, **0.9.28** (`versionCode` 38). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
 primero.
 
 ## Próximos pasos
@@ -44,6 +44,8 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 - Teléfono: 0.9.26 beta (con actualizador en canal beta), compilada antes de las zonas: se actualiza desde la
   primera beta que publique la CI al pushear `dev`.
 - Fuente: Silkscreen desde 0.9.27 (falta que el dueño la vea: tamaños, que nada se corte).
+- Visión, pathfinder y línea de tiro propios desde 0.9.28 (falta que el dueño los pruebe: que los mobs persigan, la
+  vista en esquinas y pasillos, disparos y conjuros).
 - Siguiente: **M1b** (`world.json`: el mundo como datos; el base reproduce las 4 zonas de las Alcantarillas).
 - Repo del editor: `../pdri-editor/` (README, ROADMAP, LICENSE; el dueño crea el repo).
 
