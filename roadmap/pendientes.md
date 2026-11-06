@@ -54,7 +54,8 @@ rama `pd-core`.
 | Generación | Generador propio para las zonas (M1), en vez de las Alcantarillas |
 | Código portado | FOV, pathfinder y turnos fuera de combate reescritos desde cero |
 | UI | Layout propio (con la conversación de estética) |
-| Arte | Tiles, personajes, ítems, UI y fuente hechos por personas, de a uno |
+| Arte | Tiles, personajes, ítems y UI hechos por personas, de a uno |
+| Fuente | **Silkscreen** (SIL Open Font License, compatible con GPL) en vez de `font1x.png` de PD (decisión del dueño, 2026-11-06) |
 | Sonido | Propio desde el principio (todavía no hay audio) |
 | Cierre | Borrar `Assets/` del original, revisar que no quede nada derivado, nombre nuevo |
 
