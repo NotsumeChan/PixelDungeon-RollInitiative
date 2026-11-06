@@ -41,5 +41,4 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 - `git push -u origin dev`; al validar una fase, `merge: dev -> main`.
 - Respaldar `~/.pddnd-signing/`.
 - ufw: `sudo ufw allow 47810/udp` y `sudo ufw allow 47811/tcp`.
-- ¿`Local.config` versionado o al `.gitignore`?
 - Opcional: borrar `~/pddnd-android/` y `~/pddnd-backup-20261103-1116/`.
