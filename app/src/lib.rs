@@ -536,6 +536,7 @@ impl App {
                 self.ui.mod_delete = None;
                 self.ui.window = Some(w);
             }
+            UiAction::ScrollMods(d) => self.ui.mods_scroll = self.ui.mods_scroll.saturating_add_signed(d as isize),
             UiAction::DeleteMod(folder, sure) => {
                 if sure {
                     // sólo una carpeta directa de <datos>/mods (el nombre sale de read_dir; igual se revisa)
@@ -1556,7 +1557,9 @@ impl ApplicationHandler for App {
                     MouseScrollDelta::LineDelta(_, y) => y as f64,
                     MouseScrollDelta::PixelDelta(p) => p.y,
                 };
-                if y != 0.0 && self.title {
+                if y != 0.0 && self.title && matches!(self.ui.window, Some(UiWindow::Mods)) {
+                    self.ui_action(UiAction::ScrollMods(if y > 0.0 { -1 } else { 1 }));
+                } else if y != 0.0 && self.title {
                     // lista de personajes: la rueda la desplaza
                     let s = &mut self.ui.roster_scroll;
                     *s = if y > 0.0 { s.saturating_sub(1) } else { *s + 1 };

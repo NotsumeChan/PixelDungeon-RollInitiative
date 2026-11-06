@@ -175,6 +175,8 @@ pub enum UiAction {
     ToggleMod(String),
     /// Borrar un mod importado: (carpeta, confirmado). Sin confirmar, el botón pasa a preguntar.
     DeleteMod(String, bool),
+    /// Desplazar la lista de mods (+1 abajo, -1 arriba).
+    ScrollMods(i32),
     /// Una opción de un mod: (índice en `registry::mods()`, opción, valor nuevo).
     ModSetting(usize, String, serde_json::Value),
     Act(Action),
@@ -313,6 +315,8 @@ pub struct Ui {
     pub mods_msg: String,
     /// El mod que se está por borrar (BORRAR ya tocado una vez).
     pub mod_delete: Option<String>,
+    /// Primera fila visible de la lista de mods.
+    pub mods_scroll: usize,
     /// Lista de personajes: el elegido, el primero que se ve y si BORRAR espera confirmación.
     pub roster_sel: Option<usize>,
     pub roster_scroll: usize,
@@ -349,7 +353,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, resume: None, in_title: false, mods_msg: String::new(), mod_delete: None, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, offer: None, update_msg: String::new(), updating: false, settings_tab: 0, lang_scroll: 0, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, resume: None, in_title: false, mods_msg: String::new(), mod_delete: None, mods_scroll: 0, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, offer: None, update_msg: String::new(), updating: false, settings_tab: 0, lang_scroll: 0, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// Escribe en el mensaje del chat (si se está escribiendo uno).
@@ -1802,10 +1806,18 @@ impl Ui {
             let rw = w - 16.0; // todo el ancho (antes, hasta 240: en horizontal la lista quedaba angosta)
             let x = 8.0;
             let disabled = cfg.disabled_mods();
-            let mut pending = false;
-            for (k, m) in game::registry::mods().iter().enumerate() {
+            let mods = game::registry::mods();
+            let pending = mods.iter().any(|m| !disabled.contains(&m.folder) != m.enabled);
+            // las filas que entran sobre los avisos y los botones; si no entran todas, flechas (y la rueda)
+            let visible = (((h - y - BOTTOM_BTN_H - 40.0) / 20.0).floor() as usize).max(1);
+            self.mods_scroll = self.mods_scroll.min(mods.len().saturating_sub(visible));
+            if mods.len() > visible {
+                let (up, down) = (self.mods_scroll > 0, self.mods_scroll + visible < mods.len());
+                self.draw_button(atlas, font, out, [w - 44.0, 3.0, 18.0, 14.0], "^", up.then_some(UiAction::ScrollMods(-1)));
+                self.draw_button(atlas, font, out, [w - 24.0, 3.0, 18.0, 14.0], "v", down.then_some(UiAction::ScrollMods(1)));
+            }
+            for (k, m) in mods.iter().enumerate().skip(self.mods_scroll).take(visible) {
                 let on = !disabled.contains(&m.folder);
-                pending |= on != m.enabled;
                 match MOD_ICONS.get().and_then(|v| v.get(k).copied().flatten()) {
                     Some(s) => {
                         let [_, _, iw, ih] = atlas.rects[s];

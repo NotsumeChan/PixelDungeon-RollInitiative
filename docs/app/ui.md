@@ -133,3 +133,5 @@ Mods (0.9.45): la lista usa todo el ancho y el nombre y la línea de versión / 
 de los botones ON / OFF y AJUSTES (en vertical se tapaban).
 Tocar la fila de un mod abre su menú (`Window::ModConfig`: descripción, ajustes y, si es importado, BORRAR con
 confirmación: `UiAction::DeleteMod`, borra `<datos>/mods/<carpeta>`; se aplica al reiniciar). Ya no hay botón AJUSTES.
+La lista de mods se desplaza (`mods_scroll`, `UiAction::ScrollMods`) con la rueda o con las flechas ^ / v de arriba a
+la derecha, que aparecen cuando no entran todas las filas.

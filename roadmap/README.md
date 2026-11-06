@@ -84,7 +84,7 @@ beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del 
   terminarla: el resumen suma también lo ganado antes de guardar (0.9.41).
 - Lista de mods (0.9.45), sin probar: en horizontal ocupa todo el ancho; en vertical, nombres largos con ".." sin
   meterse debajo de ON / OFF. Tocar un mod abre su menú; uno importado se borra con BORRAR y SEGURO? (al
-  reiniciar ya no está).
+  reiniciar ya no está). Con más mods de los que entran: flechas ^ / v arriba a la derecha y la rueda.
 - L1 (0.9.40), sin probar: leer el README (sección Avisos) y Acerca de en horizontal y en vertical (que entre todo).
 - M1d a medias (0.9.42): pasar el mouse por la profundidad (arriba a la derecha) muestra el nombre de la zona y sus
   coordenadas. **Siguiente:** la brújula o minimapa de M1d (a diseñar). Después: borrar el generador de PD cuando el dueño valide el propio,
