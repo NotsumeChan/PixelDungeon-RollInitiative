@@ -13,7 +13,7 @@ Leer esto primero. Un archivo por tema:
 | [`pasos/`](pasos/) | Próximos pasos, uno por archivo |
 
 ## Ahora
-Rama `dev`, **0.9.37** (`versionCode` 47). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
+Rama `dev`, **0.9.38** (`versionCode` 48). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
 primero.
 
 ## Próximos pasos
@@ -42,7 +42,7 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 
 ## Estado al cerrar la sesión (2026-11-06)
 **Para retomar:** leer esta sección y el plan de M1c en [`pasos/5-mapas-editor.md`](pasos/5-mapas-editor.md). No hay
-nada a medio hacer: todo está en commits en `dev` (0.9.37). El teléfono tiene una beta con el actualizador (canal
+nada a medio hacer: todo está en commits en `dev` (0.9.38). El teléfono tiene una beta con el actualizador (canal
 beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del proyecto) en `NOTAS.md`.
 
 - Hecho y sin probar (✏️): D1-D4 (releases, red por internet con el teclado del sistema, compatibilidad, actualizador
@@ -66,6 +66,12 @@ beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del 
   destino en ángulo; los mobs también.
 - Tocarse (0.9.37), sin probar: parado en la escalera (arriba y abajo), en un portal o en el borde abierto, tocarse
   la usa; sobre un montón lo recoge; sin nada abajo, busca.
+- Acción rápida, Seguir y apuntar arrojadizas (0.9.38), sin probar. Botones arriba de la barra, a la derecha, cuando
+  el héroe espera input: con un mob a la vista, su retrato (tocar = atacarlo; con arco, dispara); sin mobs y con un
+  ítem a la vista, su ícono (recogerlo, o "Abrir" un cofre / tumba). Seguir: click lejos, que aparezca un mob o
+  encontrar algo oculto corta la caminata, Seguir la retoma; al llegar desaparece. Arrojadiza en un acceso rápido:
+  tocarlo dice a quién apunta; tocarlo otra vez la lanza al más cerca (tocar una casilla sigue funcionando). En LAN
+  también. Revisar en vertical que los botones no tapen el log.
 - **Siguiente: M1d** (nombre de zona y brújula). Después: borrar el generador de PD cuando el dueño valide el propio,
   y M2 (mapas prefabricados).
 - Sprites: plan en [`pasos/6-sprites.md`](pasos/6-sprites.md) y la lista del arte para 5e en

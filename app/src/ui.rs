@@ -8,7 +8,7 @@ use game::dice::{self, ABILITIES};
 use game::dungeon::Dungeon;
 use game::npcs::{DialogView, ShopView};
 use game::hero::{Action, Slot, Verb, BACKPACK_SIZE, HUNGRY};
-use game::items::{weapon_dice, Image, Item, SLOT_ARMOR, SLOT_RING, SLOT_WEAPON};
+use game::items::{weapon_dice, HeapKind, Image, Item, SLOT_ARMOR, SLOT_RING, SLOT_WEAPON};
 use game::registry::text;
 use game::terrain;
 use game::{tr, trf};
@@ -299,6 +299,8 @@ pub struct Ui {
     pub casting: Option<usize>,
     /// Eligiendo adónde lanzar esa arrojadiza (el próximo click en el mapa).
     pub throwing: Option<Slot>,
+    /// La última caminata pedida (héroe, zona, acción): si se corta antes de llegar, el botón Seguir la retoma.
+    pub resume: Option<(usize, game::level::Zone, Action)>,
     /// En la pantalla de título (la configuración vuelve al título, no al menú de la partida).
     pub in_title: bool,
     /// Pantalla de Mods: el aviso de la última importación.
@@ -339,7 +341,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, offer: None, update_msg: String::new(), updating: false, settings_tab: 0, lang_scroll: 0, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, resume: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, offer: None, update_msg: String::new(), updating: false, settings_tab: 0, lang_scroll: 0, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// Escribe en el mensaje del chat (si se está escribiendo uno).
@@ -423,6 +425,9 @@ impl Ui {
             font.text(out, &format!("FPS {fps}"), 2.0, 34.0, GREY);
         }
         self.draw_toolbar(atlas, font, d, out, w, h);
+        if self.window.is_none() && self.chat.is_none() && d.dialog(d.hero).is_none() {
+            self.draw_quick(atlas, font, chars, d, out, w, h);
+        }
         self.draw_waiting(atlas, font, d, out, w);
         // diálogo con un NPC: tapa todo lo demás hasta que se cierre (Esc o Adiós)
         if let Some(dv) = d.dialog(d.hero) {
@@ -450,7 +455,13 @@ impl Ui {
                 let casting = self.casting.and_then(|k| d.local().spell_ids().get(k).cloned());
                 let msg = casting.and_then(|sid| d.spell(&sid).map(|s| trf!("Elige el objetivo: {} ({} cancela)", "Choose a target: {} ({} cancels)", text(&s["name"]), esc())));
                 let throwing = self.throwing.and_then(|s| d.local().item(s)).map(|it| d.item_title(it));
-                let msg = msg.or_else(|| throwing.map(|t| trf!("Elige adonde lanzar: {t} ({} cancela)", "Choose where to throw: {t} ({} cancels)", esc())));
+                let aim = d.nearest_enemy(d.hero).and_then(|a| d.ch(a)).map(|c| c.name.clone());
+                let msg = msg.or_else(|| {
+                    throwing.map(|t| match &aim {
+                        Some(m) => trf!("Lanzar {t}: toca adonde, o el acceso rapido otra vez: {m} ({} cancela)", "Throw {t}: tap where, or the quickslot again: {m} ({} cancels)", esc()),
+                        None => trf!("Elige adonde lanzar: {t} ({} cancela)", "Choose where to throw: {t} ({} cancels)", esc()),
+                    })
+                });
                 let msg = msg.or_else(|| self.examining.then(|| tr!("Toca una casilla para examinarla", "Tap a tile to examine it").to_string()));
                 if let Some(msg) = msg {
                     let msg = msg.as_str();
@@ -679,6 +690,75 @@ impl Ui {
         // chat de la partida LAN (Enter): en el teléfono no hay teclado
         if self.lan && self.window.is_none() && self.chat.is_none() {
             self.draw_button(atlas, font, out, [85.0, y + 3.0, 30.0, 19.0], "Chat", Some(UiAction::Chat(Cr::New)));
+        }
+    }
+
+    /// La caminata cortada que se puede retomar (`resume`): del héroe local, en su zona y sin haber llegado.
+    pub fn resumable(&self, d: &Dungeon) -> Option<Action> {
+        let (i, zone, a) = self.resume?;
+        let h = d.local();
+        if i != d.hero || h.zone != zone {
+            return None;
+        }
+        let heaps = &d.level().heaps;
+        let done = match a {
+            Action::Move(c) | Action::Descend(c) | Action::Ascend(c) | Action::Leave(c) => h.ch.pos == c,
+            Action::PickUp(c) => !heaps.contains_key(&c),
+            Action::Open(c) => heaps.get(&c).is_none_or(|hp| hp.kind == HeapKind::Heap),
+            _ => true,
+        };
+        (!done).then_some(a)
+    }
+
+    /// Recuerda la acción del héroe local si es una caminata (para el botón Seguir).
+    pub fn note_walk(&mut self, d: &Dungeon) {
+        if let Some(a @ (Action::Move(_) | Action::Descend(_) | Action::Ascend(_) | Action::Leave(_) | Action::PickUp(_) | Action::Open(_))) = d.local().action {
+            self.resume = Some((d.hero, d.local().zone, a));
+        }
+    }
+
+    /// Botones sobre la barra, a la derecha, cuando el héroe espera input: la acción rápida (el retrato del enemigo
+    /// más cerca o el ítem más cerca; atacar / recoger / abrir) y Seguir (retoma la caminata cortada).
+    #[allow(clippy::too_many_arguments)]
+    fn draw_quick(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
+        if !self.waiting.get(d.hero).copied().unwrap_or(false) || d.local().is_downed() {
+            return;
+        }
+        let mut y = h - TOOLBAR_H - 25.0;
+        if let Some(a) = d.quick_action(d.hero) {
+            let r = [w - 25.0, y, 24.0, 24.0];
+            let (region, m) = CHROME_BUTTON;
+            nine(out, atlas, region, m, r, WHITE);
+            let center = [r[0] + 12.0, r[1] + 12.0];
+            let tip = match a {
+                Action::Attack(e) => {
+                    if let Some(p) = chars.portrait(d, atlas, e, center, 20.0) {
+                        out.push(p);
+                    }
+                    let name = d.ch(e).map_or(String::new(), |c| c.name.clone());
+                    trf!("Atacar: {name}", "Attack: {name}")
+                }
+                Action::PickUp(c) => {
+                    let item = d.level().heaps.get(&c).and_then(|hp| hp.items.first());
+                    if let Some(item) = item {
+                        item_icon(out, atlas, font, &d.item_image(item), [r[0] + 4.0, r[1] + 4.0], 1.0);
+                    }
+                    let name = item.map_or(String::new(), |it| d.item_name(it));
+                    trf!("Recoger: {name}", "Pick up: {name}")
+                }
+                _ => {
+                    let label = tr!("Abrir", "Open");
+                    font.text(out, label, (center[0] - font.width(label) / 2.0).floor(), (center[1] - font.height() / 2.0).floor(), WHITE);
+                    tr!("Abrir", "Open").to_string()
+                }
+            };
+            self.hot(r, UiAction::Act(a), Some(&tip));
+            y -= 19.0;
+        }
+        if let Some(a) = self.resumable(d) {
+            let label = tr!("Seguir", "Resume");
+            let bw = font.width(label) + 8.0;
+            self.draw_button(atlas, font, out, [w - 1.0 - bw, y + 6.0, bw, 18.0], label, Some(UiAction::Act(a)));
         }
     }
 

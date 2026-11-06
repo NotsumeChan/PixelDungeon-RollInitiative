@@ -470,6 +470,31 @@ impl Dungeon {
         self.heroes[i].action = Some(action);
     }
 
+    /// El enemigo visible más cerca del héroe `i` (acción rápida, apuntar una arrojadiza), en el piso en contexto.
+    pub fn nearest_enemy(&self, i: usize) -> Option<ActorId> {
+        let h = &self.heroes[i];
+        let l = self.level();
+        self.floor()
+            .mobs
+            .iter()
+            .map(|m| (ActorId::Mob(m.id), m.ch.pos))
+            .filter(|&(a, p)| p >= 0 && h.fov[p as usize] && self.alive(a) && !self.passive(a))
+            .min_by_key(|&(_, p)| l.distance(h.ch.pos, p))
+            .map(|(a, _)| a)
+    }
+
+    /// La acción rápida del héroe `i` (botón de la pantalla): atacar al enemigo visible más cerca; si no hay, recoger
+    /// o abrir el montón visible más cerca. None = no hay nada a mano.
+    pub fn quick_action(&self, i: usize) -> Option<Action> {
+        if let Some(e) = self.nearest_enemy(i) {
+            return Some(Action::Attack(e));
+        }
+        let h = &self.heroes[i];
+        let l = self.level();
+        let (&c, heap) = l.heaps.iter().filter(|(c, _)| h.fov[**c as usize]).min_by_key(|(c, _)| l.distance(h.ch.pos, **c))?;
+        Some(if heap.kind == HeapKind::Heap { Action::PickUp(c) } else { Action::Open(c) })
+    }
+
     pub(crate) fn hero_act(&mut self, i: usize) {
         self.check_visible_mobs(i);
         let me = ActorId::Hero(i);
@@ -701,6 +726,7 @@ impl Dungeon {
             self.effect(Fx::Anim { who: ActorId::Hero(i), kind: "operate", cell: pos });
         }
         if found {
+            self.heroes[i].action = None; // corta la caminata (se puede seguir con el botón Seguir)
             self.tell(i, crate::tr!("Encuentras algo oculto", "You find something hidden"));
             self.observe();
         } else if intentional {

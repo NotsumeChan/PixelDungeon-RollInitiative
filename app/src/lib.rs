@@ -514,6 +514,7 @@ impl App {
         if cell == d.local().ch.pos && d.heroes[me].action == Some(Action::Move(cell)) {
             d.heroes[me].action = Some(Action::Search);
         }
+        self.ui.note_walk(&self.world.d);
     }
 
     /// Resultado de importar un mod (`mods.rs`): el aviso en la pantalla de Mods y la lista al día.
@@ -550,6 +551,7 @@ impl App {
                 if d.local().is_alive() {
                     let me = d.hero;
                     d.heroes[me].action = Some(a);
+                    self.ui.note_walk(&self.world.d);
                 }
             }
             UiAction::Examine => self.ui.examining = !self.ui.examining,
@@ -809,6 +811,16 @@ impl App {
                 self.ui.window = None;
             }
             UiAction::UseQuick(q) => {
+                // apuntando con esta arrojadiza: tocar su acceso rápido otra vez la lanza al enemigo más cerca
+                let d = &self.world.d;
+                let aim = d.nearest_enemy(d.hero).and_then(|a| d.ch(a)).map(|c| c.pos);
+                if let (Some(s), Some(cell)) = (self.ui.throwing, aim)
+                    && d.local().quick_item(q) == Some(s)
+                {
+                    self.ui.throwing = None;
+                    self.ui_action(UiAction::Act(Action::Throw(s, cell)));
+                    return;
+                }
                 let h = self.world.d.local();
                 let Some(slot) = h.quick_item(q) else {
                     self.ui.window = Some(UiWindow::Bag(BagMode::Quick(q)));
