@@ -24,9 +24,18 @@ pub fn build() -> Option<&'static str> {
     option_env!("PDRI_BUILD").filter(|b| !b.is_empty())
 }
 
-/// La versión para mostrar: "0.9.26" o "0.9.26 beta-a".
+/// Canal beta (testers): compilado con `PDRI_CHANNEL=beta`.
+pub fn beta() -> bool {
+    option_env!("PDRI_CHANNEL") == Some("beta")
+}
+
+/// La versión para mostrar: "0.9.26", "0.9.26 beta-a" (beta de la CI) o "0.9.26 beta" (beta compilada a mano).
 pub fn version_label() -> String {
-    build().map_or_else(|| game::VERSION.to_string(), |b| format!("{} {b}", game::VERSION))
+    match build() {
+        Some(b) => format!("{} {b}", game::VERSION),
+        None if beta() => format!("{} beta", game::VERSION),
+        None => game::VERSION.to_string(),
+    }
 }
 
 #[cfg(not(feature = "updater"))]
@@ -69,17 +78,11 @@ mod imp {
     };
     const MAX_BYTES: u64 = 256 << 20;
 
-    /// Canal beta (testers): compilado con `PDRI_CHANNEL=beta`, también ve las pre-releases de `dev`
-    /// (`v<versión>-beta.<n>`). Las builds estables nunca.
-    fn beta() -> bool {
-        option_env!("PDRI_CHANNEL") == Some("beta")
-    }
-
     /// La versión de esta build para comparar: la del juego y, en una beta, su letra ("0.9.26-beta-a").
     pub(super) fn current() -> String {
         match super::build() {
             Some(b) => format!("{}-{b}", game::VERSION),
-            None if beta() => format!("{}-beta", game::VERSION), // beta compilada a mano: antes que cualquier beta-a
+            None if super::beta() => format!("{}-beta", game::VERSION), // beta compilada a mano: antes que cualquier beta-a
             None => game::VERSION.to_string(),
         }
     }
@@ -110,7 +113,7 @@ mod imp {
     /// La versión más nueva que se ofrece: la última estable o, en el canal beta, la más nueva de las últimas Releases
     /// (pre-releases incluidas), con el archivo de esta plataforma.
     fn newest() -> Result<Option<String>, String> {
-        if !beta() {
+        if !super::beta() {
             return Ok(pick(&release(None)?).map(|(v, _)| v));
         }
         let body = get(&format!("https://api.github.com/repos/{REPO}/releases?per_page=20"))?.into_string().map_err(|e| e.to_string())?;
