@@ -5,6 +5,10 @@ vive en `Dungeon` (dungeon.rs).
 
 - `Scheduler::actors`: (actor, tiempo) en orden de llegada. Fuera de combate actúa el de menor tiempo; en empate, el
   agregado primero (`current`).
+- **Quién pelea** (0.9.39, `Dungeon::joins_combat`): los héroes del piso y los mobs que pelean o que algún héroe
+  ve; los demás mobs siguen a su tiempo (1 TICK por ronda, en `end_round`) y se suman al final de una ronda si
+  empiezan a pelear o se dejan ver. Sin enemigos vivos en la ronda, el combate termina en el momento
+  (`finish_combat`); si quedan pero ninguno pelea, tras `CALM_ROUNDS` rondas.
 - **Simultáneo fuera de combate** (propio, 0.9.35; `Dungeon::process_floor`): en PD un héroe sin acción frenaba todo
   el piso hasta que su jugador eligiera. Ahora, si le toca a un héroe quieto (sin acción ni animación) y otro héroe
   del piso tiene algo en curso, deja pasar su turno (1 TICK) y el piso sigue. Sólo se espera input cuando ningún

@@ -114,6 +114,8 @@ pub struct Hero {
     pub abilities: [i32; 6],
     pub lvl: i32,
     pub exp: i32,
+    /// XP ganada en el combate en curso: se da toda junta al terminar (`flush_exp`).
+    pub combat_exp: i32,
     pub awareness: f64,
     pub weapon: Option<Item>,
     pub armor: Option<Item>,
@@ -182,6 +184,7 @@ impl Hero {
             abilities,
             lvl: 1,
             exp: 0,
+            combat_exp: 0,
             awareness: 0.0,
             weapon: item("start_weapon"),
             armor: item("start_armor"),
@@ -731,6 +734,15 @@ impl Dungeon {
             self.observe();
         } else if intentional {
             self.tell(i, crate::tr!("Buscas, pero no encuentras nada", "You search, but find nothing"));
+        }
+    }
+
+    /// Da la XP del combate (con un resumen): al terminar la pelea o al irse del piso.
+    pub(crate) fn flush_exp(&mut self, i: usize) {
+        let n = std::mem::take(&mut self.heroes[i].combat_exp);
+        if n > 0 && self.heroes[i].is_alive() {
+            self.tell(i, &crate::trf!("Experiencia del combate: +{n}", "Combat experience: +{n}"));
+            self.earn_exp(i, n);
         }
     }
 

@@ -523,6 +523,7 @@ impl Dungeon {
     /// El héroe se lleva lo suyo (la regeneración). `via`: llega por un borde o portal (si la zona no tiene el par, a
     /// su entrada); sin `via`, por la escalera.
     fn go_to(&mut self, i: usize, zone: Zone, via: Option<Exit>) {
+        self.flush_exp(i); // si se va a mitad de una pelea, se lleva lo ganado
         let old = self.heroes[i].zone;
         let going_down = zone.z > old.z;
         self.heroes[i].zone = zone;
@@ -945,11 +946,45 @@ impl Dungeon {
         chars
     }
 
-    /// Todos los personajes del piso tiran iniciativa y se ordenan. `ambush` = lo empieza un héroe atacando: los mobs
+    /// Quién entra al combate: los héroes del piso y los mobs que pelean o que algún héroe ve. Los demás siguen a su
+    /// tiempo, fuera de la ronda (`end_round`), hasta que se suman (antes entraban todos los del piso: el carrusel
+    /// mostraba con "?" mobs lejanos que no peleaban).
+    fn joins_combat(&self, a: ActorId) -> bool {
+        a.in_rounds()
+            && self.alive(a)
+            && !self.passive(a)
+            && match a {
+                ActorId::Mob(id) => self.mob(id).is_some_and(|m| m.fighting() || (m.ch.pos >= 0 && self.level().visible[m.ch.pos as usize])),
+                _ => true,
+            }
+    }
+
+    /// ¿Queda algún enemigo vivo en la ronda?
+    fn foes_left(&self) -> bool {
+        let s = &self.floor().scheduler;
+        s.order.as_ref().is_some_and(|o| o.iter().any(|&a| matches!(a, ActorId::Mob(_)) && s.contains(a) && self.alive(a) && !self.passive(a)))
+    }
+
+    /// Termina el combate del piso en contexto: todos vuelven al tiempo parejos (`at`) y cada héroe del piso recibe la
+    /// experiencia ganada en la pelea.
+    fn finish_combat(&mut self, at: f64) {
+        let s = &mut self.floors.get_mut(&self.zone).expect("piso en contexto").scheduler;
+        let order = s.order.take().unwrap_or_default();
+        for &a in &order {
+            s.set_time(a, at);
+        }
+        if !order.is_empty() {
+            self.log(crate::tr!("Fin del combate", "Combat is over"));
+        }
+        for i in self.here().collect::<Vec<_>>() {
+            self.flush_exp(i);
+        }
+    }
+
+    /// Los personajes que entran (`joins_combat`) tiran iniciativa y se ordenan. `ambush` = lo empieza un héroe atacando: los mobs
     /// que no lo vieron venir quedan sorprendidos (5e).
     pub(crate) fn start_combat(&mut self, ambush: bool) {
-        let chars: Vec<ActorId> =
-            self.floor().scheduler.actors.iter().map(|e| e.0).filter(|&a| a.in_rounds() && self.alive(a) && !self.passive(a)).collect();
+        let chars: Vec<ActorId> = self.floor().scheduler.actors.iter().map(|e| e.0).filter(|&a| self.joins_combat(a)).collect();
         for &a in &chars {
             self.roll_initiative(a);
         }
@@ -992,7 +1027,13 @@ impl Dungeon {
             if self.waiting(c) {
                 return false;
             }
+            let zone = self.zone;
             self.act(c);
+            // sin enemigos vivos en la ronda, el combate termina ya (no al final de la ronda ni tras rondas tranquilas)
+            if self.zone == zone && !self.foes_left() {
+                let now = self.floor().scheduler.now;
+                self.finish_combat(now);
+            }
             return true;
         }
         let s = &mut self.floors.get_mut(&self.zone).expect("piso en contexto").scheduler;
@@ -1007,11 +1048,14 @@ impl Dungeon {
     /// iniciativa; CALM_ROUNDS rondas sin nadie peleando = fin del combate.
     fn end_round(&mut self) {
         let end = self.floor().scheduler.now + TICK;
+        let in_order = self.floor().scheduler.order.clone().unwrap_or_default();
         loop {
             let s = &self.floor().scheduler;
             let mut due: Option<(ActorId, f64)> = None;
             for &(a, t) in &s.actors {
-                if !a.in_rounds() && t <= end && due.is_none_or(|(_, dt)| t < dt) {
+                // estados, timers y los mobs que no pelean (siguen a su tiempo hasta que se suman); un héroe nunca
+                let outside = !a.in_rounds() || (matches!(a, ActorId::Mob(_)) && !in_order.contains(&a) && !self.joins_combat(a));
+                if outside && t <= end && due.is_none_or(|(_, dt)| t < dt) {
                     due = Some((a, t));
                 }
             }
@@ -1023,7 +1067,7 @@ impl Dungeon {
         let s = &self.floor().scheduler;
         let old: Vec<ActorId> = s.order.as_ref().unwrap().iter().copied().filter(|&a| s.contains(a)).collect();
         let new: Vec<ActorId> =
-            s.actors.iter().map(|e| e.0).filter(|&a| a.in_rounds() && !old.contains(&a) && self.alive(a) && !self.passive(a)).collect();
+            s.actors.iter().map(|e| e.0).filter(|&a| !old.contains(&a) && self.joins_combat(a)).collect();
         for &a in &new {
             self.roll_initiative(a);
         }
@@ -1034,13 +1078,8 @@ impl Dungeon {
         s.now = end;
         s.calm = if fighting { 0 } else { s.calm + 1 };
         if s.calm >= CALM_ROUNDS || order.is_empty() {
-            for &a in &order {
-                s.set_time(a, end); // vuelven al tiempo de PD todos parejos
-            }
-            s.order = None;
-            if !order.is_empty() {
-                self.log(crate::tr!("Fin del combate", "Combat is over"));
-            }
+            s.order = Some(order);
+            self.finish_combat(end);
             return;
         }
         s.turn = 0;

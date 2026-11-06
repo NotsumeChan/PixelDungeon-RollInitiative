@@ -317,7 +317,11 @@ impl Dungeon {
             if share > 0 && src == Some(ActorId::Hero(h)) && n > 1 {
                 share += 1;
             }
-            self.earn_exp(h, share);
+            if self.floor().scheduler.order.is_some() {
+                self.heroes[h].combat_exp += share; // se da al terminar la pelea
+            } else {
+                self.earn_exp(h, share);
+            }
         }
         // lo que llevaba (un NPC): mochila y equipo, al suelo
         let pos = m.ch.pos;

@@ -13,6 +13,9 @@
   `Rest` (1 de tiempo), `Search` (2), `Descend` / `Ascend` (hay que pedirlo con click; pisar la escalera no basta).
   `handle(i, celda, stairs)` elige la acción según lo que hay en la celda. `Leave(celda)` (M1c): una salida del
   borde con sólo pisarla (también con el teclado), un portal sólo con click / toque (`stairs`).
+- XP en combate (0.9.39): lo que se gana matando en una pelea se junta en `combat_exp` y se da todo junto al
+  terminarla, con el resumen "Experiencia del combate: +N" (`flush_exp`; también al cambiar de zona). Fuera de
+  combate, en el momento.
 - `nearest_enemy(i)`: el mob visible, hostil y vivo más cerca. `quick_action(i)` (0.9.38): atacarlo; si no hay,
   `PickUp` / `Open` del montón visible más cerca; None = nada a mano. Encontrar algo oculto corta la acción en curso.
 - Caminar (`hero_get_closer` / `hero_step`, 0.9.35): fuera de combate el camino se planea sin contar a los aliados
