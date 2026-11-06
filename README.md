@@ -49,8 +49,10 @@ que viene de Pixel Dungeon. La rama [`pd-core`](../../tree/pd-core) conserva la 
 
 ## 📜 Créditos y licencias
 - **Pixel Dungeon** © 2012-2015 Oleg Dolya ([Watabou](https://github.com/watabou/pixel-dungeon)), GNU GPL v3: el
-  diseño, la generación de niveles y los monstruos, y los gráficos, sonidos y fuentes de `Assets/`.
+  diseño, la generación de niveles y los monstruos, y los gráficos y sonidos de `Assets/`.
 - **Música:** Cube_Code (la de Pixel Dungeon).
+- **Fuente:** [Silkscreen](https://github.com/googlefonts/silkscreen) © The Silkscreen Project Authors (Jason Kottke),
+  SIL Open Font License 1.1 (`Assets/Fonts/silkscreen/OFL.txt`).
 - **Nombre:** gracias a [chomusuke-png](https://github.com/chomusuke-png) por la idea de *Roll Initiative*.
 - **Reglas de D&D 5e:** este trabajo incluye material del System Reference Document 5.1 ("SRD 5.1") y del System
   Reference Document 5.2 ("SRD 5.2") de Wizards of the Coast LLC, disponibles en

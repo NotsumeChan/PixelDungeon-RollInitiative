@@ -1,5 +1,6 @@
-//! Fuente bitmap del original (BitmapText.Font.colorMarked): glifos en una tira, separados por columnas
-//! transparentes. Las columnas vacías del principio definen el ancho del espacio. Port de `core/Font.py`.
+//! Fuente bitmap: glifos en una tira, separados por columnas transparentes (el formato de BitmapText.Font del
+//! original). Las columnas vacías del principio definen el ancho del espacio. Hoy Silkscreen (OFL), pasada a tira por
+//! `tools/font_strip.py`: un hueco dentro de un glifo lleva un píxel con alfa 1 para no contar como separador.
 use crate::atlas::Atlas;
 use crate::gpu::Sprite;
 
@@ -16,7 +17,7 @@ pub struct Font {
     glyphs: [Option<(u32, u32)>; 128], // ascii -> (x en la tira, ancho)
 }
 
-/// font1x sólo tiene ASCII: los acentos se quitan (á -> a, ñ -> n).
+/// La tira sólo tiene ASCII: los acentos se quitan (á -> a, ñ -> n).
 fn ascii(c: char) -> char {
     match c {
         'á' | 'à' | 'ä' | 'â' => 'a',

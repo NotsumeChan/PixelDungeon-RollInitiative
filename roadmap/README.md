@@ -12,7 +12,7 @@ Leer esto primero. Un archivo por tema:
 | [`pasos/`](pasos/) | Próximos pasos, uno por archivo |
 
 ## Ahora
-Rama `dev`, **0.9.26** (`versionCode` 36). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
+Rama `dev`, **0.9.27** (`versionCode` 37). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
 primero.
 
 ## Próximos pasos
@@ -43,6 +43,7 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 - Rama `pd-core` creada en `ef30813` (0.9.25): el juego con el core de PD.
 - Teléfono: 0.9.26 beta (con actualizador en canal beta), compilada antes de las zonas: se actualiza desde la
   primera beta que publique la CI al pushear `dev`.
+- Fuente: Silkscreen desde 0.9.27 (falta que el dueño la vea: tamaños, que nada se corte).
 - Siguiente: **M1b** (`world.json`: el mundo como datos; el base reproduce las 4 zonas de las Alcantarillas).
 - Repo del editor: `../pdri-editor/` (README, ROADMAP, LICENSE; el dueño crea el repo).
 

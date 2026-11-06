@@ -45,7 +45,7 @@ const DEFAULT_CLASS: &str = "pdri:warrior";
 
 /// Hojas del atlas, en orden: los índices de `Atlas::rects`. Van dentro del binario (Android sin AssetManager).
 const SHEETS: [&[u8]; 15] = [
-    include_bytes!("../../Assets/Fonts/font1x.png"),
+    include_bytes!("../../Assets/Fonts/silkscreen/silkscreen.png"), // Silkscreen (OFL), `tools/font_strip.py`
     include_bytes!("../../Assets/Tiles/tiles0.png"),
     include_bytes!("../../Assets/Tiles/water0.png"),
     include_bytes!("../../Assets/chrome.png"),
