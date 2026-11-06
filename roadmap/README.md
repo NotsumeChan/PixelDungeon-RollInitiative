@@ -48,7 +48,8 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
   vista en esquinas y pasillos, disparos y conjuros).
 - Configuración por pestañas y BUSCAR AHORA desde 0.9.29 (falta que el dueño la vea, sobre todo en vertical).
 - M1b (`world.json`, 0.9.31) hecho. Siguiente: **generador propio** de zonas (en vez de las Alcantarillas de PD), elegido por zona en `world.json`.
-- Repo del editor: `../pdri-editor/` (README, ROADMAP, LICENSE; el dueño crea el repo).
+- Repos aparte (el dueño los crea en GitHub): editor `../pdri-editor/` y mods `../pdri-mods/` (ahí está el mod de
+  ejemplo del herrero).
 
 ## Pendiente del dueño
 - `git push -u origin dev`; al validar una fase, `merge: dev -> main`.

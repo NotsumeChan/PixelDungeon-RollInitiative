@@ -64,7 +64,7 @@ pub const CHAR_SHEETS: [(&str, &[u8]); 13] = [
     ("thief.png", include_bytes!("../../Assets/Characters/thief.png")),
     ("wandmaker.png", include_bytes!("../../Assets/Characters/wandmaker.png")),
     ("shopkeeper.png", include_bytes!("../../Assets/Characters/shopkeeper.png")),
-    ("blacksmith.png", include_bytes!("../../Assets/Characters/blacksmith.png")), // el herrero del mod de ejemplo
+    ("blacksmith.png", include_bytes!("../../Assets/Characters/blacksmith.png")), // el herrero (lo usa el mod de ejemplo del repo pdri-mods)
 ];
 
 /// Esquina del sprite parado en su celda de un mapa de ancho `mw`: centrado en x, apoyado abajo

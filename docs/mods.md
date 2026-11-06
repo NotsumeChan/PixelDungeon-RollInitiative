@@ -52,7 +52,9 @@ Un mod puede traer `script.lua` (Lua 5.4) con funciones que los diálogos llaman
 hasta 0 en el 6 y junto a la bajada; `"wander": true` en el mob =
 deambula; es un mob con `base` sobre el mercader).
 
-## Ejemplo: `mods/ejemplo-herrero/`
+## Ejemplo: `ejemplo-herrero` (repo de mods)
+
+Los mods del equipo viven en su propio repo (`../pdri-mods/`, GPL v3), no en el del juego. El de ejemplo:
 
 Un herrero troll en el piso 3 (desconfiado: actitud -1) con tienda de armas, una misión (matar 3 gnolls) que paga con
 un ítem propio (`herrero:troll_sword`, hecho con `base` sobre la espada), una tirada de Persuasión y una apuesta
