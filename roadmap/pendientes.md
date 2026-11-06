@@ -37,6 +37,14 @@ Sin orden. Cuando el dueño elige algo, pasa a `pasos/`.
 - Más NPC: imp, rey rata, herrero (el fantasma, no por ahora).
 - Packs, `.pdmod`, mods del host al unirse y mods de cada personaje: plan en [N6](pasos/9-packs-mods.md).
 
+## Por discutir: crear personajes más rápido (2026-11-06)
+Para no tardar en crear un personaje al unirse a otro pack o a un one-shot. Sin decidir:
+- **Plantillas de personaje**: guardar lo de nivel 0 (clase, apariencia, características, con qué empieza; lo mismo que
+  copia "duplicar" en [C4](pasos/8-personajes-mundos.md)) fuera de un pack, para reusarlo o pasarlo como archivo.
+- **Personajes pregenerados**: personajes ya hechos que trae un mundo prefabricado o un pack (como los que entrega el
+  DM en un one-shot): se elige uno y se juega.
+- **Creación rápida por plantilla**: crear desde una plantilla (o eligiendo sólo la clase) en un paso.
+
 ## DM y reglas dinámicas (idea abierta del dueño, 2026-11-06)
 - Traer al DM a la partida: alguien que cambie reglas, haga excepciones (que un jugador no muera) o guíe una historia.
   Por ahora, lo que se pueda va por las reglas del mundo ([C5](pasos/8-personajes-mundos.md)), que sólo cambian saliendo.

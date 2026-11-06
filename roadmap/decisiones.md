@@ -83,8 +83,10 @@ por hoja con un máximo (64x64); cuadros y velocidad libres por animación. Plan
 - **Mods**: primero packs como instancias locales (estilo Modrinth / gestores de mods de Minecraft): cada pack tiene
   sus mods y sus personajes y mundos. Compartir packs (2026-11-06): no al unirse a una partida, sino **pidiéndolo** desde
   la lista de packs a quien lo marcó "visible para descarga directa"; se baja entero (requeridos y de cliente) y cada
-  uno apaga los de cliente en los ajustes del pack. También exportar / importar el pack como archivo. Steam Workshop:
-  muy a futuro (Distribución). Sin plantillas ni personajes pregenerados por ahora. Plan:
+  uno apaga los que no quiera en los ajustes del pack (los de cliente, también todos juntos; los requeridos, de a uno y
+  validados al conectarse a un host). También exportar / importar el pack como archivo. Steam Workshop:
+  muy a futuro (Distribución). Plantillas, pregenerados y creación rápida: por discutir
+  (`pendientes.md`). Plan:
   [`pasos/9-packs-mods.md`](pasos/9-packs-mods.md).
 
 ## Nombre y avisos (2026-11-06)
