@@ -25,7 +25,7 @@ Sin orden. Cuando el dueño elige algo, pasa a `pasos/`.
 ## Pulido
 - Partículas, proyectiles en vuelo, nubes de gas. Indicador de ocupado que gire.
 - Vertical: "cuesta interactuar" (preguntar qué pantalla).
-- Audio: sólo cuando se pida.
+- Audio: sólo cuando se pida. Ver "Audio" abajo.
 
 ## NPCs y mods
 - Lista de mods (pedido del dueño, 2026-11-06):
@@ -56,8 +56,14 @@ Meta a largo plazo ([`decisiones.md`](decisiones.md#meta-un-juego-propio-2026-11
 | UI | Layout propio (con la conversación de estética) |
 | Arte | Tiles, personajes, ítems y UI hechos por personas, de a uno |
 | Fuente | ✅ **Silkscreen** (OFL) en vez de `font1x.png` de PD (0.9.27) |
-| Sonido | Propio desde el principio (todavía no hay audio) |
+| Sonido | ✅ El audio de PD salió del repo (0.9.30). Lo propio, cuando haya audio; el de PD como mod opcional |
 | Cierre | Borrar `Assets/` del original, revisar que no quede nada derivado, nombre nuevo |
+
+## Audio (sin fecha; decisión del dueño, 2026-11-06)
+- El juego no tiene audio. La música y los sonidos de PD salieron del repo (0.9.30; siguen en `pd-core`).
+- Cuando haya audio: el juego trae lo propio (o nada) y la música de PD (Cube_Code) y sus sonidos se publican como
+  **mod opcional instalable** (`side: client`, ver Mods), no incluido. Antes de publicarlo, confirmar su licencia
+  (vienen en el repo GPL v3 de PD) y acreditar a Cube_Code.
 
 ## Distribución (sin fecha)
 - **Steam:** primero sin SDK. Después, opcional, feature `steam`: amigos, Steam Networking, logros, nube (revisar

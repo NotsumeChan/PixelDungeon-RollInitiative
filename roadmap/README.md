@@ -12,7 +12,7 @@ Leer esto primero. Un archivo por tema:
 | [`pasos/`](pasos/) | Próximos pasos, uno por archivo |
 
 ## Ahora
-Rama `dev`, **0.9.29** (`versionCode` 39). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
+Rama `dev`, **0.9.30** (`versionCode` 40). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
 primero.
 
 ## Próximos pasos

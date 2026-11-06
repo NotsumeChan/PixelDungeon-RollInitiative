@@ -11,7 +11,9 @@ No se vuelven a discutir salvo que el dueño lo pida.
 - **Rama `pd-core`:** creada el 2026-11-06 en `ef30813` (0.9.25, después de D1-D4): el juego con el core de PD, para
   quien le interese. Desde ahí, `dev` empieza a separarse (camino al editor).
 - Libre y gratis en todas las plataformas, y el agradecimiento a Pixel Dungeon queda en los créditos aunque ya no sea obligatorio.
-- **Fuente:** al separarse, Silkscreen (OFL) en vez de la de PD (2026-11-06).
+- **Fuente:** al separarse, Silkscreen (OFL) en vez de la de PD (2026-11-06). Hecho en 0.9.27.
+- **Música:** la de PD (Cube_Code) no va en el juego: será un mod opcional instalable cuando haya audio; se le
+  agradece en los créditos (2026-11-06).
 - Mientras quede algo de PD, el juego es GPL v3; al separarse, la licencia del código nuevo se decide entonces.
 
 ## Distribución y red (2026-11-06)
