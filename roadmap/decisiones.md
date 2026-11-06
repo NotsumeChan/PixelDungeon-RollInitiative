@@ -69,6 +69,20 @@ por hoja con un máximo (64x64); cuadros y velocidad libres por animación. Plan
   cambiar el sentido de lo que hay. Si alguna vez hay que romper algo: `api` en `mod.json`, el juego sigue cargando
   la versión anterior y el cambio queda anotado en `docs/mods.md`.
 
+## Personajes y mundos (2026-11-06)
+- **Personaje separado del mundo** (estilo Terraria): el personaje lleva su identidad y su progreso (nivel, XP,
+  inventario, equipo, el uso de armas y armaduras); el mundo, su mapa, mobs, misiones, reglas y dónde quedó cada
+  personaje en él. Plan: [`pasos/8-personajes-mundos.md`](pasos/8-personajes-mundos.md).
+- **Lista de mundos aparte**: se elige personaje y después mundo.
+- **Muerte siempre hardcore**: el personaje muere para siempre y queda baneado de ese mundo; para seguir ahí, otro
+  personaje. Los DM suelen hacer excepciones: eso va por las reglas del mundo y la idea del DM (abierta).
+- **Reglas del mundo**: al generar un mundo o usar uno prefabricado (one-shot, historia larga) se eligen modificadores
+  generales; pueden cambiar a lo largo de la partida, pero sólo saliendo, cambiando la configuración y volviendo a
+  entrar.
+- Duplicar y editar personajes (nombre, apariencia).
+- **Mods**: primero packs como perfiles locales (estilo Modrinth); la descarga desde el host, después. Plan:
+  [`pasos/9-packs-mods.md`](pasos/9-packs-mods.md).
+
 ## Multijugador (2026-11-04)
 1. Host autoritativo.
 2. Combate por iniciativa 5e; fuera de combate, simultáneo.

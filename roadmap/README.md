@@ -27,6 +27,8 @@ primero.
 
 | 6 | [Sprites como datos y apariencias por capas](pasos/6-sprites.md) | `#S1`… |
 | 7 | [Personaje 5e: creación y progresión](pasos/7-progresion-5e.md) | `#P1`… |
+| 8 | [Personajes y mundos (estilo Terraria)](pasos/8-personajes-mundos.md) | `#C1`… |
+| 9 | [Paquetes de mods](pasos/9-packs-mods.md) | `#N6`… |
 
 Estética: en conversación, sin paso.
 

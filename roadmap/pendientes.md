@@ -35,8 +35,11 @@ Sin orden. Cuando el dueño elige algo, pasa a `pasos/`.
   - Scroll, ver los importados sin reiniciar, borrar un mod.
 - Precios por nivel e identificación; tiradas sociales que esperen al dado (`ponytail` en `game/src/npcs.rs`).
 - Más NPC: imp, rey rata, herrero (el fantasma, no por ahora).
-- `.pdmod` con versión y sha256, packs con nombre y versión (`instances/<pack>/pack.json`), mods del host al unirse (caché por sha256, se bajan
-  del host), mods que necesita cada personaje.
+- Packs, `.pdmod`, mods del host al unirse y mods de cada personaje: plan en [N6](pasos/9-packs-mods.md).
+
+## DM y reglas dinámicas (idea abierta del dueño, 2026-11-06)
+- Traer al DM a la partida: alguien que cambie reglas, haga excepciones (que un jugador no muera) o guíe una historia.
+  Por ahora, lo que se pueda va por las reglas del mundo ([C5](pasos/8-personajes-mundos.md)), que sólo cambian saliendo.
 
 ## Controles y visión
 - **Movimiento en PC:** sólo mouse o sólo teclado, y línea punteada con el camino (también en el teléfono).
