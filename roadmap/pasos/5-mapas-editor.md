@@ -14,6 +14,7 @@ Va después de D4. Es grande: al llegar, partir cada punto en pasos chicos que s
 - Como datos dentro de un mod (`docs/data.md`).
 
 ## M3 — Editor
-- Crate `editor/`, sólo PC, que usa `game/` y el render de `app/`.
+- Repo aparte: `../pdri-editor/` (su roadmap está ahí). Sólo PC; usa `game/` y el render de `app/` de este repo como
+  dependencias. Lo que pida de este repo (render reusable, formato de mapas) se hace acá con su etiqueta `#M3`.
 - Pintar terreno, poner salas, salidas, mobs, ítems y NPC; nombrar y conectar zonas.
 - Exporta un mod de sólo datos. Más adelante: formularios de clases e ítems.

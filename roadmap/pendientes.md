@@ -59,5 +59,6 @@ rama `pd-core`.
   licencia antes).
 - **Play Store:** AAB con `bundletool`, política de privacidad, Data safety, clave en Play App Signing, sin `updater`.
 - Exportar e importar partidas a un archivo.
+- Enlace de donación (GitHub Sponsors o Ko-fi) en el README y en "Acerca de".
 - Instalador de Windows con "Borrar partidas guardadas".
 - Relay propio o servidor dedicado (sacar `ServerGame` de `app/`).

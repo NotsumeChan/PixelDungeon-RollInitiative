@@ -10,7 +10,7 @@ No se vuelven a discutir salvo que el dueño lo pida.
   (no "Roll Initiative" solo: es marca registrada).
 - **Rama `pd-core`:** antes del primer cambio que reemplace algo de PD, se crea desde `main` y queda con el core de PD
   para quien le interese.
-- Libre y gratis siempre, y el agradecimiento a Pixel Dungeon queda en los créditos aunque ya no sea obligatorio.
+- Libre y gratis en todas las plataformas, y el agradecimiento a Pixel Dungeon queda en los créditos aunque ya no sea obligatorio.
 - Mientras quede algo de PD, el juego es GPL v3; al separarse, la licencia del código nuevo se decide entonces.
 
 ## Distribución y red (2026-11-06)
@@ -28,7 +28,11 @@ No se vuelven a discutir salvo que el dueño lo pida.
 - **Orden:** releases → red → compatibilidad → actualizador → mapas y editor.
 
 ## Mapas y editor (2026-11-06)
-Editor como aplicación aparte (sólo PC). Primero mapas prefabricados, con el mundo por zonas desde el inicio. Después
+Editor como aplicación aparte (sólo PC), en **su propio repo** (`../pdri-editor/`), que usa `game/` y `app/` de
+este como dependencias.
+**Precio:** el editor es GPL (usa `game/` y `app/`): código siempre público; la versión compilada a 1-2 USD en
+itch.io primero ("paga lo que quieras", mínimo 1), Steam después si vale el alta (100 USD). Se paga comodidad y apoyo,
+no acceso: cualquiera puede compilarlo o compartirlo. Lo que se crea con él es gratis para los jugadores. Primero mapas prefabricados, con el mundo por zonas desde el inicio. Después
 del actualizador. → [M](pasos/5-mapas-editor.md)
 
 ## NPCs (2026-11-05)
