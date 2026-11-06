@@ -29,7 +29,8 @@ Opciones en `Local.config`. La clave de firma de Android vive fuera del repo, en
 secretos de GitHub): respaldarla, porque sin ella no se puede actualizar el APK.
 
 ## 🗺️ Roadmap
-En [`roadmap/`](roadmap/README.md).
+En [`roadmap/`](roadmap/README.md). La meta a largo plazo es convertirse en un juego propio, reemplazando de a poco lo
+que viene de Pixel Dungeon. Una rama conservará la versión con el core de PD.
 
 > 🐍 Hay un **prototipo en Python** (0.8) en la rama [`python-prototipe`](../../tree/python-prototipe), con sus planes
 > originales. Está congelado y sirvió de referencia para el port.

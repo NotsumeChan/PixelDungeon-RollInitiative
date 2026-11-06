@@ -26,6 +26,9 @@ primero.
 
 Estética: en conversación, sin paso.
 
+**Meta a largo plazo:** separarse por completo de Pixel Dungeon (ver [`decisiones.md`](decisiones.md#meta-un-juego-propio-2026-11-06)).
+Lo nuevo nace propio; lo de PD se reemplaza de a poco.
+
 ## Cómo se trabaja
 - Sólo compilar (`cargo clippy --workspace --all-targets`, `cargo ndk -t arm64-v8a check -p app --lib`) y tests de
   red (`cargo test -p app --lib net`). Nada de correr el juego ni simulaciones: el dueño prueba a mano.

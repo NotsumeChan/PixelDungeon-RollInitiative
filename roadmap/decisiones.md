@@ -2,6 +2,17 @@
 
 No se vuelven a discutir salvo que el dueño lo pida.
 
+## Meta: un juego propio (2026-11-06)
+- A largo plazo, **separarse por completo de Pixel Dungeon**: mobs e ítems del SRD 5.2 (CC-BY 4.0), generación,
+  código y UI propios, arte y sonido hechos por personas. Caro y lento, sin apuro: lo nuevo nace propio y lo viejo se
+  reemplaza de a poco. Pasos en [`pendientes.md`](pendientes.md#separarse-de-pixel-dungeon).
+- **Nombre:** sigue siendo PixelDungeon-RollInitiative mientras quede algo de PD. El nuevo se elige al separarse
+  (no "Roll Initiative" solo: es marca registrada).
+- **Rama `pd-core`:** antes del primer cambio que reemplace algo de PD, se crea desde `main` y queda con el core de PD
+  para quien le interese.
+- Libre y gratis siempre, y el agradecimiento a Pixel Dungeon queda en los créditos aunque ya no sea obligatorio.
+- Mientras quede algo de PD, el juego es GPL v3; al separarse, la licencia del código nuevo se decide entonces.
+
 ## Distribución y red (2026-11-06)
 - **Releases:** cada merge a `main` publica `v<versión>` con Linux, Windows y el APK firmado. → [D1](pasos/1-releases.md)
 - **Datos al desinstalar:** Android con `hasFragileUserData` (casilla "Conservar datos"). Linux y Windows ya los

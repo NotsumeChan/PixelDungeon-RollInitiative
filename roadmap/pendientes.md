@@ -39,6 +39,21 @@ Sin orden. Cuando el dueño elige algo, pasa a `pasos/`.
 - **Luz y visión 5e:** luz brillante, penumbra y oscuridad por piso o sala; antorchas y linternas con radio;
   visión en la oscuridad; los mobs también ven según la luz. La niebla suma la penumbra como tono intermedio.
 
+## Separarse de Pixel Dungeon
+Meta a largo plazo ([`decisiones.md`](decisiones.md#meta-un-juego-propio-2026-11-06)). Antes del primero: crear la
+rama `pd-core`.
+
+| Qué | Cómo |
+|---|---|
+| Mobs | Monstruos del SRD 5.2 (sólo los que están en el SRD) |
+| Ítems | Pociones, pergaminos y armas del SRD |
+| Generación | Generador propio para las zonas (M1), en vez de las Alcantarillas |
+| Código portado | FOV, pathfinder y turnos fuera de combate reescritos desde cero |
+| UI | Layout propio (con la conversación de estética) |
+| Arte | Tiles, personajes, ítems, UI y fuente hechos por personas, de a uno |
+| Sonido | Propio desde el principio (todavía no hay audio) |
+| Cierre | Borrar `Assets/` del original, revisar que no quede nada derivado, nombre nuevo |
+
 ## Distribución (sin fecha)
 - **Steam:** primero sin SDK. Después, opcional, feature `steam`: amigos, Steam Networking, logros, nube (revisar
   licencia antes).
