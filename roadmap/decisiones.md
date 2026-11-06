@@ -37,6 +37,14 @@ itch.io primero ("paga lo que quieras", mínimo 1), Steam después si vale el al
 no acceso: cualquiera puede compilarlo o compartirlo. Lo que se crea con él es gratis para los jugadores. Primero mapas prefabricados, con el mundo por zonas desde el inicio. Después
 del actualizador. → [M](pasos/5-mapas-editor.md)
 
+## Mundo por zonas (2026-11-06)
+- **Tamaño variable** por zona (ancho y alto propios), desde M1a.
+- **Salidas:** las dos formas. Por el borde del mapa (caminar hasta el borde pasa a la zona vecina, para exteriores) y
+  casillas especiales como las escaleras (puertas, portales, para interiores). El editor elige.
+- **Mundo sólo de datos:** qué zonas existen y cómo se conectan sale exactamente de `world.json` (base o de un mod).
+  El mapa de cada zona sí puede ser prefabricado o generado con la seed (p. ej. las Alcantarillas), según diga el JSON.
+- **Guardados:** las partidas viejas no se cargan (los personajes sí quedan). Sube `PROTOCOL`.
+
 ## NPCs (2026-11-05)
 1. Contenido inicial: Fabricante de varitas y Mercader; el Fantasma, no.
 2. Misiones, flags y actitud son de la partida (compartidas en la LAN); las recompensas, del héroe.

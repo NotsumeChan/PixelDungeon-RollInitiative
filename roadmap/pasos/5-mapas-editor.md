@@ -3,10 +3,15 @@
 Va después de D4. Es grande: al llegar, partir cada punto en pasos chicos que se prueben por separado.
 
 ## M1 — Mundo por zonas
-- De pila de pisos a **zonas conectadas** en un grafo, con coordenadas `x, y, z` y salidas en varias direcciones.
-- `descend()` pasa a "ir a la zona de esta salida"; las visitadas se guardan como hoy los pisos.
-- La seed de cada zona sale de sus coordenadas (cuidar determinismo y guardados).
-- Nombre de zona al entrar y en la barra; brújula o minimapa.
+Decisiones en [`decisiones.md`](../decisiones.md#mundo-por-zonas-2026-11-06). Cada paso, una versión que se prueba.
+- **M1a — Coordenadas y tamaño variable:** la clave de los pisos pasa de `depth` a `Zone {x, y, z}` y cada nivel
+  tiene su ancho y alto (fuera las constantes `WIDTH`/`HEIGHT`/`LENGTH`). La seed de cada zona sale de sus
+  coordenadas. Las partidas viejas no se cargan; sube `PROTOCOL`. El juego se ve igual: 4 zonas (0,0,1)..(0,0,4).
+- **M1b — `world.json`:** el mundo como datos (zonas, nombre, mapa generado o prefabricado, conexiones). El base
+  reproduce las Alcantarillas de hoy. `docs/data.md` y la API de mods estable.
+- **M1c — Salidas con dirección:** por el borde del mapa (norte, sur, este, oeste) y casillas especiales (puertas,
+  portales), además de las escaleras.
+- **M1d — Nombre de zona y brújula:** al entrar y en la barra de estado; minimapa o brújula del mundo.
 
 ## M2 — Mapas prefabricados
 - Layout hecho a mano en vez del generador: terreno, salas, salidas, y mobs, ítems clave y NPC fijos.
