@@ -1,60 +1,10 @@
-# Migración a Rust
+# Estado: lo escrito y qué probar
 
-Decisión del dueño (2026-11-03): el juego pasa a Rust. Motivo: todo el dibujo por GPU, nada de SDL, 200+ FPS en la
-peor máquina, publicarlo en Linux, Windows y Android. La prueba de Android en Python falló donde importa: moderngl
-depende de glcontext, que no tiene backend para Android (`glcontext/x11.cpp: 'X11/Xlib.h' file not found`).
+Lo que ya está en `dev`, fase por fase, con su **"Para probar"**: lo que el dueño revisa a mano. ✅ = probado por el
+dueño, ✏️ = escrito y compilado, falta su prueba. Lo que falta hacer está en [`pendientes.md`](pendientes.md); lo que
+sigue, en [`README.md`](README.md).
 
-La versión en Python queda congelada en la rama `python-prototipe`: es la **referencia** del port (como el Java de
-Pixel Dungeon lo fue para Python). Sólo recibe arreglos si hacen falta para comparar.
-
-## Qué se conserva tal cual
-- `data/*.json` (clases, mobs, bestiario, ítems, estados, conjuros) y el sistema de registros con `"base"`.
-- `Assets/` (los del original, GPL v3) y la regla: nada de sprites generados; sin sprite = el nombre.
-- `roadmap/` (decisiones del dueño: 5e manda sobre PD, multijugador, reglas de la partida) y `docs/` como formato
-  (un `.md` por archivo de código, misma ruta).
-- Las reglas de `CLAUDE.md` que no son de Python: lógica sin dependencias de render, contenido como datos, IDs
-  `namespace:nombre` (`pdri:`), textos `{"es", "en"}`, todo por delta de tiempo, azar sólo por rng con seed.
-- Licencia GPL v3 (agregar `LICENSE` antes de publicar).
-
-## Stack
-| Pieza | Crate | Por qué |
-|---|---|---|
-| Ventana e input | `winit` | Linux, Windows y Android (`android-activity`), sin SDL |
-| GPU | `wgpu` | Vulkan / DX12 / Metal / GLES (fallback en Android y GPUs viejas) |
-| Imágenes | `png` | sólo se cargan PNG de `Assets/` |
-| Datos y guardados | `serde`, `serde_json` | los mismos JSON |
-| Red | `std::net` + hilos | UDP broadcast + TCP, JSON por línea, como `net/` del prototipo; sin tokio para 2-4 jugadores |
-| Android | `android-activity`, `jni` (MulticastLock), `xbuild` o `cargo-ndk` + Gradle | APK desde la misma base |
-
-Audio, al final como siempre (cuando se pida: `kira` o `rodio`).
-
-## Estructura (workspace de 2 crates)
-- `game/` (lib, sin wgpu ni winit): port de `game/` de Python. Corre headless: base del host y de las pruebas.
-- `app/` (bin + cdylib para Android): ventana, render, UI, pantallas, red. Lee el estado de `game`, nunca al revés.
-
-`net` empieza como módulo de `app`; se separa en crate sólo si un servidor dedicado lo pide.
-
-## Render (la meta: GPU para todo)
-- Se dibuja en un render target de resolución virtual (~320x180, pixeles del juego) y se escala con factor entero
-  y `NEAREST` a la ventana (lo que hacía `Screen` + `HiRes`).
-- **Un atlas** por hoja (tiles, personajes, ítems, UI, fuente): los sprites de un frame van en **un buffer de
-  instancias** (posición, recorte, color, espejo, alfa) y se dibujan en 1-2 draw calls.
-- El mapa (tiles + agua) es un buffer estático: se sube al entrar al piso y se toca sólo cuando cambia una celda.
-- Niebla: textura de 1 texel por celda (visible / vista / nunca vista), filtrada en el shader. Se actualiza al
-  cambiar la vista.
-- Texto: fuente bitmap del original (`Assets/Fonts/font1x.png`) como atlas; la UI también son quads en el mismo lote.
-- `PresentMode::Immediate` / `Mailbox` sin vsync y tope de FPS opcional (`Local.config`), para medir los 200+.
-
-## Determinismo (para el multijugador y para comparar con Python)
-- `Rng` compatible con `random.Random` de CPython (MT19937, mismo seeding con entero, `random()` de 53 bits,
-  `_randbelow` para `shuffle` / `choice`). Así, **misma seed = mismo nivel en Python y en Rust**: se comparan pisos
-  enteros. Cuando el port esté completo se puede cambiar por otro rng (rompe guardados viejos).
-- Nada de `HashMap` cuyo orden afecte resultados (en Rust el orden es aleatorio por proceso): `Vec`, `BTreeMap` o
-  `IndexMap`. Es la regla del `set` de Python, más estricta.
-- Ojo al portar: la división entera de Rust trunca hacia 0 como Java; `//` de Python redondea hacia abajo (difieren con
-  negativos). Donde el prototipo usa `//` con valores que pueden ser negativos, replicar `div_euclid` / `floor`.
-
-## Fases (cada una cierra con algo que el dueño prueba a mano)
+## Rust (R0-R6)
 | Fase | Contenido | Referencia en Python | Cierra cuando |
 |---|---|---|---|
 | **R0** | Workspace, ventana winit + wgpu limpiando pantalla, contador de FPS, CI (GitHub Actions: Linux, Windows, APK), **APK en el teléfono** | `core/Screen.py` | El dueño abre el APK y el binario de escritorio y ve los FPS |
@@ -63,7 +13,7 @@ Audio, al final como siempre (cuando se pida: `kira` o `rodio`).
 | **R3** | Actores: planificador por tiempo + rondas 5e (iniciativa, movimiento + acción), héroe, mobs con IA, FOV, pathfinder, dados, combate 5e, salvaciones contra la muerte | `game/actor, char, hero, mobs, fov, pathfinder, dice, dungeon` | Se juega un piso con combate |
 | **R4** | Sprites animados, partículas, dados animados, UI (estado, carrusel de iniciativa, barra, mochila, ventanas, tooltips), sin sprite = nombre | `screens/gameUi, charSprite, particles, diceFx` | Igual que el prototipo 0.8, pantalla por pantalla |
 | **R5** | Ítems, estados, conjuros, trampas, creación de personaje, lista de personajes, guardado JSON, reglas de la partida, hotseat | `game/items, buffs, spells, traps, save, characters`, pantallas | Paridad con `python-prototipe` = **0.8 en Rust** |
-| **R6** | Red LAN (fase 5, pasos 4-7): descubrimiento, host autoritativo, personaje portátil, UI de partidas, hash de contenido, MulticastLock en Android | `net/`, `roadmap/fase5-red.md` | **0.9**: 2 jugadores en LAN, PC y Android |
+| **R6** | Red LAN (fase 5, pasos 4-7): descubrimiento, host autoritativo, personaje portátil, UI de partidas, hash de contenido, MulticastLock en Android | `net/`, `roadmap/fase5-red.md` (rama `python-prototipe`) | **0.9**: 2 jugadores en LAN, PC y Android |
 | — | Estabilidad del multijugador | | **1.0** |
 
 **Estado R0** ✅ (dueño, 2026-11-03): corre en el teléfono a 120 FPS (el tope del panel). Workspace (`game`, `app`),
@@ -263,110 +213,107 @@ Rust ignoraba) es una opción de la configuración en escritorio: 640x480 / 1280
 El botón de configuración de arriba a la izquierda del título pasó al dashboard ("Opciones", con el mismo ícono al
 doble). Para probar: cambiar la resolución en ventana y en pantalla completa, y el título en vertical (4 botones).
 
-## Para retomar (al cerrar la segunda sesión del 2026-11-04)
+## NPCs y mods (N1-N5)
 
-**Dónde está todo.** Rama `dev` (26 commits por encima de `main`, sin pushear: `git push -u origin dev`). `main`
-sigue en R2 (`30fbe9f`). El merge `dev -> main` lo hace el dueño cuando valide las fases. **Versión 0.8.0**
-(`Cargo.toml` del workspace y `android/AndroidManifest.xml`; regla e historial en `roadmap/versiones.md`; la 0.7 y la
-0.8 se marcaron con una excepción: faltan partículas y proyectil en vuelo). El APK de la última tanda está instalado
-en el teléfono del dueño y el binario de escritorio compilado (`cargo run --release`).
+Pedido del dueño (2026-11-05): NPCs como en D&D (hablar, misiones, comerciar, persuadir, mentir, intimidar,
+coquetear o atacar, con tiradas 5e), todo como datos. Decisiones en [`decisiones.md`](decisiones.md#npcs-2026-11-05).
 
-**Hecho en esta sesión** (todo ✏️ escrito y compilado, falta la prueba del dueño salvo lo que dice "probado"):
-creación de personaje con dados (con arrastrar y teclado en pantalla en Android), resolución de la ventana en la
-configuración, Opciones en el dashboard, armas a distancia (R5d), idioma del contenido, `[dev] dice_log`, hotseat,
-y la red LAN (R6): CREAR LAN con sala de espera / UNIRSE, host autoritativo, efectos y dados en el cliente, lista de
-quién falta elegir, avisos privados del log, Atrás de Android = Esc, Salir que cierra el proceso en Android, margen a
-los costados en Android apaisado, ventanas que entran en vertical, mostrar FPS como opción. El dueño probó la red
-con la PC y el teléfono: la partida aparece y se puede entrar (lo reportado se arregló en las dos tandas de arreglos
-de "Estado R6").
+### Modelo (propuesta)
+- **NPC = mob con diálogo**: en `data/mobs.json`, `"npc": "<id del diálogo>"` y `"disposition"` inicial. Así reusa
+  sprite, animaciones, guardado, red y combate. IA nueva `State::Passive`: no caza, deambula cerca de su casilla
+  o se queda quieto. Tocarlo = **Hablar** (`Action::Talk(mob)`); en combate no se habla.
+- **Disposición** (actitud de 5e: hostil / indiferente / amistoso, como número -2..2): la mueven las tiradas
+  sociales y las acciones. Cambia las CD y lo que ofrece el diálogo. Atacarlo lo vuelve hostil (pasa a
+  `Hunting`) y baja la disposición de los NPC que lo vean.
+- **Diálogos** (`data/dialogs.json`): árbol de nodos. Nodo = `text` + `options`. Opción = `text`, `if`
+  (condiciones), `check` (tirada: `{"skill", "dc", "ok", "fail"}`), `do` (efectos), `go` (nodo siguiente o fin).
+  - Condiciones: `has` [ítem, n], `gold` n, `flag` [clave, op, valor], `quest` [id, estado], `disposition` n,
+    `class` id, `level` n.
+  - Efectos: `give` / `take` [ítem, n], `gold` ±n, `flag` [clave, valor], `quest` [id, estado], `disposition` ±n,
+    `hostile`, `shop` id, `log` texto (pistas), `map` (revela el piso), `end`.
+  - Textos `{"es", "en"}` como el resto del contenido.
+- **Pericias 5e** (`data/skills.json`: id -> característica y nombre; Persuasión, Engaño, Intimidación,
+  Interpretación, Perspicacia, ...) y `skills` (competencias) en `classes.json`. Tirada = d20 + mod + competencia
+  contra la CD, con el dado grande (como las salvaciones). Coquetear = Persuasión o Interpretación, según el
+  diálogo.
+- **Misiones** (`data/quests.json`): nombre, descripción, objetivos como condiciones (`kill` [mob, n] con el
+  contador `kills:<mob>`, `has` ítem, `flag`) y recompensa (efectos). Ventana de misiones en la ficha.
+- **Inventario y equipo de los NPC** (pedido del dueño, 2026-11-05): cada NPC lleva mochila, arma y armadura (como el
+  héroe): en `mobs.json`, `inventory` ([ítem, cantidad] o sacado del generador) y `weapon` / `armor`. Pelea con su
+  equipo, se guarda con el piso y, si muere, lo suelta. Un diálogo puede dar o pedirle cosas a su inventario.
+- **Comercio**: la tienda **vende lo que el NPC tiene en su inventario** (así el mercader fijo y el ambulante son lo
+  mismo); precio = `price` de `items.json` (nuevo campo), modificado por la disposición. Vender = la mitad y el ítem
+  pasa a su inventario. Ventana de tienda con las dos mochilas.
+- **Mercader ambulante** (hecho, 0.9.14: mod incluido `data/mods/mercader-ambulante`; se reabastece con mercancía nueva en cada piso donde aparece): un NPC con tienda que deambula (`State::Passive` que camina) y puede aparecer en
+  cualquier piso; reabastece su inventario cada tanto.
+- **Colocación**: `npcs` por piso (como `bestiary.json`), con un rng propio derivado de la seed del piso: no gasta el
+  rng del nivel, así los pisos y los mobs siguen saliendo iguales.
+- **Red**: `Talk` y `Choose(k)` son acciones como las demás (el host las valida). El diálogo abierto va en el estado
+  del héroe: cada jugador ve el suyo y lo importante sale en el log de todos ("X convence a Y").
+- **Guardado**: disposición, flags, contadores y misiones.
 
-**Siguiente, en este orden:**
-1. **Que el dueño pruebe la última tanda** (PC + teléfono, vertical y apaisado): sala de espera, lista de quién
-   falta, efectos y dados en el teléfono, teclado en pantalla, botón del rasgo, Salir y volver a abrir en Android,
-   que no aparezcan copias de personajes. Lo que falle, primero.
-2. ✏️ **R6, personaje portátil** (escrito el 2026-11-05, ver su "Estado" arriba): falta la prueba del dueño.
-   **Versión 0.9.0** (2026-11-05, ver `roadmap/versiones.md`): la PC y el teléfono tienen que tener la misma para
-   jugar en LAN.
-3. ✏️ **Chat de texto** (escrito el 2026-11-05, ver su "Estado" arriba): falta la prueba del dueño.
-4. Resto de R6: aplicar el estado sin rearmar la partida (el cliente regenera los pisos en cada estado: puede trabar
-   en el teléfono), el teléfono como host (MulticastLock para recibir los "discover"), escribir la IP a mano.
-5. ✏️ **Idioma de los textos del código** (0.9.11, 2026-11-05): `tr!` / `trf!` (`game/src/registry.rs`), todo el
-   código traducido al inglés; falta la prueba del dueño. Lo que arma el host (log, dados) llega en su idioma.
-6. Pulido: partículas y proyectiles en vuelo, nubes de gas.
-7. **Publicar desde `main`** (pedido del dueño): GitHub Actions que, al llegar algo a `main`, compile Linux, Windows y
-   el APK y los publique como **Release** (tag `v<versión>` de `Cargo.toml`, los 3 archivos adjuntos). Hoy
-   `.github/workflows/build.yml` ya compila los 3 en cada push, pero sólo deja *artifacts* (vencen a los 90 días, no
-   son descargas públicas). Falta: un job o workflow para `push` a `main` que junte los 3 y use
-   `softprops/action-gh-release` (o `gh release create`), con `permissions: contents: write`; no repetir un tag que
-   ya existe (subir la versión antes del merge). El APK tiene que ir firmado con la clave del dueño: cargar los
-   secretos `PDRI_KEYSTORE_B64` y `PDRI_KEYSTORE_PASS` (ver "Pendiente del dueño"); sin ellos el CI firma con una
-   clave descartable y ese APK no sirve para actualizar el instalado. Al dueño le da igual si compila GitHub o si
-   compila su PC y sube los archivos (`gh release create v0.x.0 target/release/pdri target/android/pdri.apk ...`;
-   el `.exe` de Windows sale más fácil de GitHub). Preferir GitHub: no depende de la PC encendida.
+### Contenido base (del original, con sus sprites)
+- **Fabricante de varitas** (`Wandmaker.java`, `wandmaker.png`): el NPC inicial. En el original aparece en las Prisiones
+  y pide un objeto a cambio de una varita; acá, en las Alcantarillas, con su misión adaptada.
+- **Mercader** (`shopkeeper.png`): en el original aparece en el piso 6; acá, uno en las Alcantarillas.
+- Fuera por ahora (decisión del dueño): el Fantasma triste (`Ghost.java`).
+- Para después (sprites que ya están en `Assets/Characters/`): blacksmith, imp, ratking, ghost.
 
-8. **NPCs** (pedido del dueño, 2026-11-05): plan y pasos en `roadmap/npcs.md`. N1 (motor de diálogos), N2 (pericias y tiradas sociales), N3 (misiones) y N4 (inventario y tienda) ✏️ escritos.
-9. **Movimiento en PC** (pedido del dueño, 2026-11-05): opción en Configuración -> Controles para mover al héroe
-   sólo con el mouse o sólo con el teclado (hoy valen los dos a la vez), y una línea punteada en el mapa con el camino
-   hasta el destino elegido (el del pathfinder, hasta que el héroe llega o se cancela). La línea, también en el
-   teléfono.
-10. **Luz y visión 5e** (pedido del dueño, 2026-11-05): cada piso o zona con su nivel de luz (luz brillante a cielo
-   abierto de día, penumbra, oscuridad en cuevas) y el campo de visión según 5e en vez del radio fijo de PD
-   (`fov::MAX_DISTANCE`). Luz brillante: se ve hasta donde llega la vista. Penumbra: zona ligeramente oscura,
-   desventaja en Percepción (Sabiduría) con la vista (y al buscar). Oscuridad: muy oscura, no se ve más allá de la luz
-   propia. Fuentes de luz con radio en pies -> casillas (5 ft = 1): antorcha 20 ft de luz brillante + 20 ft de
-   penumbra, linterna, el conjuro Luz; visión en la oscuridad (60 ft, la oscuridad cuenta como penumbra) si una
-   clase, raza o mod la da. Como datos: `light` por piso o por sala, `light` en ítems (radio brillante y de
-   penumbra) y `darkvision` en clases y mobs (los mobs también ven según la luz: sigilo en lo oscuro). La niebla de
-   la GPU ya tiene "visible / vista": sumar la penumbra como un tono intermedio.
+### Estado
+- **N1** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: NPCs tranquilos, Hablar, diálogos como datos con
+  condiciones y efectos, flags de la partida, ventana de diálogo, guardado y red (`docs/game/npcs.md`). Contenido: el
+  Mercader en el piso 1 (vende una ración por 10 de oro y el mapa del piso por 30, un rumor) y el Fabricante de
+  varitas en el piso 2 (consejos, el ingrediente que busca, regala una poción de curación una vez por partida). Los
+  dos se pueden atacar (opción [Atacar], o pegarles). Para probar: tocar al NPC (se acerca y habla), cada opción, que
+  las de oro no aparezcan sin oro, el regalo una sola vez (también tras guardar y volver), Esc / Atrás cierra,
+  atacarlo (empieza el combate con él sorprendido), que no corte la caminata ni entre al combate de otros mobs, y en
+  la LAN que cada uno vea su propio diálogo.
 
-**Pendientes conocidos (pulido):** partículas de trampas y conjuros y proyectiles en vuelo (`screens/particles.py`),
-nubes de gas que se expanden (Blob), el indicador de ocupado gira en el original (acá titila: `Sprite` no rota),
-mimic, habilidades especiales de los mobs (Swarm, Skeleton, Thief), FLEEING, descansos (hoy se recupera todo al
-llegar a un piso nuevo). En vertical, el dueño dijo que "cuesta interactuar": se arregló lo que se salía de la
-pantalla; si sigue, pedirle qué pantalla.
+- **N2** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: las 18 pericias de 5e como datos
+  (`data/skills.json`) y sus competencias por clase (`skill_prof`: Guerrero Atletismo e Intimidación, Mago Arcanos y
+  Perspicacia, Pícaro Engaño, Persuasión, Sigilo y Percepción, Explorador Percepción, Supervivencia y Perspicacia), en
+  la ficha; opciones con tirada (`check`) que van a un nodo u otro según el resultado, con el dado grande y el
+  resultado en el log de todos; actitud de cada NPC (de hostil a muy amistoso, se ve en la ventana, mueve la CD 2 por
+  punto); atacar a un NPC hace desconfiar a los que lo vieron. Medicina ya suma la competencia. Contenido: el
+  Fabricante (observarlo con Perspicacia, mentirle con Engaño, coquetearle con Interpretación) y el Mercader
+  (regatear con Persuasión, intimidarlo; si es amistoso, un regalo). Cada intento, una vez por partida. Para probar:
+  cada tirada con una clase con y sin competencia (el bono del botón cambia), que mentir mal lo vuelva desconfiado y
+  suba la CD de lo demás, que regatear bien habilite "¿Algo especial para un amigo?", pegarle a uno delante del otro
+  (en pisos distintos no se ven: probarlo con un mod o más adelante), y el dado y el log en la LAN.
 
-**Cómo se trabaja (acordado con el dueño):** el dueño prueba el juego a mano; no correr simulaciones, bots ni
-comparaciones de partidas, sólo compilar (`cargo clippy --workspace --all-targets` y
-`cargo ndk -t arm64-v8a check -p app --lib`) y los tests de red (`cargo test -p app --lib net`, los únicos
-automáticos; usan los puertos del juego). Commits en `dev`, cortos, a nombre del dueño, sin coautoría, con `#R<n>`;
-el dueño pushea. Subir la versión al cerrar lo que la cambie. `Local.config` cambia cuando el dueño prueba opciones:
-no commitearlo. Lo que el dueño tiene que revisar queda anotado en el "Estado" de cada paso.
+- **N3** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: misiones como datos (`data/quests.json`) con objetivos
+  de matar (contador por mob) o de tener un ítem, estado de la partida (compartido en la LAN), en la ficha con su
+  progreso, y aceptar / revisar / entregar desde los diálogos. Contenido: el Fabricante de varitas (piso 2) pide polvo de
+  cadáver, que aparece en unos restos de esqueleto de su piso al aceptar; lo paga con un pergamino de mejora y una
+  poción de curación (y se vuelve más amistoso). El Mercader (piso 1) paga 40 de oro por 5 ratas. Para probar: aceptar
+  cada una, ver el progreso en la ficha (las ratas cuentan desde que se acepta), abrir los restos y recoger el polvo,
+  entregar; guardar y volver a entrar a mitad; en la LAN, que la misión sea del grupo.
 
-**Pendiente del dueño** (actualizado al cerrar la segunda sesión del 2026-11-04):
-- `git push -u origin dev`, probar y, cuando cierre cada fase, `merge: dev -> main`.
-- Red LAN: con ufw activo en la PC, abrir los puertos (`sudo ufw allow 47810/udp` y `sudo ufw allow 47811/tcp`).
-  La partida se crea en la PC (CREAR LAN) y el teléfono entra con UNIRSE, en la misma Wi-Fi.
-- Probar en la PC (`cargo run --release`) y en el teléfono (`android/build.sh` y
-  `adb install -r target/android/pdri.apk`; si adb se corta: otro cable/puerto o `adb pair` / `adb connect`). Qué
-  mirar: el "Estado" de cada paso, arriba.
-- Respaldar `~/.pddnd-signing/` (sin la clave no se pueden publicar actualizaciones del APK) y, para publicar desde
-  `main` (punto 7 de "Siguiente"), cargar los secretos `PDRI_KEYSTORE_B64` (`base64 -w0 release.jks`) y
-  `PDRI_KEYSTORE_PASS` en GitHub.
-- Decidir si `Local.config` sigue versionado (cambia al probar opciones) o va al `.gitignore`.
-- Opcional: borrar `~/pddnd-android/` (prueba de buildozer; el SDK/NDK de `~/.buildozer` sí lo usa
-  `android/build.sh`) y `~/pddnd-backup-20261103-1116/`.
+- **N4** ✏️ escrito (2026-11-05), pendiente de prueba del dueño: inventario y equipo de los NPC como datos (fijo y al
+  azar del generador), con el que pelean y que sueltan al morir; precios en `items.json`; tienda desde el inventario
+  (comprar de a una unidad, vender de a una; lo vendido queda en su inventario; la actitud mueve los precios); `give` y
+  `take` usan su inventario. El Mercader vende raciones, pociones de curación, pergaminos de identificar, dardos,
+  armadura de cuero y algo al azar (2 pociones, 2 pergaminos, 1 arma); pelea con espada corta y armadura de cuero. El
+  Fabricante de varitas lleva un bastón. Para probar: "Veamos qué tienes" abre la tienda, comprar con y sin oro, vender
+  algo y volver a comprarlo, regatear bien (más barato) o intimidarlo (más caro), la mochila llena, matarlo y ver que
+  suelta su mercancía, y en la LAN que cada uno compre de la misma tienda.
+  Mercader ambulante ✏️ (0.9.14, 0.9.17, 0.9.19): mod incluido `data/mods/mercader-ambulante`; aparece junto a la
+  bajada con 25 % en el piso 1, 5 % menos por piso (0 desde el 6), mercancía nueva en cada piso; ajustes "Frecuencia
+  (%)" y "Deambula" (si no, se queda donde aparece). Para probar: bajar varios pisos (en el 1-5 a veces está junto a
+  la bajada), la tienda, la tirada de Perspicacia, la frecuencia en 0 (no aparece) y 200, y "Deambula" en No.
 
-R0 va primero a propósito: Android fue lo que rompió Python. Si `wgpu` + `winit` no levanta en el teléfono, se sabe
-antes de portar una sola línea de lógica.
+- **N5** ✏️ escrito (0.9.12, 0.9.15, 0.9.16, 0.9.18), pendiente de prueba del dueño (`docs/mods.md`):
+  - Carga de mods de `<datos>/mods/<mod>/` (registros que pisan o suman al base; entran en el hash de la LAN) y mods
+    incluidos (`data/mods/`); `npcs.json` con `"*"`, probabilidad por profundidad, `near` y `scale`.
+  - Scripts Lua (`script.lua`, `game/src/script.rs`, mlua): condiciones y efectos `["lua", ...]` de los diálogos, en
+    sandbox (sin archivos, tope de instrucciones y memoria), `ctx` con héroe, NPC, piso, flags y ajustes.
+  - Importar un zip con el selector de archivos del sistema (escritorio `rfd`, Android `MainActivity.java`: el APK
+    ya tiene código Java, `android/build.sh` lo compila con javac + d8); aviso de responsabilidad una sola vez.
+  - Lista de mods: ícono (`icon.png`), `mod.json` (nombre, descripción, autor, versión), ON / OFF (al reiniciar) y
+    AJUSTES por mod (`settings` int / bool, en Local.config, en caliente).
+  - Mod de ejemplo `mods/ejemplo-herrero`: herrero troll en el piso 3 (sprite `blacksmith.png`, cuadro 14x16
+    estimado: revisar que se vea bien), tienda, misión de 3 gnolls, ítem propio con `base`, Persuasión y una
+    apuesta en Lua con sus ajustes.
+  - Para probar: comprimir `mods/ejemplo-herrero` en un zip, importarlo en el teléfono y en la PC, reiniciar, el
+    herrero en el piso 3 (apuesta, ajustes), desactivar el mercader ambulante, y en la LAN los dos con los mismos mods.
 
-## Qué NO se porta
-- `pygame`, `moderngl`, los shaders GLSL 330 (se reescriben en WGSL), `core/` tal cual (se rehace sobre winit/wgpu).
-- Los `ponytail:` del prototipo se revisan uno por uno al portar su archivo: algunos se resuelven gratis en Rust.
-
-## Ramas y versiones
-- `python-prototipe`: el prototipo congelado (0.8 + pasos 3-4 de la fase 5 escritos).
-- `main`: el juego en Rust. El primer commit de R0 reemplaza ahí el código de Python (el historial se conserva;
-  el prototipo sigue completo en `python-prototipe`).
-- `dev` para el trabajo diario y `merge: dev -> main` al cerrar cada fase. Commits cortos: `feat:`, `fix:`, `merge:`.
-- Versión: el Rust sigue la numeración (llega a 0.8 al cerrar R5). Historial en `roadmap/versiones.md`.
-
-## Riesgos
-- **wgpu en Android viejo**: si no hay Vulkan usa GLES 3; probar en el teléfono del dueño en R0.
-- **Tooling de Android** (NDK, firma, Gradle): por eso va en CI desde R0.
-- **Tamaño del port** (~7.300 líneas de Python): las fases lo parten; cada una se compara a mano contra Python.
-
-## Decisiones del dueño (2026-11-03)
-1. **Pruebas**: el juego lo prueba el dueño a mano; sin tests de juego. Tests automáticos sólo para la red (R6).
-2. **Guardados**: los del prototipo eran de prueba; Rust usa un formato nuevo, sin migración.
-3. **Firma del APK**: desde R0, con clave propia fuera del repo (`~/.pddnd-signing/`, ver README).
-4. README con meta, decisiones, cómo compilar y contribuir, y créditos; licencia GPL v3 (`LICENSE`).

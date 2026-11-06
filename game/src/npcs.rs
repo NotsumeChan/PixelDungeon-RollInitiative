@@ -1,4 +1,4 @@
-//! NPCs (`roadmap/npcs.md`, pasos N1 a N4): mobs con diálogo (`"npc"` en data/mobs.json) que no cazan (`State::Passive`).
+//! NPCs (`roadmap/estado.md`, pasos N1 a N4): mobs con diálogo (`"npc"` en data/mobs.json) que no cazan (`State::Passive`).
 //! Hablar abre su diálogo (data/dialogs.json): nodos con texto y opciones; cada opción con condiciones (`if`),
 //! efectos (`do`) y el nodo siguiente (`go`; sin él, la charla termina). Los flags son de la partida (en la LAN, del
 //! grupo). Una condición o un efecto desconocido (de un mod más nuevo) no se cumple / no hace nada.

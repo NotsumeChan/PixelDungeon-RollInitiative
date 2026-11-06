@@ -60,8 +60,8 @@ listo.**
 ## Plan hacia la 1.0
 | Versión | Objetivo |
 |---|---|
-| 0.7 | ✅ Rasgos de clase 5e, salvaciones, estados. La segunda pasada de ítems pasó a pendientes (`roadmap/mejoras.md`) |
+| 0.7 | ✅ Rasgos de clase 5e, salvaciones, estados. La segunda pasada de ítems pasó a pendientes (`roadmap/pendientes.md`) |
 | 0.8 | ✅ Guardado de partidas por personaje, registros en JSON (base para mods) |
-| 0.9 | ✅ Red: descubrimiento LAN + partida para 2 jugadores (plan: `roadmap/fase5-red.md`). Falta la prueba del dueño del personaje portátil y el chat |
+| 0.9 | ✅ Red: descubrimiento LAN + partida para 2 jugadores (plan: `roadmap/estado.md`). Falta la prueba del dueño del personaje portátil y el chat |
 | **1.0** | **Multijugador P2P estable** |
 | 1.x | Mods (`.pdmod`, instancias, sincronización estilo tModLoader), mapas por zonas, Android, internet (relay y servidores propios, no sólo PC) |

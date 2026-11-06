@@ -1,6 +1,6 @@
 # game/src/npcs.rs
 
-NPCs (`roadmap/npcs.md`, pasos N1 y N2). Un NPC es un mob con `"npc": "<id de diálogo>"` en `data/mobs.json` que aparece
+NPCs (`roadmap/estado.md`, pasos N1 y N2). Un NPC es un mob con `"npc": "<id de diálogo>"` en `data/mobs.json` que aparece
 tranquilo (`State::Passive`): no caza, no entra al combate, no corta el paso del héroe y no cuenta para el respawner.
 Si lo dañan (o el diálogo lo ataca) se despierta como un mob dormido y pelea.
 

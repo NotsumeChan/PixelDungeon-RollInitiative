@@ -5,3 +5,4 @@ __pycache__/
 *.keystore
 keystore.properties
 target/
+CLAUDE.md

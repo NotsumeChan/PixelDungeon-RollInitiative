@@ -49,11 +49,4 @@ Los requisitos de FUE del original se mantienen: arma muy pesada = desventaja; a
   competencia todavía), Curar heridas de toque (`docs/game/hero.md`).
 
 ## Pendiente
-- Rasgos de clase: Oleada de Acción (Guerrero).
-- Habilidades (Percepción para buscar secretos, Sigilo).
-- Descanso corto/largo con dados de golpe (hoy: regeneración del original).
-- Iniciativa: hoy se usa el tiempo del original. Encaja con la decisión abierta del modelo de turnos del P2P.
-- Subclases, requisitos de nivel, escalados custom: los definirán los mods (ver `roadmap/futuro-mods-personajes-red.md`).
-- Atribución SRD 5.1 (CC-BY-4.0) en el About si se usan textos o stat blocks del SRD. Hoy sólo se usan mecánicas.
-- Conjuros: concentración, foco (varita del Mago), más conjuros y niveles, conjuros de área en cono.
-- Explorador: estilo de combate (Arquería +2 a distancia). Arco y arrojadizas: hechos.
+En [`pendientes.md`](pendientes.md#combate-5e).
