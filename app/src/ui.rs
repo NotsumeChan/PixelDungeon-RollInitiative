@@ -212,6 +212,10 @@ pub enum UiAction {
     JoinGame(usize),
     /// Sala de espera: empezar la partida LAN.
     StartLan,
+    /// Unirse / sala de espera: abrir la línea para escribir una dirección o una clave.
+    Ask(Ask),
+    /// Esa línea: escribir, borrar, listo (`Cr::Done`), cancelar (`Cr::Unfocus`).
+    Prompt(Cr),
     /// Rasgo de clase: Segundo Aliento o el libro de conjuros (F o el botón de la barra).
     Trait,
     /// Chat de la partida LAN: abrir (`Cr::New`), escribir, borrar, mandar (`Cr::Done`), cancelar (`Cr::Unfocus`).
@@ -304,6 +308,8 @@ pub struct Ui {
     /// En una partida LAN (muestra el botón del chat) y el mensaje que se está escribiendo.
     pub lan: bool,
     pub chat: Option<String>,
+    /// Título: la dirección o la clave que se está escribiendo.
+    pub prompt: Option<(Ask, String)>,
     /// Tienda: el ítem elegido (true = del NPC, índice).
     pub shop_sel: Option<(bool, usize)>,
     hot: Vec<Hot>,
@@ -314,7 +320,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// Escribe en el mensaje del chat (si se está escribiendo uno).
@@ -323,6 +329,20 @@ impl Ui {
             for ch in text.chars().filter(|c| !c.is_control()) {
                 if c.chars().count() < crate::net::CHAT_MAX {
                     c.push(ch);
+                }
+            }
+        }
+    }
+
+    /// Escribe en la línea del título: la dirección en minúsculas (con . : - [ ]), la clave en mayúsculas.
+    pub fn prompt_type(&mut self, text: &str) {
+        if let Some((a, s)) = &mut self.prompt {
+            let addr = *a == Ask::Addr;
+            for ch in text.chars() {
+                let ch = if addr { ch.to_ascii_lowercase() } else { ch.to_ascii_uppercase() };
+                let ok = ch.is_ascii_alphanumeric() || (addr && ".:-[]".contains(ch));
+                if ok && s.chars().count() < if addr { 64 } else { crate::net::PASS_MAX } {
+                    s.push(ch);
                 }
             }
         }
@@ -1502,13 +1522,15 @@ impl Ui {
             font.text(out, label, r[0] + 4.0, r[1] + 4.0, if *ok { WHITE } else { GREY });
             self.hot(r, UiAction::JoinGame(i), None);
         }
-        let help = trf!("{status} Juegas con el personaje elegido en la lista. La partida la abre otro con CREAR LAN (misma red Wi-Fi).", "{status} You play as the character chosen in the list. Another player opens the game with HOST LAN (same Wi-Fi network).");
+        let help = trf!("{status} Juegas con el personaje elegido en la lista. Las partidas de tu Wi-Fi aparecen solas; por internet, DIRECCIÓN con la que te pase el host.", "{status} You play as the character chosen in the list. Games on your Wi-Fi show up by themselves; over the internet, ADDRESS with the one the host gives you.");
         let lines = wrap(font, help.trim(), w - 16.0);
         for (k, l) in lines.iter().enumerate() {
             let y = h - 24.0 - (lines.len() - k) as f32 * LINE_H;
             font.text(out, l, 8.0, y, if k == 0 && !status.is_empty() { YELLOW } else { GREY });
         }
-        self.draw_button(atlas, font, out, [8.0, h - 20.0, w - 16.0, 16.0], tr!("VOLVER", "BACK"), Some(UiAction::OpenRoster));
+        let bw = ((w - 16.0 - 2.0) / 2.0).floor();
+        self.draw_button(atlas, font, out, [8.0, h - 20.0, bw, 16.0], tr!("DIRECCIÓN", "ADDRESS"), Some(UiAction::Ask(Ask::Addr)));
+        self.draw_button(atlas, font, out, [8.0 + bw + 2.0, h - 20.0, bw, 16.0], tr!("VOLVER", "BACK"), Some(UiAction::OpenRoster));
     }
 
     /// Sala de espera del host: quién se unió, la IP, EMPEZAR y VOLVER (cierra la partida).
@@ -1524,14 +1546,15 @@ impl Ui {
             let label = if i == 0 { format!("{name} (host)") } else { name.clone() };
             font.text(out, &label, r[0] + 4.0, r[1] + 2.0, if i == 0 { YELLOW } else { WHITE });
         }
-        let help = tr!("Los demas entran con UNIRSE desde su lista de personajes (misma red Wi-Fi). Tambien pueden entrar con la partida empezada.", "The others join with JOIN from their character list (same Wi-Fi network). They can also join a game in progress.");
+        let help = tr!("Los demás entran con UNIRSE desde su lista de personajes (misma red Wi-Fi). Por internet: un túnel TCP (playit.gg, ngrok) al puerto 47811 o el puerto abierto, y entran con DIRECCIÓN. También pueden entrar con la partida empezada.", "The others join with JOIN from their character list (same Wi-Fi network). Over the internet: a TCP tunnel (playit.gg, ngrok) to port 47811 or the port open, and they join with ADDRESS. They can also join a game in progress.");
         let lines = wrap(font, help, w - 16.0);
         for (k, l) in lines.iter().enumerate() {
             font.text(out, l, 8.0, h - 24.0 - (lines.len() - k) as f32 * LINE_H, GREY);
         }
-        let bw = ((w - 16.0 - 2.0) / 2.0).floor();
+        let bw = ((w - 16.0 - 4.0) / 3.0).floor();
         self.draw_button(atlas, font, out, [8.0, h - 20.0, bw, 16.0], tr!("EMPEZAR", "START"), Some(UiAction::StartLan));
-        self.draw_button(atlas, font, out, [8.0 + bw + 2.0, h - 20.0, bw, 16.0], tr!("VOLVER", "BACK"), Some(UiAction::OpenRoster));
+        self.draw_button(atlas, font, out, [8.0 + bw + 2.0, h - 20.0, bw, 16.0], tr!("CLAVE", "PASSWORD"), Some(UiAction::Ask(Ask::HostPass)));
+        self.draw_button(atlas, font, out, [8.0 + 2.0 * (bw + 2.0), h - 20.0, bw, 16.0], tr!("VOLVER", "BACK"), Some(UiAction::OpenRoster));
     }
 
     /// Pantalla de texto (Mods, Acerca de): párrafos centrados sobre negro; click en cualquier lado vuelve.
@@ -1743,6 +1766,35 @@ impl Ui {
             Some(Window::Lobby) => self.draw_lobby(atlas, font, out, w, h, lan, lan_status),
             _ => self.draw_tooltip(atlas, font, out, w, h),
         }
+        if self.prompt.is_some() {
+            self.draw_prompt(atlas, font, out, w, h);
+        }
+    }
+
+    /// La línea para escribir una dirección o una clave (Unirse, sala de espera), encima de todo; en Android con el
+    /// teclado en pantalla (con . : - para las direcciones).
+    fn draw_prompt(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32) {
+        let Some((a, s)) = self.prompt.clone() else { return };
+        let label = match a {
+            Ask::Addr => tr!("Dirección", "Address"),
+            Ask::Pass => tr!("Clave", "Password"),
+            Ask::HostPass => tr!("Clave (vacía = sin clave)", "Password (empty = none)"),
+        };
+        out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 0.7]));
+        self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
+        out.push(atlas.rect([0.0, 34.0], [w, font.height() + 4.0], PROMPT_BG));
+        font.text(out, &format!("{label}: {s}_"), 4.0, 36.0, WHITE);
+        if !cfg!(target_os = "android") {
+            let hint = if a == Ask::Addr {
+                tr!("dominio:puerto o IP:puerto. Enter conecta, Esc cancela", "domain:port or IP:port. Enter connects, Esc cancels")
+            } else {
+                tr!("Enter acepta, Esc cancela", "Enter accepts, Esc cancels")
+            };
+            font.text(out, hint, 4.0, 36.0 + font.height() + 6.0, GREY);
+            return;
+        }
+        let rows: &[&str] = if a == Ask::Addr { &["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM.:-"] } else { &["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"] };
+        self.draw_keys(atlas, font, out, w, h, rows, false, UiAction::Prompt);
     }
 
     /// Texto de la zona bajo el mouse (la de más arriba), encima del mouse sin salirse de la pantalla.
@@ -1825,6 +1877,17 @@ pub struct RosterRow {
 pub enum Focus {
     Name,
     Stat(usize),
+}
+
+/// Qué se escribe en la línea del título.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Ask {
+    /// Unirse por dirección.
+    Addr,
+    /// La clave que pidió el host al unirse.
+    Pass,
+    /// La clave de la sala propia.
+    HostPass,
 }
 
 /// Clicks de la creación de personaje.

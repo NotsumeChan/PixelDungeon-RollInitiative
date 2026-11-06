@@ -6,7 +6,7 @@ archivo: `[general] maxFPS` (30 / 60 / 120 / 0 = sin límite; sin archivo, 60), 
 (una por acción, con el nombre de la tecla en winit: `up = KeyW`). El archivo está en la carpeta de datos (`DIR`):
 en escritorio la de personajes y partidas (`%APPDATA%/PixelDND`, `~/.local/share/PixelDND`; lo pone `run`, y la
 primera vez copia el `Local.config` de la carpeta actual si hay), en Android la de la app (lo pone `android_main`).
-Es personal (en el `.gitignore`): sin archivo, valores por defecto. `[dev]` (`hotseat`, `dice_log`) sólo se escribe
+Es personal (en el `.gitignore`): sin archivo, valores por defecto. `[lan] address`: la última dirección de Unirse. `[dev]` (`hotseat`, `dice_log`) sólo se escribe
 a mano; el juego nunca la genera.
 
 - `Bind`: acciones con tecla configurable (moverse, esperar, buscar, mochila, accesos rápidos). Las flechas siempre

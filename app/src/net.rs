@@ -32,6 +32,8 @@ const DISCOVER_EVERY: Duration = Duration::from_secs(1);
 /// ponytail: estado completo; con mapas grandes o internet, mandar sólo diferencias
 const STATE_EVERY: Duration = Duration::from_millis(50);
 const NAME_MAX: usize = 16;
+/// Largo máximo de la clave de la sala.
+pub const PASS_MAX: usize = 16;
 /// Lo que entra en una línea del log junto con el nombre.
 pub const CHAT_MAX: usize = 40;
 
@@ -48,6 +50,23 @@ fn say(d: &mut Dungeon, i: usize, text: &str) {
         let name = d.heroes[i].ch.name.clone();
         d.log(&format!("{name}: {t}"));
     }
+}
+
+/// La clave de la sala normalizada: letras y números, en mayúsculas (el teclado del teléfono sólo tiene mayúsculas).
+pub fn pass_text(s: &str) -> String {
+    s.chars().filter(char::is_ascii_alphanumeric).take(PASS_MAX).collect::<String>().to_ascii_uppercase()
+}
+
+/// "dominio:puerto", "IP:puerto" o sin puerto (`TCP_PORT`) -> dirección, para unirse por internet (un túnel como
+/// playit.gg o el puerto abierto). Prefiere IPv4: el host escucha en 0.0.0.0.
+/// ponytail: resuelve el DNS en el hilo del juego (como `connect_timeout`, un par de segundos como mucho)
+pub fn resolve(s: &str) -> std::io::Result<SocketAddr> {
+    use std::net::ToSocketAddrs;
+    let s = s.trim();
+    let has_port = s.parse::<SocketAddr>().is_ok() || s.rsplit_once(':').is_some_and(|(h, p)| !h.contains(':') && p.parse::<u16>().is_ok());
+    let full = if has_port { s.to_string() } else { format!("{s}:{TCP_PORT}") };
+    let all: Vec<SocketAddr> = full.to_socket_addrs()?.collect();
+    all.iter().find(|a| a.is_ipv4()).or(all.first()).copied().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "sin direcciones"))
 }
 
 fn line(msg: &Value) -> Vec<u8> {
@@ -412,6 +431,8 @@ pub struct HostGame {
     started: bool,
     /// Hay que mandar la lista de la sala (alguien entró o se fue).
     lobby_dirty: bool,
+    /// Clave de la sala (`pass_text`); vacía = sin clave.
+    password: String,
 }
 
 /// ¿Espera la partida a que este héroe elija qué hacer? (vivo, sin acción, sin animación pendiente, ni caído ni
@@ -430,6 +451,7 @@ impl HostGame {
             sent: Instant::now(),
             started: false,
             lobby_dirty: true,
+            password: String::new(),
         })
     }
 
@@ -437,6 +459,17 @@ impl HostGame {
     pub fn start(&mut self) {
         self.started = true;
         self.last.clear();
+    }
+
+    /// Clave de la sala ("" la saca). La lista de la LAN muestra que tiene clave.
+    /// ponytail: viaja en texto plano y sin límite de intentos; alcanza para jugar entre amigos
+    pub fn set_password(&mut self, p: &str) {
+        self.password = pass_text(p);
+        self.host.info.lock().unwrap()["locked"] = json!(!self.password.is_empty());
+    }
+
+    pub fn locked(&self) -> bool {
+        !self.password.is_empty()
     }
 
     /// Los de la sala: el host y los que se unieron.
@@ -473,6 +506,13 @@ impl HostGame {
                 "hello" if !self.players.contains_key(&cid) => {
                     if let Some(why) = Self::refuse(&msg, classes, d) {
                         self.host.send(cid, &json!({"t": "refused", "why": why}));
+                        self.host.kick(cid);
+                        continue;
+                    }
+                    let pass = msg["pass"].as_str().unwrap_or("");
+                    if self.locked() && pass_text(pass) != self.password {
+                        let why = if pass.is_empty() { game::tr!("pide clave", "needs a password") } else { game::tr!("clave incorrecta", "wrong password") };
+                        self.host.send(cid, &json!({"t": "refused", "why": why, "need": "password"}));
                         self.host.kick(cid);
                         continue;
                     }
@@ -585,6 +625,8 @@ pub struct ClientGame {
     stream: TcpStream,
     inbox: Receiver<Value>,
     pub refused: Option<String>,
+    /// El host pide clave (no se mandó o no es esa).
+    pub need_pass: bool,
     pub closed: bool,
     /// Sala de espera: los nombres que mandó el host (se toma al mostrarlo).
     pub lobby: Option<Vec<String>>,
@@ -594,16 +636,18 @@ pub struct ClientGame {
 }
 
 impl ClientGame {
-    /// `c` = el personaje (characters.json); `hero` = `save::portable` de su héroe (None = entra con nivel 1).
-    pub fn connect(addr: SocketAddr, c: &Value, hero: Option<Value>) -> std::io::Result<Self> {
+    /// `c` = el personaje (characters.json); `hero` = `save::portable` de su héroe (None = entra con nivel 1);
+    /// `pass` = la clave de la sala ("" si no pide).
+    pub fn connect(addr: SocketAddr, c: &Value, hero: Option<Value>, pass: &str) -> std::io::Result<Self> {
         let stream = TcpStream::connect_timeout(&addr, Duration::from_secs(3))?;
         stream.set_nodelay(true)?;
         let (tx, inbox) = channel();
         read_loop(stream.try_clone()?, tx, |m| m);
-        let mut g = Self { stream, inbox, refused: None, closed: false, lobby: None, fx: Vec::new(), dice: Vec::new() };
+        let mut g = Self { stream, inbox, refused: None, need_pass: false, closed: false, lobby: None, fx: Vec::new(), dice: Vec::new() };
         g.send(&json!({"t": "hello", "version": game::VERSION, "hash": game::registry::content_hash(),
                        "name": c["name"], "char": characters::id(c), "class": c["class"],
-                       "abilities": characters::abilities(c), "hero": hero, "skin": characters::skin(c)}));
+                       "abilities": characters::abilities(c), "hero": hero, "skin": characters::skin(c),
+                       "pass": pass_text(pass)}));
         Ok(g)
     }
 
@@ -630,7 +674,10 @@ impl ClientGame {
         while let Ok(m) = self.inbox.try_recv() {
             match m["t"].as_str().unwrap_or("") {
                 "state" => latest = Some(m),
-                "refused" => self.refused = Some(m["why"].as_str().unwrap_or(game::tr!("rechazado", "refused")).to_string()),
+                "refused" => {
+                    self.need_pass = m["need"] == "password";
+                    self.refused = Some(m["why"].as_str().unwrap_or(game::tr!("rechazado", "refused")).to_string());
+                }
                 "fx" => {
                     let list = |k: &str| m[k].as_array().cloned().unwrap_or_default();
                     self.fx.extend(list("fx").iter().filter_map(fx_of));
@@ -727,14 +774,27 @@ mod tests {
         let mut d = Dungeon::new_with(1, "pdri:warrior", game::dice::DEFAULT_SCORES);
         let mut host = HostGame::new("prueba").unwrap();
         host.start();
+        host.set_password("abc");
         let c = characters::new_character("Cliente", "pdri:mage", game::dice::DEFAULT_SCORES);
+        // por nombre, como por internet; con otra clave: rechazado y pide clave
+        let addr = resolve("localhost").unwrap();
+        let mut bad = ClientGame::connect(addr, &c, None, "xyz").unwrap();
+        let t_bad = Instant::now();
+        while !bad.need_pass {
+            host.pump(&mut d, &classes);
+            bad.pump();
+            assert!(t_bad.elapsed() < Duration::from_secs(5), "no pidió clave");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert!(bad.refused.is_some() && !host.controls(1));
+        drop(bad);
         // personaje portátil: entra con el nivel, el oro y el equipo de su partida
         let solo = Dungeon::new_with(2, "pdri:mage", game::dice::DEFAULT_SCORES);
         let mut p = save::portable(solo.local());
         p["lvl"] = json!(3);
         p["gold"] = json!(50);
         let ht1 = solo.local().ch.ht;
-        let mut cl = ClientGame::connect(SocketAddr::from(([127, 0, 0, 1], TCP_PORT)), &c, Some(p)).unwrap();
+        let mut cl = ClientGame::connect(addr, &c, Some(p), "ABC").unwrap(); // sin distinguir mayúsculas
         let t0 = Instant::now();
         let got = loop {
             host.pump(&mut d, &classes);
@@ -780,6 +840,16 @@ mod tests {
         let s = &d.floor().scheduler;
         assert!(s.actors.iter().all(|e| !matches!(e.0, ActorId::Hero(1) | ActorId::Regen(1) | ActorId::Hunger(1))));
         assert!(s.contains(ActorId::Hero(0)));
+    }
+
+    #[test]
+    fn direcciones_y_claves() {
+        assert_eq!(resolve("1.2.3.4").unwrap(), SocketAddr::from(([1, 2, 3, 4], TCP_PORT)));
+        assert_eq!(resolve(" 1.2.3.4:5 ").unwrap(), SocketAddr::from(([1, 2, 3, 4], 5)));
+        assert_eq!(resolve("localhost:7").unwrap(), SocketAddr::from(([127, 0, 0, 1], 7)));
+        assert_eq!(resolve("[::1]").unwrap().port(), TCP_PORT);
+        assert!(resolve("").is_err());
+        assert_eq!(pass_text(" a b-C1ñ"), "ABC1");
     }
 
     #[test]

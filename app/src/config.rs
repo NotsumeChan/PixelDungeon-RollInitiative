@@ -240,6 +240,16 @@ impl Config {
         self.save();
     }
 
+    /// La última dirección escrita en Unirse (`[lan] address`).
+    pub fn last_address(&self) -> String {
+        self.get("lan", "address").unwrap_or_default()
+    }
+
+    pub fn set_last_address(&mut self, a: &str) {
+        self.set("lan", "address", a);
+        self.save();
+    }
+
     pub fn set_mods_ack(&mut self) {
         self.mods_ack = true;
         self.set("general", "mods_ack", "true");

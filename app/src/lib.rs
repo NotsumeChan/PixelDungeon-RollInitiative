@@ -227,6 +227,8 @@ struct App {
     lan_status: String,
     /// Cliente: mandó una acción y espera el estado que la incluya (no repetir el paso con la tecla mantenida).
     awaiting: bool,
+    /// Adónde se intentó unir por última vez (para reintentar con la clave que pide el host).
+    join_addr: Option<std::net::SocketAddr>,
 }
 
 enum Net {
@@ -285,6 +287,12 @@ fn ability_order(cls: Option<&serde_json::Value>) -> [usize; 6] {
         }
     }
     std::array::from_fn(|k| order[k])
+}
+
+/// El aviso de la sala de espera: IP y puerto (para un túnel o el puerto abierto) y si pide clave.
+fn host_status(locked: bool) -> String {
+    let lock = if locked { tr!("Con clave.", "Password set.") } else { tr!("Sin clave.", "No password.") };
+    trf!("Partida abierta en {}:{}. {}", "Game open at {}:{}. {}", net::local_ip(), net::TCP_PORT, lock)
 }
 
 fn new_seed() -> i64 {
@@ -347,6 +355,7 @@ impl App {
             lan_games: Vec::new(),
             lan_status: String::new(),
             awaiting: false,
+            join_addr: None,
         }
     }
 
@@ -550,7 +559,7 @@ impl App {
                         self.ui = Ui::new();
                         self.ui.in_title = true;
                         self.ui.window = Some(UiWindow::Lobby);
-                        self.lan_status = trf!("Partida abierta en {}.", "Game open at {}.", net::local_ip());
+                        self.lan_status = host_status(false);
                     }
                     Err(e) => self.world.d.log(&trf!("No se pudo abrir la partida LAN: {e}", "Couldn't open the LAN game: {e}")),
                 }
@@ -573,21 +582,41 @@ impl App {
                     self.lan_status = tr!("Esa partida tiene otro contenido (data/ o mods).", "That game has different content (data/ or mods).").into();
                     return;
                 }
-                let Some(c) = self.ui.roster_sel.and_then(|i| self.roster.get(i)).cloned() else {
-                    self.lan_status = tr!("Elige un personaje en la lista.", "Choose a character from the list.").into();
-                    return;
-                };
-                // personaje portátil: entra con lo de su partida (si tiene una con el héroe vivo)
-                let run = save::load_run(&data_dir(), characters::id(&c)).filter(|d| d.heroes.iter().any(|h| h.is_alive()));
-                match net::ClientGame::connect(g.addr, &c, run.map(|d| save::portable(d.local()))) {
-                    Ok(cg) => {
-                        self.net = Net::Client(cg);
-                        self.character = Some(c);
-                        self.lan_status = tr!("Conectando...", "Connecting...").into();
-                    }
-                    Err(e) => self.lan_status = trf!("No se pudo conectar: {e}.", "Couldn't connect: {e}."),
-                }
+                let addr = g.addr;
+                self.join(addr, "");
             }
+            UiAction::Ask(a) => {
+                let text = if a == ui::Ask::Addr { self.config.last_address() } else { String::new() };
+                self.ui.prompt = Some((a, text));
+            }
+            UiAction::Prompt(cr) => match cr {
+                ui::Cr::Type(ch) => self.ui.prompt_type(&ch.to_string()),
+                ui::Cr::Back => _ = self.ui.prompt.as_mut().and_then(|p| p.1.pop()),
+                ui::Cr::Done => {
+                    let Some((a, text)) = self.ui.prompt.take() else { return };
+                    match a {
+                        ui::Ask::Addr => match net::resolve(&text) {
+                            Ok(addr) => {
+                                self.config.set_last_address(&text);
+                                self.join(addr, "");
+                            }
+                            Err(e) => self.lan_status = trf!("No se encontró {}: {}.", "Couldn't find {}: {}.", text, e),
+                        },
+                        ui::Ask::Pass => {
+                            if let Some(addr) = self.join_addr {
+                                self.join(addr, &text);
+                            }
+                        }
+                        ui::Ask::HostPass => {
+                            if let Net::Host(h) = &mut self.net {
+                                h.set_password(&text);
+                                self.lan_status = host_status(h.locked());
+                            }
+                        }
+                    }
+                }
+                _ => self.ui.prompt = None,
+            },
             UiAction::SelectChar(i) => {
                 self.ui.roster_sel = Some(i);
                 self.ui.confirm = false;
@@ -870,6 +899,25 @@ impl App {
         }
     }
 
+    /// Unirse a `addr` con el personaje elegido en la lista; `pass` = la clave de la sala ("" si no pide).
+    fn join(&mut self, addr: std::net::SocketAddr, pass: &str) {
+        let Some(c) = self.ui.roster_sel.and_then(|i| self.roster.get(i)).cloned() else {
+            self.lan_status = tr!("Elige un personaje en la lista.", "Choose a character from the list.").into();
+            return;
+        };
+        // personaje portátil: entra con lo de su partida (si tiene una con el héroe vivo)
+        let run = save::load_run(&data_dir(), characters::id(&c)).filter(|d| d.heroes.iter().any(|h| h.is_alive()));
+        self.join_addr = Some(addr);
+        match net::ClientGame::connect(addr, &c, run.map(|d| save::portable(d.local())), pass) {
+            Ok(cg) => {
+                self.net = Net::Client(cg);
+                self.character = Some(c);
+                self.lan_status = tr!("Conectando...", "Connecting...").into();
+            }
+            Err(e) => self.lan_status = trf!("No se pudo conectar: {e}.", "Couldn't connect: {e}."),
+        }
+    }
+
     /// La red, una vez por frame (en el hilo del juego): el host recibe acciones y manda el estado; el cliente manda
     /// lo que eligió su héroe y aplica el último estado. Los héroes sin nadie que los maneje (un jugador que se fue, o
     /// una partida guardada con otros héroes) esperan descansando.
@@ -909,6 +957,7 @@ impl App {
                 self.world.d.fx.append(&mut c.fx);
                 self.world.d.dice_events.append(&mut c.dice);
                 if c.closed || c.refused.is_some() {
+                    let need_pass = c.need_pass;
                     let why = c.refused.clone().map_or(tr!("Se corto la conexion con el host.", "Lost the connection to the host.").to_string(), |w| trf!("El host no te dejo entrar: {w}.", "The host didn't let you in: {w}."));
                     self.autosave(); // antes de Net::Off: guarda su héroe, no la partida del host
                     self.net = Net::Off;
@@ -917,6 +966,9 @@ impl App {
                     self.ui = Ui::new();
                     self.ui.in_title = true;
                     self.ui.window = Some(UiWindow::Join);
+                    if need_pass {
+                        self.ui.prompt = Some((ui::Ask::Pass, String::new()));
+                    }
                     self.title = true;
                     if self.browser.is_none() {
                         self.browser = net::Browser::new().ok();
@@ -1080,7 +1132,10 @@ impl App {
                 let i = &g.info;
                 let ok = i["version"] == game::VERSION && i["hash"] == game::registry::content_hash().as_str();
                 let name = i["name"].as_str().unwrap_or("?");
-                let extra = if ok { String::new() } else { format!(" (v{})", i["version"].as_str().unwrap_or("?")) };
+                let mut extra = if ok { String::new() } else { format!(" (v{})", i["version"].as_str().unwrap_or("?")) };
+                if i["locked"] == true {
+                    extra += tr!(" (clave)", " (password)");
+                }
                 (trf!("{name} - {} jugadores - {}{extra}", "{name} - {} players - {}{extra}", i["players"], g.addr.ip()), ok)
             })
             .collect()
@@ -1227,6 +1282,21 @@ impl ApplicationHandler for App {
                         match (cr, &event.logical_key) {
                             (Some(cr), _) => self.ui_action(UiAction::Chat(cr)),
                             (None, Key::Character(t)) => self.ui.chat_type(t),
+                            _ => {}
+                        }
+                        return;
+                    }
+                    // título: la dirección o la clave que se está escribiendo (Unirse, sala de espera)
+                    if down && self.title && self.ui.prompt.is_some() {
+                        let cr = match code {
+                            KeyCode::Escape => Some(ui::Cr::Unfocus),
+                            KeyCode::Enter | KeyCode::NumpadEnter => Some(ui::Cr::Done),
+                            KeyCode::Backspace => Some(ui::Cr::Back),
+                            _ => None,
+                        };
+                        match (cr, &event.logical_key) {
+                            (Some(cr), _) => self.ui_action(UiAction::Prompt(cr)),
+                            (None, Key::Character(t)) => self.ui.prompt_type(t),
                             _ => {}
                         }
                         return;

@@ -43,3 +43,14 @@ partida y los ve igual que el host. Validados: animaciones conocidas, celdas en 
 Chat (paso 8): el cliente manda `{"t": "chat", "text": ...}`; el host lo limpia (`chat_text`: sin caracteres de
 control, hasta `CHAT_MAX` = 40, vacío no) y lo pone en el log de todos como `<nombre>: <texto>` (`say`). No hay
 mensaje propio de vuelta: el log ya viaja en el estado. El host escribe con `HostGame::chat`.
+
+## Por internet (D2, 0.9.22)
+- **Dirección a mano:** Unirse -> DIRECCIÓN acepta `dominio:puerto`, `IP:puerto` o sin puerto (47811). `resolve`
+  la pasa a `SocketAddr` (prefiere IPv4: el host escucha en `0.0.0.0`); la última queda en `[lan] address` de
+  `Local.config`. Sirve para un túnel TCP (playit.gg, ngrok, Tailscale) o el puerto 47811 abierto. El broadcast de
+  descubrimiento no pasa por túneles: por eso la dirección. ZeroTier pasa el broadcast y aparece solo.
+- **Clave de la sala:** el host la pone en la sala de espera (CLAVE; vacía = sin clave). `pass_text`: letras y
+  números en mayúsculas (el teclado del teléfono sólo tiene mayúsculas), hasta `PASS_MAX`. El cliente la manda en el
+  `hello` (`pass`); si falta o no es, `refused` con `need: "password"` y el cliente pide la clave y reintenta en
+  `join_addr`. El anuncio de la LAN lleva `locked` y la lista muestra "(clave)".
+- ponytail: la clave viaja en texto plano y sin límite de intentos; el DNS se resuelve en el hilo del juego.

@@ -1,5 +1,8 @@
 # D2 — Red por internet
 
+✏️ Escrito (0.9.22), falta la prueba del dueño. Detalle en `docs/app/net.md` ("Por internet"). Tests de red: 7
+(direcciones y claves; la partida por loopback entra por `localhost` con clave después de un rechazo).
+
 **Objetivo:** jugar fuera de la LAN con un túnel (playit.gg, ngrok, Tailscale) o con el puerto abierto. El broadcast
 no pasa por túneles; el TCP 47811 sí.
 
