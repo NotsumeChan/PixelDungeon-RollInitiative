@@ -19,3 +19,5 @@ APK sin Gradle ni Java: `NativeActivity` carga `libapp.so` (`android.app.lib_nam
   vuelven si el APK está firmado con la misma clave.
 - CI: el job `release` de `.github/workflows/build.yml` publica en cada push a `main` la Release `v<versión>` con
   `pdri-linux-x86_64`, `pdri-windows-x86_64.exe` y `pdri-android.apk`; no repite un tag y falla sin la clave del dueño.
+- `MainActivity` también maneja el teclado del sistema: `setKeyboard` (lo llama Rust) y `dispatchKeyEvent`, que pasa
+  cada letra a Rust por `nativeChar` (ver `docs/app/lib.md`).

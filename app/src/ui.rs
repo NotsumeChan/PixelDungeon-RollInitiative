@@ -447,7 +447,7 @@ impl Ui {
     }
 
     /// El mensaje que se está escribiendo, arriba (en el teléfono, el teclado en pantalla abajo).
-    fn draw_chat(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32) {
+    fn draw_chat(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, _h: f32) {
         let text = format!("Chat: {}_", self.chat.as_deref().unwrap_or(""));
         out.push(atlas.rect([0.0, 34.0], [w, font.height() + 4.0], PROMPT_BG));
         font.text(out, &text, 4.0, 36.0, WHITE);
@@ -456,7 +456,7 @@ impl Ui {
             font.text(out, hint, w - 4.0 - font.width(hint), 36.0 + font.height() + 6.0, GREY);
             return;
         }
-        self.draw_keys(atlas, font, out, w, h, &["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"], true, UiAction::Chat);
+        self.draw_text_buttons(atlas, font, out, w, UiAction::Chat);
     }
 
     fn draw_log(&self, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
@@ -1458,40 +1458,15 @@ impl Ui {
             out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], SEL_BG));
             center(out, &v.to_string(), r, r[1] + 4.0, WHITE);
         }
-
-        // teclado en pantalla: Android (NativeActivity) no le pasa a la app las letras del teclado del sistema
-        if let (true, Some(f)) = (cfg!(target_os = "android"), st.focus) {
-            let rows: &[&str] = if f == Focus::Name { &["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"] } else { &["1234567890"] };
-            self.draw_keys(atlas, font, out, w, h, rows, f == Focus::Name, UiAction::Create);
-        }
     }
 
-    /// Teclado en pantalla abajo: las filas, ESPACIO (si `space`), BORRAR y LISTO; cada tecla es `act(Cr::...)`.
-    #[allow(clippy::too_many_arguments)]
-    fn draw_keys(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, rows: &[&str], space: bool, act: fn(Cr) -> UiAction) {
-        // teclas para el dedo: en vertical sobra alto (hasta 30); en apaisado quedan en 18 (ya son anchas)
-        let n = (rows.len() + 1) as f32;
-        let (kw, kh) = (((w - 4.0) / 10.0).floor(), ((h * 0.45) / n - 2.0).floor().clamp(18.0, 30.0));
-        let total = (rows.len() + 1) as f32 * (kh + 2.0) + 2.0;
-        let ktop = h - total;
-        out.push(atlas.rect([0.0, ktop - 2.0], [w, total + 2.0], [0.0, 0.0, 0.0, 0.94]));
-        self.hot([0.0, ktop - 2.0, w, total + 2.0], UiAction::Nothing, None);
-        for (ri, row) in rows.iter().enumerate() {
-            let x0 = ((w - row.len() as f32 * kw) / 2.0).floor();
-            for (ci, ch) in row.chars().enumerate() {
-                let r = [x0 + ci as f32 * kw + 1.0, ktop + ri as f32 * (kh + 2.0), kw - 2.0, kh];
-                self.draw_button(atlas, font, out, r, &ch.to_string(), Some(act(Cr::Type(ch))));
-            }
-        }
-        let mut last = vec![(tr!("BORRAR", "DEL"), Cr::Back), (tr!("LISTO", "DONE"), Cr::Done)];
-        if space {
-            last.insert(0, (tr!("ESPACIO", "SPACE"), Cr::Type(' ')));
-        }
-        let y = ktop + rows.len() as f32 * (kh + 2.0);
-        let bw = ((w - 8.0 - 2.0 * (last.len() as f32 - 1.0)) / last.len() as f32).floor();
-        for (k, (label, cr)) in last.into_iter().enumerate() {
-            self.draw_button(atlas, font, out, [4.0 + k as f32 * (bw + 2.0), y, bw, kh], label, Some(act(cr)));
-        }
+    /// Android, debajo de la línea que se escribe (chat, dirección, clave): tocarla vuelve a abrir el teclado del sistema
+    /// (Atrás lo cierra), LISTO y CANCELAR (Enter del teclado también manda).
+    fn draw_text_buttons(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, act: fn(Cr) -> UiAction) {
+        self.hot([0.0, 34.0, w, font.height() + 4.0], act(Cr::Name), None);
+        let (bw, y) = (((w - 16.0 - 2.0) / 2.0).floor(), 36.0 + font.height() + 6.0);
+        self.draw_button(atlas, font, out, [8.0, y, bw, 20.0], tr!("LISTO", "DONE"), Some(act(Cr::Done)));
+        self.draw_button(atlas, font, out, [8.0 + bw + 2.0, y, bw, 20.0], tr!("CANCELAR", "CANCEL"), Some(act(Cr::Unfocus)));
     }
 
     /// Un selector de la creación: < y > pasan al anterior / siguiente (`act(k)`), en el medio el avatar (si hay),
@@ -1800,8 +1775,7 @@ impl Ui {
             font.text(out, hint, 4.0, 36.0 + font.height() + 6.0, GREY);
             return;
         }
-        let rows: &[&str] = if a == Ask::Addr { &["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM.:-"] } else { &["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"] };
-        self.draw_keys(atlas, font, out, w, h, rows, false, UiAction::Prompt);
+        self.draw_text_buttons(atlas, font, out, w, UiAction::Prompt);
     }
 
     /// Texto de la zona bajo el mouse (la de más arriba), encima del mouse sin salirse de la pantalla.
@@ -1912,8 +1886,8 @@ pub enum Cr {
     Clear,
     Unfocus,
     Start,
-    /// Teclado en pantalla: una tecla, borrar, listo.
-    Type(char),
+    /// Borrar y listo (escribir: Enter, borrar del teclado; en Android también los botones de la línea). `Name` en
+    /// el chat o la línea del título: tocarla vuelve a abrir el teclado del sistema.
     Back,
     Done,
 }
@@ -1991,12 +1965,6 @@ impl Create {
                 None => (self.focus, self.typed) = (Some(Focus::Stat(a)), String::new()),
             },
             Cr::Start => {}
-            Cr::Type(c) => {
-                // nombre: mayúscula al empezar cada palabra
-                let up = self.focus != Some(Focus::Name) || self.name.is_empty() || self.name.ends_with(' ');
-                let c = if up { c } else { c.to_ascii_lowercase() };
-                self.key(winit::keyboard::KeyCode::KeyA, Some(&c.to_string()));
-            }
             Cr::Back => _ = self.key(winit::keyboard::KeyCode::Backspace, None),
             Cr::Done => self.focus = None,
         }

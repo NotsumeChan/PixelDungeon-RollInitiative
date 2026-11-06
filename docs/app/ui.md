@@ -98,8 +98,9 @@ Tanda del 2026-11-04 (pedidos del dueño tras probar en el teléfono):
   título. Creación en Android: teclado en pantalla al tocar el nombre o una característica.
 
 Chat de la partida LAN (`Ui::chat`, `UiAction::Chat`): Enter o el botón "Chat" de la barra (sólo en red, `Ui::lan`)
-abre la línea de arriba; Enter / LISTO manda, Esc cancela. En Android, el mismo teclado en pantalla de la creación
-(`draw_keys`). Las teclas crecen con el alto de la pantalla (18 a 30).
+abre la línea de arriba; Enter / LISTO manda, Esc cancela. En Android se escribe con el teclado del sistema
+(`App::text_input`); debajo de la línea, LISTO y CANCELAR (`draw_text_buttons`), y tocar la línea lo vuelve a abrir.
+La línea del título (`Ui::prompt`: dirección o clave de Unirse y la sala) funciona igual.
 
 Diálogo con un NPC (`draw_dialog`): si el héroe local tiene un diálogo abierto (`Dungeon::dialog`), tapa el resto de
 la UI: retrato, nombre, texto y las opciones como botones (`Action::Choose`). Esc / Atrás = `Action::Bye`.

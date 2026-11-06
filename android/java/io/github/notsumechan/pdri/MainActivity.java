@@ -5,16 +5,62 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-/** NativeActivity con el selector de archivos para importar mods (app/src/mods.rs). */
+/** NativeActivity con el selector de archivos para importar mods (app/src/mods.rs) y el teclado del sistema. */
 public class MainActivity extends NativeActivity {
     private static final int PICK_ZIP = 1;
     private static final long MAX = 64L << 20;
+
+    /** Rust (lo registra android_main): una letra escrita en el teclado del sistema. */
+    private static native void nativeChar(int c);
+
+    private static void typed(int c) {
+        try {
+            nativeChar(c);
+        } catch (UnsatisfiedLinkError e) {
+            // todavía sin registrar: se pierde la letra
+        }
+    }
+
+    /** Lo llama Rust (JNI): abre o cierra el teclado del sistema (escribir una dirección, una clave, el chat...). */
+    public void setKeyboard(boolean on) {
+        runOnUiThread(() -> {
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            View v = getWindow().getDecorView();
+            if (on) {
+                v.setFocusable(true);
+                v.setFocusableInTouchMode(true);
+                v.requestFocus();
+                imm.showSoftInput(v, InputMethodManager.SHOW_FORCED);
+            } else {
+                imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+            }
+        });
+    }
+
+    /** NativeActivity no le da a la app el carácter de una tecla: se saca acá y va a Rust. Enter, borrar y Atrás
+     *  siguen su camino normal (winit). Un texto entero (ACTION_MULTIPLE) llega de una vez. */
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent e) {
+        if (e.getAction() == KeyEvent.ACTION_MULTIPLE && e.getKeyCode() == KeyEvent.KEYCODE_UNKNOWN) {
+            String s = e.getCharacters();
+            if (s != null) s.codePoints().forEach(MainActivity::typed);
+            return true;
+        }
+        if (e.getAction() == KeyEvent.ACTION_DOWN) {
+            int c = e.getUnicodeChar(e.getMetaState());
+            if (c > 0 && !Character.isISOControl(c)) typed(c);
+        }
+        return super.dispatchKeyEvent(e);
+    }
 
     /** Lo llama Rust (JNI): abre el selector de documentos del sistema para elegir un zip. */
     public void pickZip() {

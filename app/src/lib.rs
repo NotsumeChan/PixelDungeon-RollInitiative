@@ -229,6 +229,9 @@ struct App {
     awaiting: bool,
     /// Adónde se intentó unir por última vez (para reintentar con la clave que pide el host).
     join_addr: Option<String>,
+    /// Android: el teclado del sistema está abierto; volver a abrirlo (se tocó la línea: Atrás lo pudo cerrar).
+    kb_shown: bool,
+    kb_again: bool,
     /// Conectando en otro hilo (DNS + connect): el resultado y el personaje con el que se entra.
     connecting: Option<(std::sync::mpsc::Receiver<std::io::Result<net::ClientGame>>, serde_json::Value)>,
 }
@@ -359,6 +362,8 @@ impl App {
             awaiting: false,
             join_addr: None,
             connecting: None,
+            kb_shown: false,
+            kb_again: false,
         }
     }
 
@@ -491,6 +496,9 @@ impl App {
     }
 
     fn ui_action(&mut self, act: UiAction) {
+        if matches!(act, UiAction::Prompt(ui::Cr::Name) | UiAction::Chat(ui::Cr::Name) | UiAction::Create(ui::Cr::Name | ui::Cr::Stat(_))) {
+            self.kb_again = true;
+        }
         match act {
             UiAction::Nothing => {}
             UiAction::Close => self.ui.window = None,
@@ -594,8 +602,8 @@ impl App {
                 self.ui.prompt = Some((a, text));
             }
             UiAction::Prompt(cr) => match cr {
-                ui::Cr::Type(ch) => self.ui.prompt_type(&ch.to_string()),
                 ui::Cr::Back => _ = self.ui.prompt.as_mut().and_then(|p| p.1.pop()),
+                ui::Cr::Name => {} // tocar la línea: sólo vuelve a abrir el teclado del sistema
                 ui::Cr::Done => {
                     let Some((a, text)) = self.ui.prompt.take() else { return };
                     match a {
@@ -711,8 +719,8 @@ impl App {
             UiAction::ShopSel(npc, k) => self.ui.shop_sel = Some((npc, k)),
             UiAction::Chat(cr) => match cr {
                 ui::Cr::New => self.ui.chat = Some(String::new()),
-                ui::Cr::Type(ch) => self.ui.chat_type(&ch.to_string()),
                 ui::Cr::Back => _ = self.ui.chat.as_mut().and_then(String::pop),
+                ui::Cr::Name => {} // tocar la línea: sólo vuelve a abrir el teclado del sistema
                 ui::Cr::Done => {
                     let text = self.ui.chat.take().unwrap_or_default();
                     match &mut self.net {
@@ -897,6 +905,31 @@ impl App {
                 Some(Bind::Quick2) if free => self.ui_action(UiAction::UseQuick(1)),
                 _ => {}
             },
+        }
+    }
+
+    /// Texto en Android: el teclado del sistema abierto mientras se escribe (dirección, clave, chat, nombre o
+    /// características) y sus letras (`TYPED`) a lo que se está escribiendo. En escritorio llegan por winit.
+    fn text_input(&mut self) {
+        let want = self.ui.prompt.is_some() || self.ui.chat.is_some() || (self.creating() && self.ui.create.focus.is_some());
+        let again = std::mem::take(&mut self.kb_again);
+        if cfg!(target_os = "android") && (want != self.kb_shown || (want && again)) {
+            #[cfg(target_os = "android")]
+            if let Err(e) = with_activity(|env, act| env.call_method(act, "setKeyboard", "(Z)V", &[jni::objects::JValue::Bool(want.into())]).map(|_| ())) {
+                log::warn!("teclado del sistema: {e}");
+            }
+            self.kb_shown = want;
+        }
+        #[cfg(target_os = "android")]
+        for ch in std::mem::take(&mut *TYPED.lock().unwrap()).chars() {
+            let s = ch.to_string();
+            if self.ui.prompt.is_some() {
+                self.ui.prompt_type(&s);
+            } else if self.ui.chat.is_some() {
+                self.ui.chat_type(&s);
+            } else if self.creating() {
+                self.ui.create.key(KeyCode::Space, Some(&s)); // Space: cualquier tecla que no sea Enter, Tab ni borrar
+            }
         }
     }
 
@@ -1176,6 +1209,7 @@ impl App {
             self.config.ui_base = gpu.ui_zoom();
         }
         self.net_pump();
+        self.text_input();
         if self.title {
             self.frame_title(dt);
             return;
@@ -1303,7 +1337,7 @@ impl ApplicationHandler for App {
                         };
                         match (cr, &event.logical_key) {
                             (Some(cr), _) => self.ui_action(UiAction::Chat(cr)),
-                            (None, Key::Character(t)) => self.ui.chat_type(t),
+                            (None, Key::Character(t)) if !cfg!(target_os = "android") => self.ui.chat_type(t),
                             _ => {}
                         }
                         return;
@@ -1318,7 +1352,7 @@ impl ApplicationHandler for App {
                         };
                         match (cr, &event.logical_key) {
                             (Some(cr), _) => self.ui_action(UiAction::Prompt(cr)),
-                            (None, Key::Character(t)) => self.ui.prompt_type(t),
+                            (None, Key::Character(t)) if !cfg!(target_os = "android") => self.ui.prompt_type(t),
                             _ => {}
                         }
                         return;
@@ -1326,7 +1360,7 @@ impl ApplicationHandler for App {
                     // creación de personaje: el nombre o el número que se está escribiendo
                     if down && self.creating() && code != KeyCode::Escape {
                         let text = match &event.logical_key {
-                            Key::Character(t) => Some(t.as_str()),
+                            Key::Character(t) if !cfg!(target_os = "android") => Some(t.as_str()),
                             _ => None,
                         };
                         if self.ui.create.key(code, text) {
@@ -1403,6 +1437,28 @@ pub fn run(el: EventLoop<()>) {
     el.run_app(&mut App::new()).expect("bucle de eventos");
 }
 
+/// Android: las letras del teclado del sistema (`MainActivity.dispatchKeyEvent` -> `native_char`), hasta el próximo
+/// frame.
+#[cfg(target_os = "android")]
+static TYPED: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+#[cfg(target_os = "android")]
+extern "system" fn native_char(_: jni::JNIEnv, _: jni::objects::JClass, c: jni::sys::jint) {
+    if let (Some(ch), Ok(mut t)) = (u32::try_from(c).ok().and_then(char::from_u32), TYPED.lock()) {
+        t.push(ch);
+    }
+}
+
+/// Android: la actividad por JNI (para llamarla o registrar `nativeChar`).
+#[cfg(target_os = "android")]
+fn with_activity<T>(f: impl FnOnce(&mut jni::JNIEnv, &jni::objects::JObject) -> jni::errors::Result<T>) -> Result<T, String> {
+    let app = ANDROID_APP.get().ok_or("sin actividad")?;
+    let vm = unsafe { jni::JavaVM::from_raw(app.vm_as_ptr().cast()) }.map_err(|e| e.to_string())?;
+    let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
+    let act = unsafe { jni::objects::JObject::from_raw(app.activity_as_ptr().cast()) };
+    f(&mut env, &act).map_err(|e| e.to_string())
+}
+
 #[cfg(target_os = "android")]
 static ANDROID_APP: std::sync::OnceLock<winit::platform::android::activity::AndroidApp> = std::sync::OnceLock::new();
 
@@ -1411,7 +1467,15 @@ static ANDROID_APP: std::sync::OnceLock<winit::platform::android::activity::Andr
 fn android_main(app: winit::platform::android::activity::AndroidApp) {
     use winit::platform::android::EventLoopBuilderExtAndroid;
     android_logger::init_once(android_logger::Config::default().with_max_level(log::LevelFilter::Info));
-    let _ = ANDROID_APP.set(app.clone()); // para llamar a MainActivity (importar mods)
+    let _ = ANDROID_APP.set(app.clone()); // para llamar a MainActivity (importar mods, teclado)
+    let reg = with_activity(|env, act| {
+        let class = env.get_object_class(act)?;
+        let m = jni::NativeMethod { name: "nativeChar".into(), sig: "(I)V".into(), fn_ptr: native_char as *mut std::ffi::c_void };
+        env.register_native_methods(&class, &[m])
+    });
+    if let Err(e) = reg {
+        log::warn!("teclado del sistema: {e}");
+    }
     if let Some(dir) = app.internal_data_path() {
         let _ = config::DIR.set(dir); // Local.config en la carpeta de datos de la app
     }

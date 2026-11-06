@@ -78,3 +78,11 @@ al volver a abrir la app queda trabada esperando un bucle que ya terminó.
 Chat LAN: mientras `ui.chat` está abierto, las teclas son texto (Esc cancela, Enter manda, Borrar); `UiAction::Chat`
 lo manda al host (`HostGame::chat`) o al host remoto (`ClientGame::send_chat`). Enter abre el chat sólo en red y si no
 está asignado a otra acción.
+
+## Teclado del sistema en Android (0.9.23)
+NativeActivity no le da a la app el carácter de cada tecla. `MainActivity.dispatchKeyEvent` lo saca
+(`getUnicodeChar`, o el texto entero de un `ACTION_MULTIPLE`) y llama a `nativeChar`, que `android_main` registra por
+JNI (`native_char` -> `TYPED`). Enter, borrar y Atrás siguen por winit. `App::text_input`, una vez por frame, abre o
+cierra el teclado (`MainActivity.setKeyboard`) según haya algo que escribir (dirección, clave, chat, nombre o
+características) y pasa las letras de `TYPED` a eso. En Android se ignoran los `Key::Character` de winit para no
+escribir dos veces. Si Atrás cierra el teclado, tocar la línea lo vuelve a abrir (`kb_again`).
