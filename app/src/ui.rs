@@ -525,7 +525,7 @@ impl Ui {
         }
         let lvl = h.lvl.to_string();
         font.text(out, &lvl, 28.0 - (font.width(&lvl) / 2.0).floor(), 25.0, GOLDEN);
-        let depth = h.depth.to_string();
+        let depth = h.zone.z.to_string();
         font.text(out, &depth, w - 24.0 - font.width(&depth) - 18.0, 6.0, DEPTH_COLOR);
         // BuffIndicator en (32, 11): hambre y los estados del héroe (los que tienen ícono)
         let mut icons: Vec<(u32, String)> = Vec::new();

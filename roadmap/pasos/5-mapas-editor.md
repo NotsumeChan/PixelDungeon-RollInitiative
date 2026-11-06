@@ -4,7 +4,7 @@ Va después de D4. Es grande: al llegar, partir cada punto en pasos chicos que s
 
 ## M1 — Mundo por zonas
 Decisiones en [`decisiones.md`](../decisiones.md#mundo-por-zonas-2026-11-06). Cada paso, una versión que se prueba.
-- **M1a — Coordenadas y tamaño variable:** la clave de los pisos pasa de `depth` a `Zone {x, y, z}` y cada nivel
+- ✏️ **M1a — Coordenadas y tamaño variable** (0.9.26, falta la prueba del dueño: jugar como siempre, bajar y subir, guardar y volver; una partida vieja no aparece): la clave de los pisos pasa de `depth` a `Zone {x, y, z}` y cada nivel
   tiene su ancho y alto (fuera las constantes `WIDTH`/`HEIGHT`/`LENGTH`). La seed de cada zona sale de sus
   coordenadas. Las partidas viejas no se cargan; sube `PROTOCOL`. El juego se ve igual: 4 zonas (0,0,1)..(0,0,4).
 - **M1b — `world.json`:** el mundo como datos (zonas, nombre, mapa generado o prefabricado, conexiones). El base

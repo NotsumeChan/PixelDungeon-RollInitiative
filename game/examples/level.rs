@@ -6,7 +6,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let seed: i64 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
     let depth: i32 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(1);
-    let l = Level::new(seed, depth);
+    let l = Level::new(seed, game::level::Zone::depth(depth));
     println!(
         "seed={seed} depth={depth} feeling={} salas={} puertas secretas={}",
         l.feeling.name(),

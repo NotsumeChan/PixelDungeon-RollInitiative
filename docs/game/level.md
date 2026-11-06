@@ -25,3 +25,10 @@ Sin salida = mismo piso.
 
 Montones de ítems (R5a): `heaps` (por celda, ordenados), `drop` (se apila en el montón que haya) y
 `random_drop_cell` (sala STANDARD, transitable).
+
+## Zonas (M1a, 0.9.26)
+`Zone {x, y, z}`: las coordenadas de una zona del mundo; `z` es la profundidad y sigue siendo el "nivel de peligro"
+de lo que depende del piso (mobs, ítems, trampas, NPC: usan `zone.z`). `Zone::depth(z)` = (0, 0, z), la pila de las
+Alcantarillas; `Zone::NONE` = ninguna (héroe que todavía no entró); `key` / `parse` = "x,y,z" (guardados).
+`level_seed(seed, zone)`: en (0, 0, z) es la de siempre (seed * 1000 + z), así los pisos salen iguales. Cada nivel
+tiene `width` / `height`; el generador de las Alcantarillas genera `SEWER_SIZE` = 32.

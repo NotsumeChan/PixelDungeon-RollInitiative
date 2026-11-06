@@ -159,7 +159,7 @@ fn paint_standard(level: &mut Level, room: usize) {
                 return graveyard(level, room);
             }
         } else if c == 0 || c == 1 {
-            if level.depth > 1 {
+            if level.zone.z > 1 {
                 return burned(level, room);
             }
         } else if c == 2 {

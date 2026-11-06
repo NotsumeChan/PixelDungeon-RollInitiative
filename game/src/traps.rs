@@ -62,7 +62,7 @@ impl Dungeon {
             self.heroes[i].action = None;
         }
         // ponytail: sin partículas de trampas todavía (gas, llamas, rayo); el log y los dados avisan
-        let depth = self.depth;
+        let depth = self.zone.z;
         match trap {
             t::TOXIC_TRAP => {
                 self.say(cell, crate::tr!("Una nube de gas tóxico brota de la trampa", "A cloud of toxic gas bursts from the trap"));
@@ -151,7 +151,7 @@ impl Dungeon {
     /// Tira la salvación ya (el orden del rng no depende del render) y aplica el efecto cuando la animación del dado
     /// la muestra (pending); lo que no se ve, en el acto.
     fn trap_save(&mut self, who: ActorId, ability: &'static str, effect: TrapEffect) {
-        let (ok, detail) = self.saving_throw(who, ability, crate::traps::trap_dc(self.depth), crate::tr!("trampa", "trap"));
+        let (ok, detail) = self.saving_throw(who, ability, crate::traps::trap_dc(self.zone.z), crate::tr!("trampa", "trap"));
         let pos = self.ch(who).map_or(-1, |c| c.pos);
         let seen = pos >= 0 && self.sees(pos);
         let p = Pending::TrapSave { who, ability, ok, detail, seen, effect };

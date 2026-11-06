@@ -17,3 +17,6 @@ un héroe: sube los niveles que falten como al ganar XP (`Hero::gain_level`, nun
 máximo. Frontera de confianza (lo manda otro jugador): `parse_portable` pide nivel 1-20, XP menor que la del nivel, oro
 0-1.000.000, ítems que existen (cantidad 1-999, más de 1 sólo si es apilable, nivel -20..20), arma y armadura en su
 ranura y no más que la mochila; si algo no valida no se aplica nada (`portable_ok` para preguntar antes).
+
+Versión 2 (M1a, 0.9.26): los pisos se guardan por zona ("x,y,z") y el héroe con `zone`. Las partidas de la versión 1
+no se leen (se apartan); los personajes quedan.

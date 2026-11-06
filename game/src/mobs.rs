@@ -329,7 +329,7 @@ impl Dungeon {
             let low = self.here().map(|h| self.heroes[h].lvl).min().unwrap_or(0);
             if low <= int(&m.stats, "max_lvl") + 2 && self.rng.float() < loot[1].as_f64().unwrap_or(0.0) {
                 let id = loot[0].as_str().unwrap_or(GOLD);
-                let item = if id == GOLD { make_gold(&self.items, &mut self.rng, self.depth) } else { self.new_item(id) };
+                let item = if id == GOLD { make_gold(&self.items, &mut self.rng, self.zone.z) } else { self.new_item(id) };
                 self.floor_mut().level.drop(item, m.ch.pos, HeapKind::Heap);
             }
         }

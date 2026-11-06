@@ -82,7 +82,7 @@ struct World {
     d: Dungeon,
     chars: Chars,
     dice: DiceFx,
-    depth: i32,
+    zone: game::level::Zone,
 }
 
 impl World {
@@ -126,11 +126,11 @@ impl World {
 
     /// Una partida cargada (o recién creada).
     fn from_dungeon(d: Dungeon) -> Self {
-        let depth = d.depth;
+        let depth = d.zone;
         let seed = d.seed;
         // el azar visual va aparte del rng de la partida
         let chars = Chars::new(SHEETS.len(), ICONS, seed ^ 0x5EED);
-        Self { d, chars, dice: DiceFx::new(seed ^ 0xD1CE), depth }
+        Self { d, chars, dice: DiceFx::new(seed ^ 0xD1CE), zone: depth }
     }
 
     /// Un frame de lógica, en el orden del prototipo: los sprites caminan (y sueltan al héroe al llegar), lo que el
@@ -145,8 +145,8 @@ impl World {
         if !remote {
             self.d.process();
         }
-        if self.d.depth != self.depth {
-            self.depth = self.d.depth;
+        if self.d.zone != self.zone {
+            self.zone = self.d.zone;
             self.chars.clear(); // otro piso: todos aparecen en su celda
         }
         self.chars.consume(&mut self.d);
@@ -211,7 +211,7 @@ struct App {
     roster: Vec<serde_json::Value>,
     roster_rows: Vec<ui::RosterRow>,
     /// Piso del último autoguardado (se guarda al cambiar de piso).
-    saved_depth: i32,
+    saved_depth: game::level::Zone,
     quit: bool,
     input: Input,
     pan: [f32; 2],      // desplazamiento de la cámara al arrastrar (pixeles del mundo)
@@ -365,7 +365,7 @@ impl App {
             character: None,
             roster: Vec::new(),
             roster_rows: Vec::new(),
-            saved_depth: 0,
+            saved_depth: game::level::Zone::NONE,
             quit: false,
             input: Input::default(),
             pan: [0.0; 2],
@@ -1161,7 +1161,7 @@ impl App {
         let class = c["class"].as_str().unwrap_or(DEFAULT_CLASS);
         let name = c["name"].as_str().unwrap_or("");
         self.world = World::new(seed, class, characters::abilities(&c), name, characters::skin(&c), self.config.hotseat);
-        self.saved_depth = self.world.d.depth;
+        self.saved_depth = self.world.d.zone;
         self.ui = Ui::new();
         self.pan = [0.0; 2];
     }
@@ -1182,7 +1182,7 @@ impl App {
                 };
                 let run = save::load_run(&dir, characters::id(c)).filter(|d| d.heroes.iter().any(|h| h.is_alive()));
                 let status = match run {
-                    Some(d) => trf!("en partida - piso {}, nivel {}", "in a run - depth {}, level {}", d.depth, d.local().lvl),
+                    Some(d) => trf!("en partida - piso {}, nivel {}", "in a run - depth {}, level {}", d.zone.z, d.local().lvl),
                     None => format!("{} d{}", game::registry::text(&cls["dnd_class"]), cls["hit_die"]),
                 };
                 let ab = characters::abilities(c);
@@ -1214,7 +1214,7 @@ impl App {
                     }
                 }
                 self.world = World::from_dungeon(d);
-                self.saved_depth = self.world.d.depth;
+                self.saved_depth = self.world.d.zone;
             }
             None => self.new_world(new_seed()),
         }
@@ -1331,8 +1331,8 @@ impl App {
         if self.config.hotseat && matches!(self.net, Net::Off) {
             w.auto_switch();
         }
-        if w.d.depth != self.saved_depth {
-            self.saved_depth = w.d.depth;
+        if w.d.zone != self.saved_depth {
+            self.saved_depth = w.d.zone;
             self.autosave(); // como el prototipo: al cambiar de piso
         }
         let w = &mut self.world;

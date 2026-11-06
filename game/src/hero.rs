@@ -7,6 +7,7 @@
 //! desventaja más allá del alcance normal o con un enemigo al lado, y el estado que pone un dardo al acertar.
 use serde_json::{Map, Value};
 
+use crate::level::Zone;
 use crate::actor::ActorId;
 use crate::char::Char;
 use crate::dice;
@@ -136,7 +137,8 @@ pub struct Hero {
     pub animating: bool,
     pub visible_enemies: Vec<ActorId>,
     /// Piso en el que está (0 = todavía en ninguno).
-    pub depth: i32,
+    /// La zona donde está (`Zone::default()` = todavía no entró).
+    pub zone: Zone,
     pub fov: Vec<bool>,
     // salvaciones contra la muerte (5e)
     pub dead: bool,
@@ -194,7 +196,7 @@ impl Hero {
             cover: 0,
             animating: false,
             visible_enemies: Vec::new(),
-            depth: 0,
+            zone: Zone::NONE,
             fov: Vec::new(), // la llena `observe` al entrar a un nivel
             dead: false,
             saves: [0, 0],
@@ -442,7 +444,7 @@ impl Dungeon {
     /// Hero.handle: decide la acción según qué hay en la celda. stairs = true sólo con click / toque: cambiar de piso
     /// hay que pedirlo; pisar la escalera no basta.
     pub fn handle(&mut self, i: usize, cell: i32, stairs: bool) {
-        if !self.floors.get(&self.heroes[i].depth).is_some_and(|f| f.level.inside(cell)) {
+        if !self.floors.get(&self.heroes[i].zone).is_some_and(|f| f.level.inside(cell)) {
             return;
         }
         let seen = self.heroes[i].fov[cell as usize];
@@ -769,7 +771,7 @@ impl Dungeon {
         let h = &mut self.heroes[i];
         h.dead = true;
         h.ch.hp = 0;
-        let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
+        let s = &mut self.floors.get_mut(&self.zone).expect("piso en contexto").scheduler;
         s.remove(ActorId::Hero(i));
         s.remove(ActorId::Regen(i));
         s.remove(ActorId::Hunger(i));

@@ -321,7 +321,7 @@ impl Chars {
             let h = &d.heroes[i];
             let rest = sprite_pos(d.level().width, h.ch.pos, HERO_W, HERO_H);
             let walking = self.paths.iter().any(|e| e.0 == ActorId::Hero(i));
-            if h.depth != d.depth || (!walking && self.drawn(ActorId::Hero(i)).is_none_or(|p| p == rest)) {
+            if h.zone != d.zone || (!walking && self.drawn(ActorId::Hero(i)).is_none_or(|p| p == rest)) {
                 d.heroes[i].animating = false;
             }
         }

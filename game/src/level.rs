@@ -21,13 +21,43 @@ pub fn boss_level(depth: i32) -> bool {
     matches!(depth, 5 | 10 | 15 | 20 | 25)
 }
 
-/// Seed del rng de un piso: estable entre procesos y peers.
-pub fn level_seed(seed: i64, depth: i32) -> i64 {
-    seed * 1000 + depth as i64
+/// Coordenadas de una zona del mundo (M1): x, y en el plano y z = profundidad, que también es el "nivel de peligro"
+/// de lo que depende del piso (mobs, ítems, trampas, NPC). La partida guarda sus zonas por coordenadas.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Zone {
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
+}
+
+impl Zone {
+    /// Ninguna (un héroe que todavía no entró a una zona).
+    pub const NONE: Self = Self { x: i32::MIN, y: i32::MIN, z: i32::MIN };
+
+    /// La zona (0, 0, z): la pila de pisos de las Alcantarillas.
+    pub const fn depth(z: i32) -> Self {
+        Self { x: 0, y: 0, z }
+    }
+
+    /// "x,y,z": la clave en los guardados.
+    pub fn key(self) -> String {
+        format!("{},{},{}", self.x, self.y, self.z)
+    }
+
+    pub fn parse(s: &str) -> Option<Self> {
+        let mut it = s.split(',').map(|p| p.trim().parse::<i32>());
+        let z = Self { x: it.next()?.ok()?, y: it.next()?.ok()?, z: it.next()?.ok()? };
+        it.next().is_none().then_some(z)
+    }
+}
+
+/// Seed del rng de una zona: estable entre procesos y peers. En (0, 0, z) es la de siempre (seed * 1000 + z).
+pub fn level_seed(seed: i64, zone: Zone) -> i64 {
+    (seed * 1000 + zone.z as i64).wrapping_add((zone.x as i64) << 20).wrapping_add((zone.y as i64) << 40)
 }
 
 pub struct Level {
-    pub depth: i32,
+    pub zone: Zone,
     /// Tamaño del mapa (celda = x + y * width).
     pub width: i32,
     pub height: i32,
@@ -75,15 +105,17 @@ const SECRET_TRAPS: [u8; 8] = [
 ];
 
 impl Level {
-    pub fn new(seed: i64, depth: i32) -> Self {
+    /// La zona `zone` generada con las Alcantarillas (el generador de PD).
+    pub fn new(seed: i64, zone: Zone) -> Self {
+        let depth = zone.z;
         let n = (SEWER_SIZE * SEWER_SIZE) as usize;
         let mut level = Self {
-            depth,
+            zone,
             width: SEWER_SIZE,
             height: SEWER_SIZE,
             boss: boss_level(depth),
             boss_next: boss_level(depth + 1),
-            rng: Rng::new(level_seed(seed, depth)),
+            rng: Rng::new(level_seed(seed, zone)),
             feeling: Feeling::None,
             entrance: -1,
             exit: -1,
@@ -148,7 +180,7 @@ impl Level {
 
     fn create(&mut self) {
         // ponytail: Java agrega aquí ítems obligatorios que consumen rng; llegan con los ítems (R5)
-        if self.depth > 1 {
+        if self.zone.z > 1 {
             let c = self.rng.int(10);
             if c == 0 && !self.boss_next {
                 self.feeling = Feeling::Chasm;
@@ -389,9 +421,9 @@ impl Level {
             self.map[pos] = match d.kind {
                 DoorType::Empty => t::EMPTY,
                 DoorType::Tunnel => self.tunnel_tile(),
-                DoorType::Regular if self.depth <= 1 => t::DOOR,
+                DoorType::Regular if self.zone.z <= 1 => t::DOOR,
                 DoorType::Regular => {
-                    let roll = if self.depth < 6 { self.rng.int(12 - self.depth) } else { self.rng.int(6) };
+                    let roll = if self.zone.z < 6 { self.rng.int(12 - self.zone.z) } else { self.rng.int(6) };
                     if roll == 0 {
                         self.secret_doors += 1;
                         t::SECRET_DOOR
@@ -470,7 +502,7 @@ impl Level {
     }
 
     fn place_traps(&mut self) {
-        let n = if self.depth <= 1 { 0 } else { self.rng.int_range(1, self.rooms.len() as i32 + self.depth) };
+        let n = if self.zone.z <= 1 { 0 } else { self.rng.int_range(1, self.rooms.len() as i32 + self.zone.z) };
         for _ in 0..n {
             let pos = self.rng.int(self.len()) as usize;
             if self.map[pos] == t::EMPTY {

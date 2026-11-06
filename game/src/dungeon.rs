@@ -12,7 +12,7 @@ use crate::dice;
 use crate::fov::MAX_DISTANCE;
 use crate::hero::Hero;
 use crate::items::{make_gold, Generator, HeapKind, POTION_LOOKS, SCROLL_LOOKS};
-use crate::level::Level;
+use crate::level::{Level, Zone};
 use crate::mobs::{pick_mob, Mob, State};
 use crate::pathfinder;
 use crate::registry;
@@ -110,7 +110,8 @@ pub struct Dungeon {
     pub seed: i64,
     /// rng de juego (combate, IA); cada nivel genera con el suyo.
     pub rng: Rng,
-    pub depth: i32,
+    /// La zona "en contexto": la que se está procesando (ver arriba).
+    pub zone: Zone,
     /// El log: (para quién, texto). None = para todos; Some(i) = un aviso sólo para el héroe i (`tell`).
     pub messages: Vec<(Option<usize>, String)>,
     pub pending: Vec<Pending>,
@@ -123,11 +124,11 @@ pub struct Dungeon {
     /// Host LAN: guarda también los efectos y dados de todos los pisos, con su piso (`net_fx`, `net_dice`), para
     /// mandárselos a los clientes que están en ese piso. No se guarda.
     pub record_all: bool,
-    pub net_fx: Vec<(i32, Fx)>,
-    pub net_dice: Vec<(i32, DiceEvent)>,
+    pub net_fx: Vec<(Zone, Fx)>,
+    pub net_dice: Vec<(Zone, DiceEvent)>,
     pub rules: Rules,
     /// Pisos visitados: al volver siguen sus mobs y lo explorado.
-    pub floors: BTreeMap<i32, Floor>,
+    pub floors: BTreeMap<Zone, Floor>,
     pub heroes: Vec<Hero>,
     /// El héroe local (el que maneja la UI).
     pub hero: usize,
@@ -170,7 +171,7 @@ impl Dungeon {
         let mut d = Self {
             seed,
             rng: Rng::new(seed),
-            depth: 0,
+            zone: Zone::NONE,
             messages: Vec::new(),
             pending: Vec::new(),
             dice_events: Vec::new(),
@@ -227,7 +228,7 @@ impl Dungeon {
         }
         self.heroes.push(hero);
         let i = self.heroes.len() - 1;
-        self.go_to(i, 1);
+        self.go_to(i, Zone::depth(1));
         i
     }
 
@@ -238,7 +239,7 @@ impl Dungeon {
             return;
         }
         self.hero = i;
-        self.depth = self.heroes[i].depth;
+        self.zone = self.heroes[i].zone;
         self.view_changed = true;
         let name = self.heroes[i].ch.name.clone();
         self.log(&crate::trf!("Turno de {name}", "{name}'s turn"));
@@ -268,7 +269,7 @@ impl Dungeon {
                 other => Some(other),
             }
         };
-        let left = self.heroes[i].depth;
+        let left = self.heroes[i].zone;
         for f in self.floors.values_mut() {
             let s = &mut f.scheduler;
             s.actors = s.actors.iter().filter_map(|&(a, t)| shift(a).map(|a| (a, t))).collect();
@@ -291,20 +292,20 @@ impl Dungeon {
         self.hero = fix(self.hero).unwrap_or(0);
         self.pending.clear();
         if self.floors.contains_key(&left) {
-            self.depth = left;
+            self.zone = left;
             self.observe(); // el piso que dejó ya no ve lo que veía
         }
-        self.depth = self.local().depth;
+        self.zone = self.local().zone;
         self.view_changed = true;
     }
 
     // --- acceso ---
     pub fn floor(&self) -> &Floor {
-        &self.floors[&self.depth]
+        &self.floors[&self.zone]
     }
 
     pub fn floor_mut(&mut self) -> &mut Floor {
-        self.floors.get_mut(&self.depth).expect("piso en contexto")
+        self.floors.get_mut(&self.zone).expect("piso en contexto")
     }
 
     pub fn level(&self) -> &Level {
@@ -372,7 +373,7 @@ impl Dungeon {
 
     /// Héroes del piso en contexto (vivos o no).
     pub fn here(&self) -> impl Iterator<Item = usize> + '_ {
-        (0..self.heroes.len()).filter(|&i| self.heroes[i].depth == self.depth)
+        (0..self.heroes.len()).filter(|&i| self.heroes[i].zone == self.zone)
     }
 
     /// Personajes del piso en contexto con su celda: héroes y después mobs.
@@ -387,17 +388,17 @@ impl Dungeon {
 
     /// Lo que pasa en `cell` se muestra (piso del héroe local y a la vista): espera al dado (pending).
     pub fn sees(&self, cell: i32) -> bool {
-        self.depth == self.local().depth && self.level().visible[cell as usize]
+        self.zone == self.local().zone && self.level().visible[cell as usize]
     }
 
     /// Una tirada para la animación de dados (sólo la del piso local).
     pub(crate) fn roll_event(&mut self, label: &str, value: i32, lo: i32, hi: i32, ok: Option<bool>) {
         if self.record_all {
-            self.net_dice.push((self.depth, DiceEvent { label: label.to_string(), value, lo, hi, ok }));
+            self.net_dice.push((self.zone, DiceEvent { label: label.to_string(), value, lo, hi, ok }));
             let extra = self.net_dice.len().saturating_sub(MAX_DICE_EVENTS * 4);
             self.net_dice.drain(..extra);
         }
-        if self.depth != self.local().depth {
+        if self.zone != self.local().zone {
             return;
         }
         self.dice_events.push(DiceEvent { label: label.to_string(), value, lo, hi, ok });
@@ -408,11 +409,11 @@ impl Dungeon {
     /// Un efecto para el render (sólo se dibuja el piso del héroe local).
     pub(crate) fn effect(&mut self, fx: Fx) {
         if self.record_all {
-            self.net_fx.push((self.depth, fx.clone()));
+            self.net_fx.push((self.zone, fx.clone()));
             let extra = self.net_fx.len().saturating_sub(MAX_FX * 4);
             self.net_fx.drain(..extra);
         }
-        if self.depth != self.local().depth {
+        if self.zone != self.local().zone {
             return;
         }
         self.fx.push(fx);
@@ -445,30 +446,33 @@ impl Dungeon {
 
     // --- pisos ---
     pub(crate) fn descend(&mut self, i: usize) {
-        if self.heroes[i].depth >= MAX_DEPTH {
+        let z = self.heroes[i].zone;
+        if z.z >= MAX_DEPTH {
             self.tell(i, crate::tr!("Fin de la demo: el piso 5 no está incluido", "End of the demo: depth 5 is not included"));
             return;
         }
-        self.go_to(i, self.heroes[i].depth + 1);
+        self.go_to(i, Zone { z: z.z + 1, ..z });
     }
 
     pub(crate) fn ascend(&mut self, i: usize) {
-        if self.heroes[i].depth <= 1 {
+        let z = self.heroes[i].zone;
+        if z.z <= 1 {
             self.tell(i, crate::tr!("No puedes salir de la mazmorra", "You can't leave the dungeon"));
             return;
         }
-        self.go_to(i, self.heroes[i].depth - 1);
+        self.go_to(i, Zone { z: z.z - 1, ..z });
     }
 
-    /// Cambia de piso a un héroe (InterlevelScene). Un piso sin héroes vivos no se procesa (su tiempo no avanza).
+    /// Cambia de zona a un héroe (InterlevelScene). Una zona sin héroes vivos no se procesa (su tiempo no avanza).
     /// El héroe se lleva lo suyo (la regeneración).
-    fn go_to(&mut self, i: usize, depth: i32) {
-        let old = self.heroes[i].depth;
-        let going_down = depth > old;
-        self.heroes[i].depth = depth;
-        if old != 0 {
-            self.depth = old;
-            let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
+    fn go_to(&mut self, i: usize, zone: Zone) {
+        let depth = zone.z;
+        let old = self.heroes[i].zone;
+        let going_down = zone.z > old.z;
+        self.heroes[i].zone = zone;
+        if old != Zone::NONE {
+            self.zone = old;
+            let s = &mut self.floors.get_mut(&self.zone).expect("piso en contexto").scheduler;
             s.remove(ActorId::Hero(i));
             s.remove(ActorId::Regen(i));
             s.remove(ActorId::Hunger(i));
@@ -483,17 +487,17 @@ impl Dungeon {
         h.visible_enemies.clear();
         h.ch.trail.clear(); // cambia de piso: aparece en la escalera, no camina hasta ahí
         self.pending.clear();
-        if self.floors.contains_key(&depth) {
-            self.depth = depth;
+        if self.floors.contains_key(&zone) {
+            self.zone = zone;
             let cell = if going_down { self.level().entrance } else { self.level().exit };
             self.heroes[i].ch.pos = self.free_near(cell);
             self.floor_mut().scheduler.add(ActorId::Hero(i), 0.0);
         } else {
-            let level = Level::new(self.seed, depth);
+            let level = Level::new(self.seed, zone);
             self.heroes[i].ch.pos = level.entrance;
             self.heroes[i].recover(); // ponytail: hasta que haya descansos, se recupera en cada piso nuevo
-            self.floors.insert(depth, Floor { level, mobs: Vec::new(), scheduler: Scheduler::default() });
-            self.depth = depth;
+            self.floors.insert(zone, Floor { level, mobs: Vec::new(), scheduler: Scheduler::default() });
+            self.zone = zone;
             self.generator.reset();
             self.floor_mut().scheduler.add(ActorId::Hero(i), 0.0); // primero: en empates actúa antes que nadie
             self.create_mobs();
@@ -501,7 +505,7 @@ impl Dungeon {
             self.create_npcs();
             self.floor_mut().scheduler.add(ActorId::Respawner, 0.0);
         }
-        let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
+        let s = &mut self.floors.get_mut(&self.zone).expect("piso en contexto").scheduler;
         s.add(ActorId::Regen(i), 0.0);
         s.add(ActorId::Hunger(i), 0.0);
         for b in &self.heroes[i].ch.buffs {
@@ -531,7 +535,7 @@ impl Dungeon {
         for (i, v) in hs.into_iter().zip(views) {
             self.heroes[i].fov = v;
         }
-        if self.depth == self.local().depth {
+        if self.zone == self.local().zone {
             self.view_changed = true;
         }
     }
@@ -546,14 +550,14 @@ impl Dungeon {
     }
 
     pub(crate) fn random_destination(&mut self) -> i32 {
-        self.floors[&self.depth].level.random_destination(&mut self.rng)
+        self.floors[&self.zone].level.random_destination(&mut self.rng)
     }
 
     /// RegularLevel.createMobs, con el rng del nivel (mismo nivel = mismos mobs).
     fn create_mobs(&mut self) {
         let mut rng = self.level().rng.clone();
-        for _ in 0..Self::n_mobs(self.depth, &mut rng) {
-            let key = pick_mob(&self.bestiary, &mut rng, self.depth);
+        for _ in 0..Self::n_mobs(self.zone.z, &mut rng) {
+            let key = pick_mob(&self.bestiary, &mut rng, self.zone.z);
             let mut pos = -1;
             while pos == -1 {
                 pos = self.respawn_cell(&mut rng);
@@ -566,8 +570,8 @@ impl Dungeon {
     /// Dungeon.chance: garantiza ~N ítems clave antes de cierto piso.
     fn quota(&self, rng: &mut Rng, quota: &[i32], number: i32) -> bool {
         for q in quota.chunks(2) {
-            if self.depth <= q[0] {
-                return rng.float() < (q[1] - number) as f64 / (q[0] - self.depth + 1) as f64;
+            if self.zone.z <= q[0] {
+                return rng.float() < (q[1] - number) as f64 / (q[0] - self.zone.z + 1) as f64;
             }
         }
         false
@@ -577,7 +581,7 @@ impl Dungeon {
     /// ponytail: el mimic (caso 5 en pisos > 1) sale como cofre normal hasta que exista
     fn create_items(&mut self) {
         let mut rng = self.level().rng.clone();
-        let (depth, cur_str) = (self.depth, self.local().score("STR"));
+        let (depth, cur_str) = (self.zone.z, self.local().score("STR"));
         let mut to_spawn = vec![self.generator.random_of("food", &self.items, &mut rng, depth, cur_str)];
         if self.quota(&mut rng, &STRENGTH_QUOTA, self.potions_of_strength) {
             to_spawn.push(self.new_item("pdri:potion_strength"));
@@ -629,12 +633,12 @@ impl Dungeon {
     /// Level.respawner: cada 50 de tiempo, si faltan mobs, aparece uno (despierto) fuera de la vista.
     fn respawn_act(&mut self) {
         let hostile = self.floor().mobs.iter().filter(|m| m.stats.get("npc").is_none()).count(); // los NPCs no cuentan
-        if hostile < Self::n_mobs(self.depth, &mut self.rng) {
+        if hostile < Self::n_mobs(self.zone.z, &mut self.rng) {
             let mut rng = self.rng.clone();
             let pos = self.respawn_cell(&mut rng);
             self.rng = rng;
             if pos != -1 {
-                let key = pick_mob(&self.bestiary, &mut self.rng, self.depth);
+                let key = pick_mob(&self.bestiary, &mut self.rng, self.zone.z);
                 self.add_mob(&key, pos, State::Wandering);
             }
         }
@@ -759,21 +763,21 @@ impl Dungeon {
     pub fn process(&mut self) {
         let mut depths = Vec::new();
         for h in &self.heroes {
-            if h.is_alive() && !depths.contains(&h.depth) {
-                depths.push(h.depth);
+            if h.is_alive() && !depths.contains(&h.zone) {
+                depths.push(h.zone);
             }
         }
         for d in depths {
-            self.depth = d;
+            self.zone = d;
             self.process_floor();
         }
-        self.depth = self.local().depth;
+        self.zone = self.local().zone;
     }
 
     fn process_floor(&mut self) {
-        let depth = self.depth;
+        let zone = self.zone;
         loop {
-            if !self.pending.is_empty() || self.depth != depth || !self.here().any(|h| self.heroes[h].is_alive()) {
+            if !self.pending.is_empty() || self.zone != zone || !self.here().any(|h| self.heroes[h].is_alive()) {
                 return;
             }
             let s = &self.floor().scheduler;
@@ -794,11 +798,11 @@ impl Dungeon {
             self.floor_mut().scheduler.now = now;
             self.act(cur);
             // si el héroe cambió de piso, el combate se decide igual en el piso que dejó (como el prototipo)
-            let ctx = std::mem::replace(&mut self.depth, depth);
+            let ctx = std::mem::replace(&mut self.zone, zone);
             if self.floor().scheduler.order.is_none() && self.any_fighting() {
                 self.start_combat(false);
             }
-            self.depth = ctx;
+            self.zone = ctx;
         }
     }
 
@@ -897,7 +901,7 @@ impl Dungeon {
             .collect();
         self.log(&crate::trf!("¡Combate! Iniciativa: {}", "Combat! Initiative: {}", seen.join(", ")));
         let first = order[0];
-        let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
+        let s = &mut self.floors.get_mut(&self.zone).expect("piso en contexto").scheduler;
         (s.turn, s.round, s.calm) = (0, 1, 0);
         s.order = Some(order);
         self.start_turn(first);
@@ -919,7 +923,7 @@ impl Dungeon {
             self.act(c);
             return true;
         }
-        let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
+        let s = &mut self.floors.get_mut(&self.zone).expect("piso en contexto").scheduler;
         s.turn += 1;
         if let Some(&next) = s.order.as_ref().unwrap().get(s.turn) {
             self.start_turn(next);
@@ -940,7 +944,7 @@ impl Dungeon {
                 }
             }
             let Some((a, t)) = due else { break };
-            let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
+            let s = &mut self.floors.get_mut(&self.zone).expect("piso en contexto").scheduler;
             s.now = s.now.max(t);
             self.act(a);
         }
@@ -954,7 +958,7 @@ impl Dungeon {
         // ponytail: el que entra a mitad de combate actúa desde la ronda siguiente (5e: desde su iniciativa)
         let order = self.by_initiative([old, new].concat());
         let fighting = self.any_fighting();
-        let s = &mut self.floors.get_mut(&self.depth).expect("piso en contexto").scheduler;
+        let s = &mut self.floors.get_mut(&self.zone).expect("piso en contexto").scheduler;
         s.now = end;
         s.calm = if fighting { 0 } else { s.calm + 1 };
         if s.calm >= CALM_ROUNDS || order.is_empty() {
@@ -1008,7 +1012,7 @@ impl Dungeon {
             // 5e, a distancia: desventaja más allá del alcance normal o con un enemigo al lado
             let ranged = h.ranged.as_ref().map(|w| {
                 let tp = self.ch(target).map_or(h.ch.pos, |c| c.pos);
-                let mobs = self.floors.get(&self.depth).map_or(&[][..], |f| &f.mobs[..]);
+                let mobs = self.floors.get(&self.zone).map_or(&[][..], |f| &f.mobs[..]);
                 self.level().distance(h.ch.pos, tp) > crate::hero::Hero::range_of(w).0
                     || mobs.iter().any(|m| m.ch.hp > 0 && self.level().adjacent(h.ch.pos, m.ch.pos))
             });
@@ -1059,7 +1063,7 @@ impl Dungeon {
                 (total + m, format!("{text}{m:+}"), Some(ev))
             }
             ActorId::Mob(id) => {
-                let m = self.floors.get(&self.depth).and_then(|f| f.mobs.iter().find(|m| m.id == id));
+                let m = self.floors.get(&self.zone).and_then(|f| f.mobs.iter().find(|m| m.id == id));
                 let Some(m) = m else { return (0, String::new(), None) };
                 let (dmg, text, (lo, hi)) = m.roll_damage(&mut self.rng, crit);
                 let k = if crit { 2 } else { 1 };
@@ -1133,7 +1137,7 @@ impl Dungeon {
     /// Agrega a pending. Fuera del piso local no hay dado que mirar: se aplica ya.
     pub(crate) fn defer(&mut self, p: Pending) {
         self.pending.push(p);
-        if self.depth != self.local().depth {
+        if self.zone != self.local().zone {
             self.resolve_pending();
         }
     }

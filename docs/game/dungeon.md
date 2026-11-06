@@ -52,3 +52,7 @@ Red: con `record_all` (lo prende el host LAN) los efectos y dados de todos los p
 `net_dice` con su piso, para mandarlos a los clientes de ese piso. `remove_hero(i)`: saca un héroe y corrige los
 índices de los demás (planificadores de todos los pisos, mobs que lo cazaban, marcas; descarta lo pendiente). Se usa
 al cargar una partida para jugar solo: los héroes de otra sesión LAN no siguen (en el hotseat sí).
+
+## Zonas (M1a, 0.9.26)
+`floors` va por `Zone` (no por profundidad) y cada héroe tiene su `zone`; `Dungeon::zone` es la zona en contexto.
+`descend` / `ascend` van a (x, y, z ± 1). `net_fx` / `net_dice` llevan la zona de cada efecto.

@@ -22,7 +22,7 @@ use serde_json::{json, Map, Value};
 /// Versión del protocolo: dos versiones del juego juegan juntas si coincide (y el hash del contenido). Sube cuando
 /// cambia algo que el cliente interpreta: los mensajes de este archivo, el formato de `save::dump` o lo que el
 /// cliente regenera con la seed (generación de pisos, rng). Regla en `roadmap/versiones.md`.
-pub const PROTOCOL: u32 = 1;
+pub const PROTOCOL: u32 = 2; // 2: zonas por coordenadas (M1a)
 pub const UDP_PORT: u16 = 47810;
 pub const TCP_PORT: u16 = 47811;
 const MAGIC: &str = "pdri";
@@ -423,7 +423,7 @@ fn action_cell(a: Action) -> Option<i32> {
 fn valid(d: &Dungeon, i: usize, a: Action) -> bool {
     let h = &d.heroes[i];
     let has = |s: Slot| h.item(s).is_some();
-    let in_map = |c: i32| d.floors.get(&h.depth).is_some_and(|f| f.level.inside(c));
+    let in_map = |c: i32| d.floors.get(&h.zone).is_some_and(|f| f.level.inside(c));
     h.is_alive()
         && action_cell(a).is_none_or(in_map)
         && match a {
@@ -559,7 +559,7 @@ impl HostGame {
                             }
                             // personaje portátil: nivel, XP, oro y equipo (ya validado en `refuse`)
                             save::set_portable(d, i, &msg["hero"]);
-                            d.depth = d.local().depth; // add_hero entra al piso 1: vuelve el piso del host
+                            d.zone = d.local().zone; // add_hero entra al piso 1: vuelve el piso del host
                             d.view_changed = true;
                             i
                         }
@@ -605,7 +605,7 @@ impl HostGame {
         let (fx, dice) = (std::mem::take(&mut d.net_fx), std::mem::take(&mut d.net_dice));
         if self.started && (!fx.is_empty() || !dice.is_empty()) {
             for (&cid, &i) in &self.players {
-                let depth = d.heroes[i].depth;
+                let depth = d.heroes[i].zone;
                 let f: Vec<Value> = fx.iter().filter(|e| e.0 == depth).map(|e| fx_v(&e.1)).collect();
                 let r: Vec<Value> = dice.iter().filter(|e| e.0 == depth).map(|e| dice_v(&e.1)).collect();
                 if !f.is_empty() || !r.is_empty() {

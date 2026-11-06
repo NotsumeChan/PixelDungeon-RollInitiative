@@ -14,12 +14,12 @@ use crate::characters::{now, write_atomic};
 use crate::dungeon::{Dungeon, Floor, Rules};
 use crate::hero::{Hero, BACKPACK_SIZE};
 use crate::items::{Heap, HeapKind, Item};
-use crate::level::Level;
+use crate::level::{Level, Zone};
 use crate::mobs::{Mob, State};
 use crate::rng::Rng;
 
 /// Subirla si cambia el formato; uno que no se puede leer se aparta (no se borra).
-const VERSION: i64 = 1;
+const VERSION: i64 = 2; // 2: zonas por coordenadas (M1a); las partidas de la 1 no se leen
 const FORMAT: &str = "pdri-rust";
 
 fn path(dir: &Path, char_id: &str) -> PathBuf {
@@ -99,7 +99,7 @@ fn char_v(c: &Char) -> Value {
 
 fn hero_v(h: &Hero) -> Value {
     json!({"name": h.ch.name, "class": h.class_key, "abilities": h.abilities, "lvl": h.lvl, "exp": h.exp,
-           "depth": h.depth, "hunger": h.hunger, "gold": h.gold,
+           "zone": h.zone.key(), "hunger": h.hunger, "gold": h.gold,
            "weapon": h.weapon.as_ref().map(item_v), "armor": h.armor.as_ref().map(item_v),
            "backpack": h.backpack.iter().map(item_v).collect::<Vec<_>>(), "quick": h.quickslots,
            "second_wind": h.second_wind, "slots": h.slots, "free_casts": h.free_casts,
@@ -198,7 +198,7 @@ pub fn dump(d: &Dungeon) -> Value {
            "rules": [d.rules.dot_death_saves, d.rules.save_half],
            "next_mob": d.next_mob, "next_buff": d.next_buff, "flags": d.flags,
            "heroes": d.heroes.iter().map(hero_v).collect::<Vec<_>>(), "local": d.hero,
-           "floors": d.floors.iter().map(|(k, f)| (k.to_string(), floor_v(f))).collect::<serde_json::Map<_, _>>()})
+           "floors": d.floors.iter().map(|(k, f)| (k.key(), floor_v(f))).collect::<serde_json::Map<_, _>>()})
 }
 
 // --- cargar ---
@@ -289,7 +289,7 @@ pub fn load(data: &Value) -> Option<Dungeon> {
         h.ch.name = hd["name"].as_str()?.to_string();
         h.lvl = hd["lvl"].as_i64()? as i32;
         h.exp = hd["exp"].as_i64()? as i32;
-        h.depth = hd["depth"].as_i64()? as i32;
+        h.zone = Zone::parse(hd["zone"].as_str()?)?;
         h.hunger = hd["hunger"].as_f64()?;
         h.gold = hd["gold"].as_i64()? as i32;
         h.weapon = if hd["weapon"].is_null() { None } else { Some(unitem(&d, &hd["weapon"])?) };
@@ -318,8 +318,8 @@ pub fn load(data: &Value) -> Option<Dungeon> {
     // pisos visitados: mismo nivel (sale de la seed) y se pisa lo que cambió
     d.floors.clear();
     for (key, f) in data["floors"].as_object()? {
-        let depth: i32 = key.parse().ok()?;
-        let mut level = Level::new(seed, depth);
+        let zone = Zone::parse(key)?;
+        let mut level = Level::new(seed, zone);
         let map: Vec<u8> = ints(&f["map"])?;
         for (c, &t) in map.iter().enumerate() {
             if level.map.get(c) != Some(&t) {
@@ -375,15 +375,15 @@ pub fn load(data: &Value) -> Option<Dungeon> {
         scheduler.turn = f["turn"].as_u64()? as usize;
         scheduler.round = f["round"].as_u64()? as u32;
         scheduler.calm = f["calm"].as_u64()? as u32;
-        d.floors.insert(depth, Floor { level, mobs, scheduler });
+        d.floors.insert(zone, Floor { level, mobs, scheduler });
     }
     // la vista de cada piso con sus héroes; queda en contexto el del héroe local
-    let depths: Vec<i32> = d.floors.keys().copied().collect();
-    for depth in depths {
-        d.depth = depth;
+    let zones: Vec<Zone> = d.floors.keys().copied().collect();
+    for zone in zones {
+        d.zone = zone;
         d.observe();
     }
-    d.depth = d.heroes.get(d.hero)?.depth;
+    d.zone = d.heroes.get(d.hero)?.zone;
     d.view_changed = true;
     Some(d)
 }

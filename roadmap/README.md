@@ -22,7 +22,7 @@ primero.
 | 2 | ✏️ [Red por internet](pasos/2-red-internet.md) | `#D2` |
 | 3 | ✏️ [Compatibilidad entre versiones](pasos/3-compatibilidad.md) | `#D3` |
 | 4 | ✏️ [Actualizador](pasos/4-updater.md) | `#D4` |
-| 5 | [Zonas, mapas y editor](pasos/5-mapas-editor.md) | `#M1`… |
+| 5 | ✏️ M1a · [Zonas, mapas y editor](pasos/5-mapas-editor.md) | `#M1`… |
 
 Estética: en conversación, sin paso.
 

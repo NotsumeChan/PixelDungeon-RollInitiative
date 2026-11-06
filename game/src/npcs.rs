@@ -65,16 +65,16 @@ impl Dungeon {
     /// probabilidad por esa opción del mod (en %). Con un rng propio: no gasta el del nivel, así
     /// los pisos, sus mobs y sus ítems salen iguales que sin NPCs.
     pub(crate) fn create_npcs(&mut self) {
-        let table: Vec<Value> = [self.depth.to_string(), "*".to_string()]
+        let table: Vec<Value> = [self.zone.z.to_string(), "*".to_string()]
             .iter()
             .filter_map(|k| self.npcs.get(k).and_then(Value::as_array))
             .flatten()
             .cloned()
             .collect();
-        let mut rng = Rng::new(level_seed(self.seed, self.depth) ^ 0x4E50_4353);
+        let mut rng = Rng::new(level_seed(self.seed, self.zone) ^ 0x4E50_4353);
         for e in table {
             let p = match &e[1] {
-                Value::Array(a) => a.get(self.depth as usize - 1).and_then(Value::as_f64),
+                Value::Array(a) => a.get((self.zone.z - 1).max(0) as usize).and_then(Value::as_f64),
                 v => v.as_f64(),
             };
             let (Some(key), Some(p)) = (e[0].as_str(), p) else { continue };
@@ -129,7 +129,7 @@ impl Dungeon {
                 pack.extend(std::iter::repeat_n(it, n as usize));
             }
         }
-        let (depth, cur_str) = (self.depth, self.local().score("STR"));
+        let (depth, cur_str) = (self.zone.z, self.local().score("STR"));
         for e in stats["stock"].as_array().into_iter().flatten() {
             let cat = e[0].as_str().unwrap_or("");
             for _ in 0..e[1].as_i64().unwrap_or(1).clamp(0, 20) {
@@ -407,7 +407,7 @@ impl Dungeon {
         let ctx = serde_json::json!({
             "hero": {"name": h.ch.name, "class": h.class_key, "level": h.lvl, "hp": h.ch.hp, "ht": h.ch.ht, "gold": h.gold},
             "npc": npc.map(|m| serde_json::json!({"id": m.key, "name": m.ch.name, "disposition": m.disposition})),
-            "depth": self.depth,
+            "depth": self.zone.z, // API de mods: el número de piso (z)
             "flags": self.flags,
             "settings": crate::registry::settings(),
         });
