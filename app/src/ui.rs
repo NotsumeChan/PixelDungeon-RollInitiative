@@ -70,6 +70,10 @@ const CAROUSEL_SLOT: f32 = 16.0;
 const CAROUSEL_MAX: usize = 7;
 const CAROUSEL_SPEED: f32 = 8.0;
 const CAROUSEL_Y: f32 = 30.0;
+// botón Seguir: celeste, con borde y letra oscuros (se distingue de los botones de la interfaz)
+const RESUME_BG: [f32; 4] = [0.62, 0.80, 0.95, 0.92];
+const RESUME_EDGE: [f32; 4] = [0.30, 0.50, 0.70, 1.0];
+const RESUME_TEXT: [f32; 4] = [0.08, 0.12, 0.20, 1.0];
 
 const fn rgba(r: u8, g: u8, b: u8, a: u8) -> [f32; 4] {
     [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, a as f32 / 255.0]
@@ -717,14 +721,15 @@ impl Ui {
         }
     }
 
-    /// Botones sobre la barra, a la derecha, cuando el héroe espera input: la acción rápida (el retrato del enemigo
-    /// más cerca o el ítem más cerca; atacar / recoger / abrir) y Seguir (retoma la caminata cortada).
+    /// Cuando el héroe espera input: la acción rápida sobre la barra, a la derecha (el retrato del enemigo más cerca o
+    /// el ítem más cerca; atacar / recoger / abrir) y, sólo fuera de combate, Seguir (retoma la caminata cortada)
+    /// arriba a la derecha, donde en combate va el carrusel de iniciativa.
     #[allow(clippy::too_many_arguments)]
     fn draw_quick(&mut self, atlas: &Atlas, font: &Font, chars: &Chars, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
         if !self.waiting.get(d.hero).copied().unwrap_or(false) || d.local().is_downed() {
             return;
         }
-        let mut y = h - TOOLBAR_H - 25.0;
+        let y = h - TOOLBAR_H - 25.0;
         if let Some(a) = d.quick_action(d.hero) {
             let r = [w - 25.0, y, 24.0, 24.0];
             let (region, m) = CHROME_BUTTON;
@@ -753,12 +758,17 @@ impl Ui {
                 }
             };
             self.hot(r, UiAction::Act(a), Some(&tip));
-            y -= 19.0;
         }
-        if let Some(a) = self.resumable(d) {
+        if d.floor().scheduler.order.is_none()
+            && let Some(a) = self.resumable(d)
+        {
             let label = tr!("Seguir", "Resume");
-            let bw = font.width(label) + 8.0;
-            self.draw_button(atlas, font, out, [w - 1.0 - bw, y + 6.0, bw, 18.0], label, Some(UiAction::Act(a)));
+            let (bw, bh) = (font.width(label) + 8.0, font.height() + 6.0);
+            let r = [w - 2.0 - bw, CAROUSEL_Y + CAROUSEL_SLOT + 2.0, bw, bh];
+            out.push(atlas.rect([r[0], r[1]], [bw, bh], RESUME_EDGE));
+            out.push(atlas.rect([r[0] + 1.0, r[1] + 1.0], [bw - 2.0, bh - 2.0], RESUME_BG));
+            font.text(out, label, r[0] + 4.0, r[1] + 3.0, RESUME_TEXT);
+            self.hot(r, UiAction::Act(a), Some(tr!("Seguir caminando", "Keep walking")));
         }
     }
 

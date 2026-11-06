@@ -69,7 +69,8 @@ beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del 
 - Acción rápida, Seguir y apuntar arrojadizas (0.9.38), sin probar. Botones arriba de la barra, a la derecha, cuando
   el héroe espera input: con un mob a la vista, su retrato (tocar = atacarlo; con arco, dispara); sin mobs y con un
   ítem a la vista, su ícono (recogerlo, o "Abrir" un cofre / tumba). Seguir: click lejos, que aparezca un mob o
-  encontrar algo oculto corta la caminata, Seguir la retoma; al llegar desaparece. Arrojadiza en un acceso rápido:
+  encontrar algo oculto corta la caminata, Seguir (celeste, arriba a la derecha, sólo fuera de combate) la retoma;
+  al llegar desaparece. Arrojadiza en un acceso rápido:
   tocarlo dice a quién apunta; tocarlo otra vez la lanza al más cerca (tocar una casilla sigue funcionando). En LAN
   también. Revisar en vertical que los botones no tapen el log.
 - **Siguiente: M1d** (nombre de zona y brújula). Después: borrar el generador de PD cuando el dueño valide el propio,

@@ -124,6 +124,7 @@ completa (0.9.33). El idioma es una lista vertical (un idioma por fila; con más
 
 Acción rápida y Seguir (0.9.38, `draw_quick`): arriba de la barra, a la derecha, sólo cuando el héroe local espera
 input (`waiting`) y no hay ventana, chat ni diálogo. La acción rápida (`Dungeon::quick_action`) muestra el retrato del
-enemigo (atacar), el ícono del ítem (recoger) o "Abrir" (cofre / tumba). Seguir: `resume` guarda la última caminata
+enemigo (atacar), el ícono del ítem (recoger) o "Abrir" (cofre / tumba). Seguir (celeste, arriba a la derecha bajo el
+lugar del carrusel de iniciativa, sólo fuera de combate): `resume` guarda la última caminata
 pedida (`note_walk`, al tocar el mapa o con `UiAction::Act`); `resumable` la ofrece mientras no se haya llegado.
 Arrojadizas: con `throwing` puesto, el aviso nombra al enemigo más cerca y el mismo acceso rápido la lanza ahí.
