@@ -4,7 +4,6 @@
 use std::collections::VecDeque;
 use game::actor::ActorId;
 use game::dungeon::{Dungeon, Fx, Tone};
-use game::geom::WIDTH;
 use game::mobs::State;
 use game::rng::Rng;
 use serde_json::Value;
@@ -68,9 +67,10 @@ pub const CHAR_SHEETS: [(&str, &[u8]); 13] = [
     ("blacksmith.png", include_bytes!("../../Assets/Characters/blacksmith.png")), // el herrero del mod de ejemplo
 ];
 
-/// Esquina del sprite parado en su celda: centrado en x, apoyado abajo (CharSprite.worldToCamera).
-pub fn sprite_pos(pos: i32, w: u32, h: u32) -> [f32; 2] {
-    [(pos % WIDTH) as f32 * TILE + (TILE - w as f32) / 2.0, (pos / WIDTH + 1) as f32 * TILE - h as f32]
+/// Esquina del sprite parado en su celda de un mapa de ancho `mw`: centrado en x, apoyado abajo
+/// (CharSprite.worldToCamera).
+pub fn sprite_pos(mw: i32, pos: i32, w: u32, h: u32) -> [f32; 2] {
+    [(pos % mw) as f32 * TILE + (TILE - w as f32) / 2.0, (pos / mw + 1) as f32 * TILE - h as f32]
 }
 
 fn tone_color(t: Tone) -> [f32; 4] {
@@ -265,7 +265,7 @@ impl Chars {
 
     /// Dónde está el sprite del héroe local (la cámara lo sigue).
     pub fn hero_sprite(&self, d: &Dungeon) -> [f32; 2] {
-        self.drawn(ActorId::Hero(d.hero)).unwrap_or_else(|| sprite_pos(d.local().ch.pos.max(0), HERO_W, HERO_H))
+        self.drawn(ActorId::Hero(d.hero)).unwrap_or_else(|| sprite_pos(d.level().width, d.local().ch.pos.max(0), HERO_W, HERO_H))
     }
 
     /// Los sprites viajan a su celda a 1 casilla cada MOVE_TIME; cada héroe del piso se suelta (`animating`) al
@@ -280,7 +280,7 @@ impl Chars {
             if pos < 0 {
                 continue;
             }
-            let goal = sprite_pos(pos, lk.w, lk.h);
+            let goal = sprite_pos(d.level().width, pos, lk.w, lk.h);
             let mut path = self.paths.iter().position(|e| e.0 == a).map(|i| self.paths.swap_remove(i).1).unwrap_or_default();
             let p = match self.drawn(a) {
                 Some(mut p) if d.level().visible[pos as usize] => {
@@ -288,7 +288,7 @@ impl Chars {
                         p = goal; // llegó sin caminar (teletransporte): aparece ahí
                     }
                     // recorre los pasos uno por uno; lo que sobra del frame sigue con el próximo
-                    path.extend(trail.iter().map(|&c| sprite_pos(c, lk.w, lk.h)));
+                    path.extend(trail.iter().map(|&c| sprite_pos(d.level().width, c, lk.w, lk.h)));
                     let mut left = budget;
                     loop {
                         let t = path.front().copied().unwrap_or(goal);
@@ -319,7 +319,7 @@ impl Chars {
         self.paths = paths;
         for i in 0..d.heroes.len() {
             let h = &d.heroes[i];
-            let rest = sprite_pos(h.ch.pos, HERO_W, HERO_H);
+            let rest = sprite_pos(d.level().width, h.ch.pos, HERO_W, HERO_H);
             let walking = self.paths.iter().any(|e| e.0 == ActorId::Hero(i));
             if h.depth != d.depth || (!walking && self.drawn(ActorId::Hero(i)).is_none_or(|p| p == rest)) {
                 d.heroes[i].animating = false;
@@ -340,32 +340,33 @@ impl Chars {
 
     /// Consume `d.fx` (animaciones, muertes, textos flotantes, casillas revisadas, hojas).
     pub fn consume(&mut self, d: &mut Dungeon) {
+        let mw = d.level().width;
         for e in std::mem::take(&mut d.fx) {
             match e {
                 Fx::Anim { who, kind, cell } => {
                     // ataque / operar: se gira hacia la celda (CharSprite.attack / operate)
                     let pos = d.ch(who).map_or(cell, |c| c.pos);
                     let a = self.anim_mut(who);
-                    if cell % WIDTH != pos % WIDTH {
-                        a.flip = cell % WIDTH < pos % WIDTH;
+                    if cell % mw != pos % mw {
+                        a.flip = cell % mw < pos % mw;
                     }
                     a.play(kind);
                 }
                 Fx::Die { who, cell, stats } => {
                     let look = mob_look(&stats, String::new(), self.first);
-                    let pos = self.drawn(who).unwrap_or_else(|| sprite_pos(cell, look.w, look.h));
+                    let pos = self.drawn(who).unwrap_or_else(|| sprite_pos(d.level().width, cell, look.w, look.h));
                     let flip = self.anims.iter().find(|e| e.0 == who).is_some_and(|e| e.1.flip);
                     self.corpses.push(Corpse { look, pos, cell, anim: Anim::new("die", flip) });
                 }
                 Fx::Status { who, text, tone } => {
                     let row = self.floats.iter().filter(|f| f.who == who).count() as f32;
                     let Some(lk) = self.look(d, who) else { continue };
-                    let pos = self.drawn(who).unwrap_or_else(|| sprite_pos(d.ch(who).map_or(0, |c| c.pos), lk.w, lk.h));
+                    let pos = self.drawn(who).unwrap_or_else(|| sprite_pos(d.level().width, d.ch(who).map_or(0, |c| c.pos), lk.w, lk.h));
                     self.floats.push(Float { who, text, color: tone_color(tone), t: 0.0, row, pos, w: lk.w });
                 }
                 Fx::Checked(cell) => self.checked.push((cell, CHECKED_TIME)),
                 Fx::Leaves(cell) => {
-                    let (x, y) = ((cell % WIDTH) as f32 * TILE, (cell / WIDTH) as f32 * TILE);
+                    let (x, y) = ((cell % mw) as f32 * TILE, (cell / mw) as f32 * TILE);
                     for _ in 0..4 {
                         let r = &mut self.rng;
                         let p = [x + r.float_range(2.0, 14.0) as f32, y + r.float_range(4.0, 14.0) as f32];
@@ -402,7 +403,7 @@ impl Chars {
             if ONESHOT.contains(&an.name) && !an.done(stats) {
                 continue;
             }
-            let target = sprite_pos(pos, lk.w, lk.h);
+            let target = sprite_pos(d.level().width, pos, lk.w, lk.h);
             match drawn {
                 Some(p) if p != target => {
                     if p[0] != target[0] {
@@ -481,7 +482,7 @@ impl Chars {
         let level = d.level();
         for &(cell, a) in &self.checked {
             let s = (TILE * a).floor().max(1.0);
-            let (cx, cy) = ((cell % WIDTH) as f32 * TILE + TILE / 2.0, (cell / WIDTH) as f32 * TILE + TILE / 2.0);
+            let (cx, cy) = ((cell % level.width) as f32 * TILE + TILE / 2.0, (cell / level.width) as f32 * TILE + TILE / 2.0);
             let [r, g, b] = CHECKED_COLOR;
             out.push(atlas.rect([ox + cx - (s / 2.0).floor(), oy + cy - (s / 2.0).floor()], [s, s], [r, g, b, a]));
         }

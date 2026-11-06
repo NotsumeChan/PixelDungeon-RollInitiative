@@ -3,10 +3,8 @@
 //! ponytail: el gas tóxico, el paralizante y el fuego no forman nubes que se expanden (Blob): afectan una vez al área
 //! 3x3 alrededor de la trampa. Agregar Blob cuando lleguen las pociones de gas.
 use crate::actor::ActorId;
-use crate::char::distance;
 use crate::dice::{ability_names, ABILITIES};
 use crate::dungeon::{Dungeon, Pending, Tone};
-use crate::geom::NEIGHBOURS8;
 use crate::mobs::{pick_mob, State};
 use crate::terrain as t;
 
@@ -121,7 +119,8 @@ impl Dungeon {
                     }
                 }
                 let level = self.level();
-                let mut cands: Vec<i32> = NEIGHBOURS8
+                let mut cands: Vec<i32> = level
+                    .n8()
                     .iter()
                     .map(|o| cell + o)
                     .filter(|&p| self.find_char(p).is_none() && (level.passable[p as usize] || level.avoid[p as usize]))
@@ -146,7 +145,7 @@ impl Dungeon {
 
     /// Los personajes vivos en el 3x3 alrededor de la celda.
     fn area(&self, cell: i32) -> Vec<ActorId> {
-        self.chars().into_iter().filter(|&(a, p)| self.alive(a) && p >= 0 && distance(p, cell) <= 1).map(|(a, _)| a).collect()
+        self.chars().into_iter().filter(|&(a, p)| self.alive(a) && p >= 0 && self.level().distance(p, cell) <= 1).map(|(a, _)| a).collect()
     }
 
     /// Tira la salvación ya (el orden del rng no depende del render) y aplica el efecto cuando la animación del dado

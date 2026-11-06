@@ -3,7 +3,7 @@
 //! de las tiradas, así que nunca cambiarlo por un HashMap.
 use std::collections::VecDeque;
 
-use crate::geom::{Rect, WIDTH};
+use crate::geom::Rect;
 use crate::rng::Rng;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -106,15 +106,15 @@ impl Room {
     }
 
     /// Celda al azar del interior, a `m` celdas de la pared.
-    pub fn random(&self, rng: &mut Rng, m: i32) -> i32 {
+    pub fn random(&self, rng: &mut Rng, m: i32, w: i32) -> i32 {
         let r = self.rect;
         let x = rng.int_range(r.left + 1 + m, r.right - m);
         let y = rng.int_range(r.top + 1 + m, r.bottom - m);
-        x + y * WIDTH
+        x + y * w
     }
 
-    pub fn inside(&self, p: i32) -> bool {
-        let (x, y) = (p % WIDTH, p / WIDTH);
+    pub fn inside(&self, p: i32, w: i32) -> bool {
+        let (x, y) = (p % w, p / w);
         let r = self.rect;
         r.left < x && x < r.right && r.top < y && y < r.bottom
     }

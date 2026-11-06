@@ -15,7 +15,7 @@
 use serde_json::Value;
 
 use crate::actor::ActorId;
-use crate::char::{adjacent, distance};
+
 use crate::dice;
 use crate::dungeon::{Dungeon, Fx, Pending, Tone};
 use crate::hero::Hero;
@@ -231,7 +231,7 @@ impl Dungeon {
             "touch" => {
                 // uno mismo o un aliado al lado (también caído)
                 let t = self.find_char(cell);
-                if t != Some(me) && !(matches!(t, Some(ActorId::Hero(_))) && adjacent(pos, cell)) {
+                if t != Some(me) && !(matches!(t, Some(ActorId::Hero(_))) && self.level().adjacent(pos, cell)) {
                     self.tell(i, tr!("Tócate a ti o a un aliado que esté al lado", "Touch yourself or an adjacent ally"));
                     return;
                 }
@@ -396,7 +396,7 @@ impl Dungeon {
             .mobs
             .iter()
             .enumerate()
-            .filter(|(_, m)| m.ch.hp > 0 && distance(m.ch.pos, cell) <= radius)
+            .filter(|(_, m)| m.ch.hp > 0 && self.level().distance(m.ch.pos, cell) <= radius)
             .map(|(k, m)| (m.ch.hp, k, m.id))
             .collect();
         victims.sort();

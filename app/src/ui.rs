@@ -7,7 +7,6 @@ use game::actor::ActorId;
 use game::dice::{self, ABILITIES};
 use game::dungeon::Dungeon;
 use game::npcs::{DialogView, ShopView};
-use game::geom::LENGTH;
 use game::hero::{Action, Slot, Verb, BACKPACK_SIZE, HUNGRY};
 use game::items::{weapon_dice, Image, Item, SLOT_ARMOR, SLOT_RING, SLOT_WEAPON};
 use game::registry::text;
@@ -372,7 +371,7 @@ impl Ui {
     pub fn examine(&mut self, d: &Dungeon, cell: i32) {
         let level = d.level();
         let c = cell as usize;
-        if !(0..LENGTH).contains(&cell) || !(level.visited[c] || level.mapped[c]) {
+        if !level.inside(cell) || !(level.visited[c] || level.mapped[c]) {
             let text = tr!("No sabes qué hay ahí.", "You don't know what's there.").to_string();
             self.window = Some(Window::Info { icon: None, title: "?".into(), text, hp: None });
             return;
@@ -1873,7 +1872,7 @@ pub fn draw_heaps(out: &mut Vec<Sprite>, atlas: &Atlas, font: &Font, d: &Dungeon
     let level = d.level();
     for (&pos, heap) in &level.heaps {
         if level.visited[pos as usize] || level.mapped[pos as usize] {
-            let at = [ox + (pos % game::geom::WIDTH) as f32 * 16.0, oy + (pos / game::geom::WIDTH) as f32 * 16.0];
+            let at = [ox + (pos % level.width) as f32 * 16.0, oy + (pos / level.width) as f32 * 16.0];
             item_icon(out, atlas, font, &d.heap_image(heap), at, 1.0);
         }
     }

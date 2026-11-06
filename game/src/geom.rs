@@ -1,12 +1,25 @@
-//! Tamaño del mapa (Level.java) y Rect (com.watabou.utils.Rect). El mapa es plano: celda = x + y * WIDTH.
+//! Vecinos de una celda y Rect (com.watabou.utils.Rect). El mapa es plano: celda = x + y * ancho. Cada nivel tiene su
+//! tamaño (`Level::width` / `height`, M1a): no hay tamaño global.
 
-pub const WIDTH: i32 = 32;
-pub const HEIGHT: i32 = 32;
-pub const LENGTH: i32 = WIDTH * HEIGHT;
+/// Mayor ancho o alto de una zona (la niebla de la GPU se reserva para esto).
+pub const MAX_SIZE: i32 = 128;
 
-pub const NEIGHBOURS4: [i32; 4] = [-WIDTH, 1, WIDTH, -1];
-pub const NEIGHBOURS8: [i32; 8] = [1, -1, WIDTH, -WIDTH, 1 + WIDTH, 1 - WIDTH, -1 + WIDTH, -1 - WIDTH];
-pub const NEIGHBOURS9: [i32; 9] = [0, 1, -1, WIDTH, -WIDTH, 1 + WIDTH, 1 - WIDTH, -1 + WIDTH, -1 - WIDTH];
+pub fn n4(w: i32) -> [i32; 4] {
+    [-w, 1, w, -1]
+}
+
+pub fn n8(w: i32) -> [i32; 8] {
+    [1, -1, w, -w, 1 + w, 1 - w, -1 + w, -1 - w]
+}
+
+pub fn n9(w: i32) -> [i32; 9] {
+    [0, 1, -1, w, -w, 1 + w, 1 - w, -1 + w, -1 - w]
+}
+
+/// Level.distance: distancia de Chebyshev (las diagonales cuentan 1) en un mapa de ancho `w`.
+pub fn distance(w: i32, a: i32, b: i32) -> i32 {
+    ((a % w) - (b % w)).abs().max(((a / w) - (b / w)).abs())
+}
 
 /// Ojo: right/bottom son coordenadas de celda (la pared): width = right - left.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

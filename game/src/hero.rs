@@ -8,10 +8,9 @@
 use serde_json::{Map, Value};
 
 use crate::actor::ActorId;
-use crate::char::{adjacent, distance, Char};
+use crate::char::Char;
 use crate::dice;
 use crate::dungeon::{Dungeon, Fx, Pending, Tone};
-use crate::geom::{LENGTH, NEIGHBOURS9};
 use crate::items::{armor_ac, capitalize, HeapKind, Item, GOLD};
 use crate::registry::text;
 use crate::mobs::State;
@@ -196,7 +195,7 @@ impl Hero {
             animating: false,
             visible_enemies: Vec::new(),
             depth: 0,
-            fov: vec![false; LENGTH as usize],
+            fov: Vec::new(), // la llena `observe` al entrar a un nivel
             dead: false,
             saves: [0, 0],
             stable: false,
@@ -443,7 +442,7 @@ impl Dungeon {
     /// Hero.handle: decide la acción según qué hay en la celda. stairs = true sólo con click / toque: cambiar de piso
     /// hay que pedirlo; pisar la escalera no basta.
     pub fn handle(&mut self, i: usize, cell: i32, stairs: bool) {
-        if !(0..LENGTH).contains(&cell) {
+        if !self.floors.get(&self.heroes[i].depth).is_some_and(|f| f.level.inside(cell)) {
             return;
         }
         let seen = self.heroes[i].fov[cell as usize];
@@ -498,7 +497,7 @@ impl Dungeon {
                 // lanzarle a un mob fuera de combate lo inicia (como atacar); el tiro va en su turno
                 let stop = self.shot(pos, cell).0;
                 let h = &self.heroes[i];
-                let valid = h.fov[cell as usize] && h.item(slot).is_some_and(|it| distance(pos, stop) <= Hero::range_of(it).1);
+                let valid = h.fov[cell as usize] && h.item(slot).is_some_and(|it| self.level().distance(pos, stop) <= Hero::range_of(it).1);
                 let at_mob = valid && matches!(self.find_char(stop), Some(ActorId::Mob(_)));
                 if at_mob && !self.floor().scheduler.in_combat(me) {
                     self.start_combat(true);
@@ -519,12 +518,12 @@ impl Dungeon {
             Action::Attack(e) => {
                 let target = if self.alive(e) { self.ch(e).map(|c| c.pos) } else { None };
                 match target {
-                    Some(tp) if adjacent(pos, tp) && !self.floor().scheduler.in_combat(me) => {
+                    Some(tp) if self.level().adjacent(pos, tp) && !self.floor().scheduler.in_combat(me) => {
                         // 5e: atacar inicia el combate. Todos tiran iniciativa y el ataque va en su turno; los que no
                         // lo vieron venir quedan sorprendidos (pierden su primer turno)
                         self.start_combat(true);
                     }
-                    Some(tp) if adjacent(pos, tp) => {
+                    Some(tp) if self.level().adjacent(pos, tp) => {
                         self.heroes[i].action = None;
                         self.attack(me, e);
                         let dly = self.heroes[i].attack_delay();
@@ -541,7 +540,7 @@ impl Dungeon {
                         self.heroes[i].action = None;
                         self.tell(i, crate::tr!("En pleno combate no hay tiempo para charlar", "No time to chat in the middle of combat"));
                     }
-                    Some(tp) if adjacent(pos, tp) => {
+                    Some(tp) if self.level().adjacent(pos, tp) => {
                         self.heroes[i].action = None;
                         self.talk(i, id);
                     }
@@ -568,7 +567,7 @@ impl Dungeon {
             }
             Action::Help(j) => {
                 let ally = self.heroes[j].ch.pos;
-                if adjacent(pos, ally) {
+                if self.level().adjacent(pos, ally) {
                     self.heroes[i].action = None;
                     self.stabilize(i, j);
                 } else if !(self.heroes[j].is_downed() && self.hero_get_closer(i, ally)) {
@@ -587,7 +586,7 @@ impl Dungeon {
                 self.heroes[i].action = None;
                 self.use_item(i, slot, verb, target);
             }
-            Action::Open(c) if pos == c || adjacent(pos, c) => {
+            Action::Open(c) if pos == c || self.level().adjacent(pos, c) => {
                 self.heroes[i].action = None;
                 self.open_heap(i, c);
             }
@@ -629,14 +628,14 @@ impl Dungeon {
         }
         let level = self.level();
         let t = target as usize;
-        let step = if adjacent(pos, target) {
+        let step = if self.level().adjacent(pos, target) {
             // ponytail: el abismo está bloqueado; en Java pide confirmación y caes al piso siguiente
             let free = self.find_char(target).is_none() && !level.pit[t];
             if free && (level.passable[t] || level.avoid[t]) { target } else { -1 }
         } else {
             // sólo camina por lo ya visto (visited / mapped)
             let p: Vec<bool> =
-                (0..LENGTH as usize).map(|c| level.passable[c] && (level.visited[c] || level.mapped[c])).collect();
+                (0..level.len() as usize).map(|c| level.passable[c] && (level.visited[c] || level.mapped[c])).collect();
             self.find_path(false, pos, target, &p, &self.heroes[i].fov)
         };
         if step == -1 {
@@ -655,7 +654,7 @@ impl Dungeon {
     fn search(&mut self, i: usize, intentional: bool) {
         let pos = self.heroes[i].ch.pos;
         let mut found = false;
-        for n in NEIGHBOURS9 {
+        for n in self.level().n9() {
             let p = pos + n;
             if !self.heroes[i].fov[p as usize] {
                 continue;
@@ -720,10 +719,11 @@ impl Dungeon {
         let src_name = src.and_then(|s| self.source_name(s)).unwrap_or_else(|| crate::tr!("daño", "damage").to_string());
         // daño por turno (un estado) a un caído: según la regla de la partida `dot_death_saves`
         let counts = self.rules.dot_death_saves || !matches!(src, Some(ActorId::Buff(_)));
+        let w = self.level().width;
         let h = &mut self.heroes[i];
         if h.ch.hp <= 0 {
             if dmg > 0 && counts {
-                let n = if src_pos.is_some_and(|p| adjacent(p, h.ch.pos)) { 2 } else { 1 };
+                let n = if src_pos.is_some_and(|p| crate::geom::distance(w, p, h.ch.pos) == 1) { 2 } else { 1 };
                 h.stable = false;
                 h.saves[1] += n;
                 let msg = crate::trf!(
@@ -904,7 +904,7 @@ impl Dungeon {
         let h = &self.heroes[i];
         let (Some(_), Some(w)) = (h.ammo(), h.weapon.as_ref()) else { return false };
         let Some(tp) = self.ch(e).filter(|_| self.alive(e)).map(|c| c.pos) else { return false };
-        h.fov[tp as usize] && distance(h.ch.pos, tp) <= Hero::range_of(w).1 && self.shot(h.ch.pos, tp).0 == tp
+        h.fov[tp as usize] && self.level().distance(h.ch.pos, tp) <= Hero::range_of(w).1 && self.shot(h.ch.pos, tp).0 == tp
     }
 
     /// Hero.shoot: ataque 5e con el arma a distancia (`ranged` y `cover` mientras dura).
@@ -965,7 +965,7 @@ impl Dungeon {
         if stop == pos {
             return;
         }
-        if distance(pos, stop) > range {
+        if self.level().distance(pos, stop) > range {
             self.tell(i, crate::tr!("Está demasiado lejos", "That's too far away"));
             return;
         }
@@ -1206,7 +1206,7 @@ impl Dungeon {
                 self.tell(i, if any { crate::tr!("Una luz limpia tu equipo", "A cleansing light washes over your gear") } else { crate::tr!("Sientes una calma extraña", "You feel a strange calm") });
             }
             "magic_mapping" => {
-                for c in 0..LENGTH {
+                for c in 0..self.level().len() {
                     let l = &mut self.floor_mut().level;
                     if l.discoverable[c as usize] {
                         l.mapped[c as usize] = true;

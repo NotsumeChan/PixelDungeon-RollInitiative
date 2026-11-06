@@ -20,7 +20,9 @@ const UI_INSET_V_PCT: u32 = 2;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BLACK: wgpu::Color = wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
 const CLEAR: wgpu::Color = wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
-pub const FOG_SIZE: u32 = 33; // una esquina por celda: (32 + 1) x (32 + 1)
+/// Una esquina por celda: (ancho + 1) x (alto + 1) de la zona más grande (`geom::MAX_SIZE`).
+/// ponytail: textura fija del tamaño máximo; con zonas más grandes, crearla al tamaño de cada zona
+pub const FOG_SIZE: u32 = game::geom::MAX_SIZE as u32 + 1;
 
 /// Una instancia del lote: un rectángulo de una textura dibujado en `pos` (pixeles de su capa), teñido por `color`.
 #[repr(C)]

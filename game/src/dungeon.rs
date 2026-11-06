@@ -7,10 +7,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde_json::{Map, Value};
 
 use crate::actor::{ActorId, Scheduler, CALM_ROUNDS, TICK};
-use crate::char::{adjacent, distance, Char, TRAIL_MAX};
+use crate::char::{Char, TRAIL_MAX};
 use crate::dice;
 use crate::fov::MAX_DISTANCE;
-use crate::geom::NEIGHBOURS9;
 use crate::hero::Hero;
 use crate::items::{make_gold, Generator, HeapKind, POTION_LOOKS, SCROLL_LOOKS};
 use crate::level::Level;
@@ -516,7 +515,8 @@ impl Dungeon {
 
     /// `cell`, o una vecina libre y transitable (otro héroe o un mob ya está en la escalera).
     fn free_near(&self, cell: i32) -> i32 {
-        NEIGHBOURS9
+        self.level()
+            .n9()
             .iter()
             .map(|n| cell + n)
             .find(|&c| self.level().passable[c as usize] && self.find_char(c).is_none())
@@ -647,13 +647,13 @@ impl Dungeon {
         let hs: Vec<usize> = self.here().filter(|&h| self.heroes[h].is_alive()).collect();
         let seen: Vec<usize> = hs.iter().copied().filter(|&h| fov[self.heroes[h].ch.pos as usize]).collect();
         let pool = if seen.is_empty() { hs } else { seen };
-        pool.into_iter().min_by_key(|&h| (self.heroes[h].is_downed(), distance(pos, self.heroes[h].ch.pos)))
+        pool.into_iter().min_by_key(|&h| (self.heroes[h].is_downed(), self.level().distance(pos, self.heroes[h].ch.pos)))
     }
 
     /// Dungeon.findPath: un paso hacia `to` evitando a las criaturas que se ven.
     pub(crate) fn find_path(&self, flying: bool, from: i32, to: i32, passable: &[bool], visible: &[bool]) -> i32 {
         let level = self.level();
-        if adjacent(from, to) {
+        if self.level().adjacent(from, to) {
             let t = to as usize;
             return if self.find_char(to).is_none() && (passable[t] || level.avoid[t]) { to } else { -1 };
         }
@@ -664,7 +664,7 @@ impl Dungeon {
                 p[c as usize] = false;
             }
         }
-        pathfinder::get_step(from, to, &p)
+        pathfinder::get_step(from, to, &p, self.level().width)
     }
 
     // --- movimiento ---
@@ -673,7 +673,7 @@ impl Dungeon {
         let old = self.ch(a).unwrap().pos;
         let level = &mut self.floor_mut().level;
         let s = step as usize;
-        debug_assert!(adjacent(old, step) && (level.passable[s] || level.avoid[s]), "paso inválido {old} -> {step}");
+        debug_assert!(level.adjacent(old, step) && (level.passable[s] || level.avoid[s]), "paso inválido {old} -> {step}");
         let before = (level.map[old as usize], level.map[step as usize]);
         level.leave(old);
         level.enter(step);
@@ -1009,8 +1009,8 @@ impl Dungeon {
             let ranged = h.ranged.as_ref().map(|w| {
                 let tp = self.ch(target).map_or(h.ch.pos, |c| c.pos);
                 let mobs = self.floors.get(&self.depth).map_or(&[][..], |f| &f.mobs[..]);
-                distance(h.ch.pos, tp) > crate::hero::Hero::range_of(w).0
-                    || mobs.iter().any(|m| m.ch.hp > 0 && adjacent(h.ch.pos, m.ch.pos))
+                self.level().distance(h.ch.pos, tp) > crate::hero::Hero::range_of(w).0
+                    || mobs.iter().any(|m| m.ch.hp > 0 && self.level().adjacent(h.ch.pos, m.ch.pos))
             });
             if h.disadvantaged() || ranged == Some(true) {
                 adv -= 1; // ventaja y desventaja juntas se anulan
@@ -1098,7 +1098,7 @@ impl Dungeon {
             }
             return false;
         }
-        let crit = nat == 20 || (self.downed(enemy) && adjacent(apos, epos)); // 5e: caído y al lado = crítico
+        let crit = nat == 20 || (self.downed(enemy) && self.level().adjacent(apos, epos)); // 5e: caído y al lado = crítico
         let (dmg, dmg_text, event) = self.roll_damage(att, crit, adv, enemy);
         let dmg = dmg.max(0);
         if !seen {

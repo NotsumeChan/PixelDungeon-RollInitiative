@@ -4,12 +4,11 @@
 use serde_json::{Map, Value};
 
 use crate::actor::{ActorId, TICK};
-use crate::char::{adjacent, distance, Char};
+use crate::char::Char;
 use crate::dungeon::{Dungeon, Fx, Tone};
 use crate::dice;
 use crate::items::{armor_ac, make_gold, weapon_dice, HeapKind, Item, GOLD};
 use crate::fov::{self, MAX_DISTANCE};
-use crate::geom::WIDTH;
 use crate::registry::text;
 use crate::rng::Rng;
 
@@ -139,7 +138,10 @@ impl Dungeon {
     pub(crate) fn mob_act(&mut self, id: u32) {
         let Some(m) = self.mob(id) else { return };
         let pos = m.ch.pos;
-        let fov = fov::cast_shadow(pos % WIDTH, pos / WIDTH, &self.level().los_blocking, MAX_DISTANCE);
+        let fov = {
+            let l = self.level();
+            fov::cast_shadow(pos, l.width, l.height, &l.los_blocking, MAX_DISTANCE)
+        };
         let enemy = self.choose_enemy(&fov, pos);
         let in_fov = enemy.is_some_and(|e| self.heroes[e].is_alive() && fov[self.heroes[e].ch.pos as usize]);
         let m = self.mob_mut(id).unwrap();
@@ -164,7 +166,7 @@ impl Dungeon {
     fn notice(&self, id: u32) -> i32 {
         let m = self.mob(id).unwrap();
         let h = &self.heroes[m.enemy.unwrap()];
-        distance(m.ch.pos, h.ch.pos) + h.stealth() + if h.ch.flying { 2 } else { 0 }
+        self.level().distance(m.ch.pos, h.ch.pos) + h.stealth() + if h.ch.flying { 2 } else { 0 }
     }
 
     fn mob_sleeping(&mut self, id: u32, in_fov: bool) {
@@ -185,7 +187,7 @@ impl Dungeon {
         let noticed = in_fov && (just_alerted || {
             let m = self.mob(id).unwrap();
             let h = &self.heroes[m.enemy.unwrap()];
-            let n = distance(m.ch.pos, h.ch.pos) / 2 + h.stealth();
+            let n = self.level().distance(m.ch.pos, h.ch.pos) / 2 + h.stealth();
             self.rng.int(n) == 0
         });
         if noticed {
@@ -226,7 +228,7 @@ impl Dungeon {
             v => v.as_bool() == Some(true),
         };
         let busy = self.heroes.iter().any(|h| {
-            h.is_alive() && (adjacent(h.ch.pos, pos) || h.trading == Some(id) || h.talking.as_ref().is_some_and(|t| t.0 == id))
+            h.is_alive() && (self.level().adjacent(h.ch.pos, pos) || h.trading == Some(id) || h.talking.as_ref().is_some_and(|t| t.0 == id))
         });
         if wander && !busy {
             self.mob_roam(id);
@@ -240,7 +242,7 @@ impl Dungeon {
         m.enemy_seen = in_fov;
         let (pos, enemy) = (m.ch.pos, m.enemy);
         let epos = enemy.map(|e| self.heroes[e].ch.pos);
-        if in_fov && adjacent(pos, epos.unwrap()) {
+        if in_fov && self.level().adjacent(pos, epos.unwrap()) {
             self.attack(ActorId::Mob(id), ActorId::Hero(enemy.unwrap()));
             self.spend(ActorId::Mob(id), 1.0); // attackDelay
             return;

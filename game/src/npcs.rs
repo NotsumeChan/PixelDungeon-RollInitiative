@@ -18,7 +18,6 @@ use serde_json::Value;
 use crate::actor::ActorId;
 use crate::dice;
 use crate::dungeon::Dungeon;
-use crate::geom::LENGTH;
 use crate::hero::Action;
 use crate::items::{HeapKind, Item};
 use crate::level::level_seed;
@@ -90,8 +89,8 @@ impl Dungeon {
             }
             if e[2]["near"] == "exit" {
                 let l = self.level();
-                let near: Vec<i32> = (0..LENGTH)
-                    .filter(|&c| l.passable[c as usize] && c != l.exit && c != l.entrance && crate::char::distance(c, l.exit) <= NEAR)
+                let near: Vec<i32> = (0..l.len())
+                    .filter(|&c| l.passable[c as usize] && c != l.exit && c != l.entrance && l.distance(c, l.exit) <= NEAR)
                     .filter(|&c| self.find_char(c).is_none())
                     .collect();
                 if !near.is_empty() {
@@ -468,7 +467,7 @@ impl Dungeon {
             }
             "map" => {
                 let l = &mut self.floor_mut().level;
-                for c in 0..LENGTH as usize {
+                for c in 0..l.len() as usize {
                     if l.discoverable[c] {
                         l.mapped[c] = true;
                     }

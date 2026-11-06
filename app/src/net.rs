@@ -15,7 +15,6 @@ use std::time::{Duration, Instant};
 
 use game::actor::ActorId;
 use game::dungeon::{DiceEvent, Dungeon, Fx, Tone};
-use game::geom::LENGTH;
 use game::hero::{Action, Hero, Slot, Verb};
 use game::{characters, save};
 use serde_json::{json, Map, Value};
@@ -338,7 +337,7 @@ pub fn action_v(a: Action) -> Value {
 }
 
 pub fn action_of(v: &Value) -> Option<Action> {
-    let cell = |k: usize| v[k].as_i64().and_then(|c| i32::try_from(c).ok()).filter(|c| (0..LENGTH).contains(c));
+    let cell = |k: usize| v[k].as_i64().and_then(|c| i32::try_from(c).ok()).filter(|c| *c >= 0);
     let idx = |k: usize| v[k].as_u64().map(|x| x as usize);
     Some(match v[0].as_str()? {
         "move" => Action::Move(cell(1)?),
@@ -382,7 +381,7 @@ fn fx_v(f: &Fx) -> Value {
 }
 
 fn fx_of(v: &Value) -> Option<Fx> {
-    let cell = |k: usize| v[k].as_i64().and_then(|c| i32::try_from(c).ok()).filter(|c| (0..LENGTH).contains(c));
+    let cell = |k: usize| v[k].as_i64().and_then(|c| i32::try_from(c).ok()).filter(|c| *c >= 0);
     Some(match v[0].as_str()? {
         "anim" => {
             let kind = ANIMS.iter().copied().find(|k| v[2] == *k)?;
@@ -413,10 +412,20 @@ fn dice_of(v: &Value) -> Option<DiceEvent> {
 }
 
 /// ¿Puede el héroe `i` pedir esto? (el juego vuelve a validar al actuar, como con el input local)
+/// La celda de una acción, si tiene (para validarla contra el mapa del héroe).
+fn action_cell(a: Action) -> Option<i32> {
+    match a {
+        Action::Move(c) | Action::Descend(c) | Action::Ascend(c) | Action::PickUp(c) | Action::Open(c) | Action::Cast(_, c) | Action::Throw(_, c) => Some(c),
+        _ => None,
+    }
+}
+
 fn valid(d: &Dungeon, i: usize, a: Action) -> bool {
     let h = &d.heroes[i];
     let has = |s: Slot| h.item(s).is_some();
+    let in_map = |c: i32| d.floors.get(&h.depth).is_some_and(|f| f.level.inside(c));
     h.is_alive()
+        && action_cell(a).is_none_or(in_map)
         && match a {
             Action::Attack(e) => matches!(e, ActorId::Mob(_)),
             Action::Help(j) => j < d.heroes.len() && j != i,
@@ -786,7 +795,7 @@ mod tests {
 
     #[test]
     fn acciones_invalidas() {
-        for v in [json!(["move", -1]), json!(["move", LENGTH]), json!(["nada"]), json!(["use", "x", 0, null]),
+        for v in [json!(["move", -1]), json!(["move", 1i64 << 40]), json!(["nada"]), json!(["use", "x", 0, null]),
                   json!(["use", 0, 99, null]), json!(["attack", ["h"]]), json!(null), json!("move")] {
             assert_eq!(action_of(&v), None, "{v}");
         }

@@ -1,18 +1,8 @@
 //! actors/Char.java (`game/char.py`): lo común de héroes y mobs. El combate 5e (que necesita la partida) está en
 //! dungeon.rs; lo propio de cada uno en hero.rs y mobs.rs.
-use crate::geom::WIDTH;
-
 /// Pasos que se guardan para el render (más que el movimiento de un turno de combate).
 pub const TRAIL_MAX: usize = 16;
 
-/// Level.distance: distancia de Chebyshev (las diagonales cuentan 1).
-pub fn distance(a: i32, b: i32) -> i32 {
-    ((a % WIDTH) - (b % WIDTH)).abs().max(((a / WIDTH) - (b / WIDTH)).abs())
-}
-
-pub fn adjacent(a: i32, b: i32) -> bool {
-    distance(a, b) == 1
-}
 
 pub struct Char {
     pub pos: i32,

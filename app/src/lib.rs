@@ -19,7 +19,6 @@ use config::{Bind, Config};
 use game::{characters, save, tr, trf};
 
 use game::dungeon::Dungeon;
-use game::geom::{HEIGHT, LENGTH, WIDTH};
 use game::hero::Action;
 use winit::application::ApplicationHandler;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -164,9 +163,11 @@ impl World {
     fn step(&mut self, dx: i32, dy: i32) {
         let me = self.d.hero;
         let pos = self.d.heroes[me].ch.pos;
-        let open = |c: i32| (0..LENGTH).contains(&c) && (self.d.level().passable[c as usize] || self.d.find_char(c).is_some());
+        let l = self.d.level();
+        let open = |c: i32| l.inside(c) && (l.passable[c as usize] || self.d.find_char(c).is_some());
         let tries = [(dx, dy), (dx, 0), (0, dy)];
-        if let Some(c) = tries.iter().filter(|t| **t != (0, 0)).map(|(x, y)| pos + x + y * WIDTH).find(|&c| open(c)) {
+        let found = tries.iter().filter(|t| **t != (0, 0)).map(|(x, y)| pos + x + y * l.width).find(|&c| open(c));
+        if let Some(c) = found {
             self.d.handle(me, c, false);
         }
     }
@@ -421,7 +422,8 @@ impl App {
         let wx = ((p.x as f32 - offx as f32) / scale as f32 - ox) / TILE;
         let wy = ((p.y as f32 - offy as f32) / scale as f32 - oy) / TILE;
         let (x, y) = (wx.floor() as i32, wy.floor() as i32);
-        ((0..WIDTH).contains(&x) && (0..HEIGHT).contains(&y)).then_some(x + y * WIDTH)
+        let l = self.world.d.level();
+        ((0..l.width).contains(&x) && (0..l.height).contains(&y)).then_some(x + y * l.width)
     }
 
     fn press(&mut self, p: PhysicalPosition<f64>) {
@@ -1353,12 +1355,12 @@ impl App {
         let s = &mut self.sprites;
         s.clear();
         let w = &self.world;
-        map::water(s, &self.atlas, self.atlas.rects[WATER], ox, oy, self.water_off);
+        map::water(s, &self.atlas, self.atlas.rects[WATER], w.d.level(), ox, oy, self.water_off);
         map::tiles(s, &self.atlas, self.atlas.rects[TILES], w.d.level(), ox, oy);
         ui::draw_heaps(s, &self.atlas, &self.font, &w.d, ox, oy);
         w.chars.draw_world(&w.d, &self.atlas, s, ox, oy);
         let atlas_end = s.len() as u32;
-        s.push(map::fog_quad(ox, oy));
+        s.push(map::fog_quad(w.d.level(), ox, oy));
         let fog_end = s.len() as u32;
         w.chars.draw_over(&w.d, &self.atlas, &self.font, s, ox, oy);
         let world_end = s.len() as u32;

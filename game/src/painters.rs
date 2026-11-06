@@ -1,18 +1,17 @@
 //! painters/*.java (`game/painters.py`): cada tipo de sala se pinta sobre `level.map`.
 //! Hoy: STANDARD (con sus 6 variantes), ENTRANCE, EXIT, TUNNEL. Las salas especiales llegan después.
-use crate::geom::{LENGTH, WIDTH};
 use crate::level::Level;
 use crate::room::{DoorType, RoomType};
 use crate::terrain::{self as t, Feeling};
 
 pub fn set_cell(level: &mut Level, x: i32, y: i32, v: u8) {
-    level.map[(x + y * WIDTH) as usize] = v;
+    level.map[(x + y * level.width) as usize] = v;
 }
 
 pub fn fill(level: &mut Level, x: i32, y: i32, w: i32, h: i32, v: u8) {
     for j in y..y + h {
-        let start = (x + j * WIDTH).max(0);
-        let end = (start + w.max(0)).min(LENGTH);
+        let start = (x + j * level.width).max(0);
+        let end = (start + w.max(0)).min(level.len());
         for c in start..end {
             level.map[c as usize] = v;
         }
@@ -78,7 +77,7 @@ fn stairs_room(level: &mut Level, room: usize, tile: u8) -> i32 {
     fill_room(level, room, 0, t::WALL);
     fill_room(level, room, 1, t::EMPTY);
     set_doors(level, room, DoorType::Regular);
-    let pos = level.rooms[room].random(&mut level.rng, 1);
+    let pos = level.rooms[room].random(&mut level.rng, 1, level.width);
     level.map[pos as usize] = tile;
     pos
 }
@@ -188,7 +187,7 @@ fn burned(level: &mut Level, room: usize) {
     for y in r.top + 1..r.bottom {
         for x in r.left + 1..r.right {
             let v = PICK[level.rng.int(5) as usize];
-            level.map[(x + y * WIDTH) as usize] = v;
+            level.map[(x + y * level.width) as usize] = v;
         }
     }
 }
@@ -202,9 +201,9 @@ fn graveyard(level: &mut Level, room: usize) {
     let shift = level.rng.int(2);
     for i in 0..n_graves {
         let pos = if w > h {
-            r.left + 1 + shift + i * 2 + (r.top + 2 + level.rng.int(h - 2)) * WIDTH
+            r.left + 1 + shift + i * 2 + (r.top + 2 + level.rng.int(h - 2)) * level.width
         } else {
-            (r.left + 2 + level.rng.int(w - 2)) + (r.top + 1 + shift + i * 2) * WIDTH
+            (r.left + 2 + level.rng.int(w - 2)) + (r.top + 1 + shift + i * 2) * level.width
         };
         // ponytail: tumbas como (celda, tiene ítem); el drop real (ítem / oro) llega con los ítems (R5)
         level.tombs.push((pos, i == index));

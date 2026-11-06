@@ -1,5 +1,4 @@
 //! mechanics/ShadowCaster.java (`game/fov.py`): campo de visión por shadowcasting en 8 sectores.
-use crate::geom::{HEIGHT, LENGTH, WIDTH};
 
 pub const MAX_DISTANCE: i32 = 8;
 
@@ -24,18 +23,18 @@ fn limits(d: i32) -> Vec<i32> {
     l
 }
 
-/// Celdas visibles desde (x, y). distance <= MAX_DISTANCE.
-pub fn cast_shadow(x: i32, y: i32, los_blocking: &[bool], distance: i32) -> Vec<bool> {
-    let mut fov = vec![false; LENGTH as usize];
-    fov[(y * WIDTH + x) as usize] = true;
+/// Celdas visibles desde la celda `pos` de un mapa de `w` x `h`. distance <= MAX_DISTANCE.
+pub fn cast_shadow(pos: i32, w: i32, h: i32, los_blocking: &[bool], distance: i32) -> Vec<bool> {
+    let mut fov = vec![false; (w * h) as usize];
+    fov[pos as usize] = true;
     let lim = limits(distance);
     for s in SECTORS {
-        scan_sector(&mut fov, los_blocking, &lim, distance, x, y, s);
+        scan_sector(&mut fov, los_blocking, &lim, distance, (pos % w, pos / w), (w, h), s);
     }
     fov
 }
 
-fn scan_sector(fov: &mut [bool], los: &[bool], lim: &[i32], distance: i32, cx: i32, cy: i32, s: (i32, i32, i32, i32)) {
+fn scan_sector(fov: &mut [bool], los: &[bool], lim: &[i32], distance: i32, (cx, cy): (i32, i32), (w, h): (i32, i32), s: (i32, i32, i32, i32)) {
     let (m1, m2, m3, m4) = s;
     // Obstáculos como intervalos de ángulo [a1, a2]; sólo cuentan los de filas anteriores (limit).
     let mut obs: Vec<(f64, f64)> = Vec::new();
@@ -45,10 +44,10 @@ fn scan_sector(fov: &mut [bool], los: &[bool], lim: &[i32], distance: i32, cx: i
         for q in 0..=lim[p as usize] {
             let x = cx + q * m1 + p * m3;
             let y = cy + p * m2 + q * m4;
-            if (0..HEIGHT).contains(&y) && (0..WIDTH).contains(&x) {
+            if (0..h).contains(&y) && (0..w).contains(&x) {
                 let a0 = q as f64 / p as f64;
                 let (a1, a2) = (a0 - dq2, a0 + dq2);
-                let pos = (y * WIDTH + x) as usize;
+                let pos = (y * w + x) as usize;
                 let blocked = |a: f64| obs[..limit].iter().any(|&(o1, o2)| o1 <= a && a <= o2);
                 if !(blocked(a0) && blocked(a1) && blocked(a2)) {
                     fov[pos] = true;

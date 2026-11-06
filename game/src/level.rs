@@ -4,13 +4,16 @@ use std::collections::BTreeMap;
 
 use crate::fov;
 use crate::items::{Heap, HeapKind, Item};
-use crate::geom::{Rect, HEIGHT, LENGTH, NEIGHBOURS4, NEIGHBOURS8, NEIGHBOURS9, WIDTH};
+use crate::geom::{self, Rect};
 use crate::painters::{self, fill, fill_room};
 use crate::patch;
 use crate::rng::Rng;
 use crate::room::{self, Door, DoorType, Room, RoomType, SPECIALS};
 use crate::terrain::{self as t, Feeling};
 
+/// Tamaño de lo que genera el generador de las Alcantarillas (el de PD): 32x32. Es un parámetro del generador, no
+/// del juego: un mapa prefabricado (M2) tiene el suyo.
+pub const SEWER_SIZE: i32 = 32;
 pub const MIN_ROOM_SIZE: i32 = 7;
 pub const MAX_ROOM_SIZE: i32 = 9;
 
@@ -25,6 +28,9 @@ pub fn level_seed(seed: i64, depth: i32) -> i64 {
 
 pub struct Level {
     pub depth: i32,
+    /// Tamaño del mapa (celda = x + y * width).
+    pub width: i32,
+    pub height: i32,
     pub boss: bool,
     pub boss_next: bool,
     pub rng: Rng,
@@ -70,9 +76,11 @@ const SECRET_TRAPS: [u8; 8] = [
 
 impl Level {
     pub fn new(seed: i64, depth: i32) -> Self {
-        let n = LENGTH as usize;
+        let n = (SEWER_SIZE * SEWER_SIZE) as usize;
         let mut level = Self {
             depth,
+            width: SEWER_SIZE,
+            height: SEWER_SIZE,
             boss: boss_level(depth),
             boss_next: boss_level(depth + 1),
             rng: Rng::new(level_seed(seed, depth)),
@@ -104,6 +112,38 @@ impl Level {
         level
     }
 
+    /// Cantidad de celdas.
+    #[allow(clippy::len_without_is_empty)] // un nivel nunca está vacío
+    pub fn len(&self) -> i32 {
+        self.width * self.height
+    }
+
+    /// ¿La celda está en el mapa?
+    pub fn inside(&self, c: i32) -> bool {
+        (0..self.len()).contains(&c)
+    }
+
+    pub fn n4(&self) -> [i32; 4] {
+        geom::n4(self.width)
+    }
+
+    pub fn n8(&self) -> [i32; 8] {
+        geom::n8(self.width)
+    }
+
+    pub fn n9(&self) -> [i32; 9] {
+        geom::n9(self.width)
+    }
+
+    /// Distancia de Chebyshev entre dos celdas.
+    pub fn distance(&self, a: i32, b: i32) -> i32 {
+        geom::distance(self.width, a, b)
+    }
+
+    pub fn adjacent(&self, a: i32, b: i32) -> bool {
+        self.distance(a, b) == 1
+    }
+
     // --- Level.create ---
 
     fn create(&mut self) {
@@ -120,7 +160,7 @@ impl Level {
         }
         loop {
             let base = if self.feeling == Feeling::Chasm { t::CHASM } else { t::WALL };
-            self.map = vec![base; LENGTH as usize];
+            self.map = vec![base; self.len() as usize];
             if self.build() {
                 break;
             }
@@ -214,7 +254,7 @@ impl Level {
     fn init_rooms(&mut self) -> bool {
         self.rooms.clear();
         self.doors.clear();
-        self.split(Rect::new(0, 0, WIDTH - 1, HEIGHT - 1));
+        self.split(Rect::new(0, 0, self.width - 1, self.height - 1));
         if self.rooms.len() < 8 {
             return false;
         }
@@ -345,7 +385,7 @@ impl Level {
                 continue;
             }
             let d = self.doors[door.expect("puerta sin colocar")];
-            let pos = (d.x + d.y * WIDTH) as usize;
+            let pos = (d.x + d.y * self.width) as usize;
             self.map[pos] = match d.kind {
                 DoorType::Empty => t::EMPTY,
                 DoorType::Tunnel => self.tunnel_tile(),
@@ -399,7 +439,7 @@ impl Level {
 
     fn paint_water(&mut self) {
         let density = if self.feeling == Feeling::Water { 0.60 } else { 0.45 };
-        let lake = patch::generate(&mut self.rng, density, 5);
+        let lake = patch::generate(&mut self.rng, density, 5, self.width, self.height);
         for (c, wet) in self.map.iter_mut().zip(lake) {
             if *c == t::EMPTY && wet {
                 *c = t::WATER;
@@ -409,21 +449,21 @@ impl Level {
 
     fn paint_grass(&mut self) {
         let density = if self.feeling == Feeling::Grass { 0.60 } else { 0.40 };
-        let mut grass = patch::generate(&mut self.rng, density, 4);
+        let mut grass = patch::generate(&mut self.rng, density, 4, self.width, self.height);
         if self.feeling == Feeling::Grass {
             for r in &self.rooms {
                 if !matches!(r.kind, RoomType::Null | RoomType::Passage | RoomType::Tunnel) {
                     let r = r.rect;
                     for (x, y) in [(r.left + 1, r.top + 1), (r.right - 1, r.top + 1), (r.left + 1, r.bottom - 1), (r.right - 1, r.bottom - 1)] {
-                        grass[(x + y * WIDTH) as usize] = true;
+                        grass[(x + y * self.width) as usize] = true;
                     }
                 }
             }
         }
-        for i in (WIDTH + 1)..(LENGTH - WIDTH - 1) {
+        for i in (self.width + 1)..(self.len() - self.width - 1) {
             let u = i as usize;
             if self.map[u] == t::EMPTY && grass[u] {
-                let count = 1 + NEIGHBOURS8.iter().filter(|&&n| grass[(i + n) as usize]).count();
+                let count = 1 + self.n8().iter().filter(|&&n| grass[(i + n) as usize]).count();
                 self.map[u] = if self.rng.float() < count as f64 / 12.0 { t::HIGH_GRASS } else { t::GRASS };
             }
         }
@@ -432,7 +472,7 @@ impl Level {
     fn place_traps(&mut self) {
         let n = if self.depth <= 1 { 0 } else { self.rng.int_range(1, self.rooms.len() as i32 + self.depth) };
         for _ in 0..n {
-            let pos = self.rng.int(LENGTH) as usize;
+            let pos = self.rng.int(self.len()) as usize;
             if self.map[pos] == t::EMPTY {
                 self.map[pos] = SECRET_TRAPS[self.rng.chances(&[1.0; 8])];
             }
@@ -442,18 +482,18 @@ impl Level {
     // --- SewerLevel.decorate ---
 
     fn decorate(&mut self) {
-        let w = WIDTH as usize;
+        let w = self.width as usize;
         for i in 0..w {
             if self.map[i] == t::WALL && self.map[i + w] == t::WATER && self.rng.int(4) == 0 {
                 self.map[i] = t::WALL_DECO;
             }
         }
-        for i in w..LENGTH as usize - w {
+        for i in w..self.len() as usize - w {
             if self.map[i] == t::WALL && self.map[i - w] == t::WALL && self.map[i + w] == t::WATER && self.rng.int(2) == 0 {
                 self.map[i] = t::WALL_DECO;
             }
         }
-        for i in w + 1..LENGTH as usize - w - 1 {
+        for i in w + 1..self.len() as usize - w - 1 {
             if self.map[i] == t::EMPTY {
                 let m = &self.map;
                 let count = [m[i + 1], m[i - 1], m[i + w], m[i - w]].iter().filter(|&&c| c == t::WALL).count() as i32;
@@ -463,7 +503,7 @@ impl Level {
             }
         }
         loop {
-            let pos = self.rooms[self.room_entrance].random(&mut self.rng, 0);
+            let pos = self.rooms[self.room_entrance].random(&mut self.rng, 0, self.width);
             if pos != self.entrance {
                 self.map[pos as usize] = t::SIGN;
                 break;
@@ -486,27 +526,27 @@ impl Level {
         self.pit = has(t::PIT);
 
         // El borde del mapa nunca es transitable.
-        for i in 0..LENGTH {
-            let (x, y) = (i % WIDTH, i / WIDTH);
-            if x == 0 || x == WIDTH - 1 || y == 0 || y == HEIGHT - 1 {
+        for i in 0..self.len() {
+            let (x, y) = (i % self.width, i / self.width);
+            if x == 0 || x == self.width - 1 || y == 0 || y == self.height - 1 {
                 self.passable[i as usize] = false;
                 self.avoid[i as usize] = false;
             }
         }
 
         // En el lugar y en orden (como el prototipo): una celda ya cosida se lee como vecina de la siguiente.
-        for i in WIDTH..LENGTH - WIDTH {
+        for i in self.width..self.len() - self.width {
             let u = i as usize;
             if self.water[u] {
                 let mut tile = t::WATER_TILES;
-                for (j, n) in NEIGHBOURS4.iter().enumerate() {
+                for (j, n) in self.n4().iter().enumerate() {
                     if t::flags(self.map[(i + n) as usize]) & t::UNSTITCHABLE != 0 {
                         tile += 1 << j;
                     }
                 }
                 self.map[u] = tile;
             }
-            let up = (i - WIDTH) as usize;
+            let up = (i - self.width) as usize;
             if self.pit[u] && !self.pit[up] {
                 let c = self.map[up];
                 self.map[u] = if c == t::EMPTY_SP || c == t::STATUE_SP {
@@ -523,10 +563,10 @@ impl Level {
     }
 
     fn clean_walls(&mut self) {
-        self.discoverable = (0..LENGTH)
+        self.discoverable = (0..self.len())
             .map(|i| {
                 let near: Vec<usize> =
-                    NEIGHBOURS9.iter().map(|n| i + n).filter(|&c| (0..LENGTH).contains(&c)).map(|c| c as usize).collect();
+                    self.n9().iter().map(|n| i + n).filter(|&c| (0..self.len()).contains(&c)).map(|c| c as usize).collect();
                 near.iter().any(|&c| self.map[c] != t::WALL && self.map[c] != t::WALL_DECO)
                     && near.iter().any(|&c| !self.pit[c])
             })
@@ -539,8 +579,8 @@ impl Level {
     /// ponytail: sin estados que cambien la vista (ceguera, visión mental); llegan con los estados (R5)
     pub fn observe(&mut self, positions: &[i32], distance: i32) -> Vec<Vec<bool>> {
         let views: Vec<Vec<bool>> =
-            positions.iter().map(|&p| fov::cast_shadow(p % WIDTH, p / WIDTH, &self.los_blocking, distance)).collect();
-        for i in 0..LENGTH as usize {
+            positions.iter().map(|&p| fov::cast_shadow(p, self.width, self.height, &self.los_blocking, distance)).collect();
+        for i in 0..self.len() as usize {
             self.visible[i] = views.iter().any(|v| v[i]);
             self.visited[i] |= self.visible[i];
         }
@@ -606,7 +646,7 @@ impl Level {
     pub fn random_respawn_cell(&self, rng: &mut Rng, occupied: impl Fn(i32) -> bool) -> i32 {
         for _ in 0..10 {
             let Some(r) = self.pick_room(rng, RoomType::Standard, 10) else { continue };
-            let cell = self.rooms[r].random(rng, 0);
+            let cell = self.rooms[r].random(rng, 0, self.width);
             if !self.visible[cell as usize] && !occupied(cell) && self.passable[cell as usize] {
                 return cell;
             }
@@ -618,7 +658,7 @@ impl Level {
     pub fn random_drop_cell(&self, rng: &mut Rng) -> i32 {
         loop {
             if let Some(r) = self.pick_room(rng, RoomType::Standard, 1) {
-                let cell = self.rooms[r].random(rng, 0);
+                let cell = self.rooms[r].random(rng, 0, self.width);
                 if self.passable[cell as usize] {
                     return cell;
                 }
@@ -635,7 +675,7 @@ impl Level {
     pub fn random_destination(&self, rng: &mut Rng) -> i32 {
         loop {
             let Some(r) = rng.pick(self.rooms.len()) else { return self.entrance };
-            let cell = self.rooms[r].random(rng, 0);
+            let cell = self.rooms[r].random(rng, 0, self.width);
             if self.passable[cell as usize] {
                 return cell;
             }
@@ -677,8 +717,8 @@ pub fn to_ascii(level: &Level) -> String {
             _ => '*',
         }
     };
-    (0..HEIGHT)
-        .map(|y| (0..WIDTH).map(|x| ch(level.map[(x + y * WIDTH) as usize])).collect::<String>())
+    (0..level.height)
+        .map(|y| (0..level.width).map(|x| ch(level.map[(x + y * level.width) as usize])).collect::<String>())
         .collect::<Vec<_>>()
         .join("\n")
 }

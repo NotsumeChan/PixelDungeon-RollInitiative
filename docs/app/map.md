@@ -11,3 +11,6 @@ El piso como instancias, port de `DrawLevel` / `BuildFog` de `screens/gameScreen
   ven, recordada si se vieron, revelada por magia, si no negra; el borde del mapa siempre negro) en una textura de
   33x33 con filtro **LINEAR**; el quad cubre el mapa con cada esquina en el centro de su texel, así la GPU interpola
   entre esquinas igual que el original. Reemplaza el armado tile por tile del prototipo.
+
+M1a: el agua, los tiles y la niebla usan el tamaño del nivel. La textura de la niebla es de `FOG_SIZE` = 129 (zonas de
+hasta 128x128) y el quad toma sólo la esquina del mapa.
