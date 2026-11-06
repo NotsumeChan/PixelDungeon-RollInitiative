@@ -131,3 +131,5 @@ Arrojadizas: con `throwing` puesto, el aviso nombra al enemigo más cerca y el m
 
 Mods (0.9.45): la lista usa todo el ancho y el nombre y la línea de versión / autor se recortan con ".." (`fit`) antes
 de los botones ON / OFF y AJUSTES (en vertical se tapaban).
+Tocar la fila de un mod abre su menú (`Window::ModConfig`: descripción, ajustes y, si es importado, BORRAR con
+confirmación: `UiAction::DeleteMod`, borra `<datos>/mods/<carpeta>`; se aplica al reiniciar). Ya no hay botón AJUSTES.

@@ -532,7 +532,26 @@ impl App {
         match act {
             UiAction::Nothing => {}
             UiAction::Close => self.ui.window = None,
-            UiAction::Open(w) => self.ui.window = Some(w),
+            UiAction::Open(w) => {
+                self.ui.mod_delete = None;
+                self.ui.window = Some(w);
+            }
+            UiAction::DeleteMod(folder, sure) => {
+                if sure {
+                    // sólo una carpeta directa de <datos>/mods (el nombre sale de read_dir; igual se revisa)
+                    let path = data_dir().join("mods").join(&folder);
+                    let ok = !folder.is_empty() && folder != "." && folder != ".." && !folder.contains(['/', '\\']) && path.is_dir();
+                    self.ui.mods_msg = match ok.then(|| std::fs::remove_dir_all(&path)) {
+                        Some(Ok(())) => game::trf!("Mod \"{folder}\" borrado: reinicia el juego para aplicarlo.", "Mod \"{folder}\" deleted: restart the game to apply it."),
+                        Some(Err(e)) => game::trf!("No se pudo borrar: {e}", "Couldn't delete: {e}"),
+                        None => game::tr!("No se pudo borrar: no es un mod importado.", "Couldn't delete: not an imported mod.").into(),
+                    };
+                    self.ui.mod_delete = None;
+                    self.ui.window = Some(UiWindow::Mods);
+                } else {
+                    self.ui.mod_delete = Some(folder);
+                }
+            }
             UiAction::ToggleMod(m) => self.config.toggle_mod(&m),
             UiAction::ModSetting(k, id, v) => {
                 if let Some(m) = game::registry::mods().get(k) {

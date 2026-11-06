@@ -173,6 +173,8 @@ pub enum UiAction {
     AckMods,
     /// Activar / desactivar un mod (carpeta): se aplica al reiniciar.
     ToggleMod(String),
+    /// Borrar un mod importado: (carpeta, confirmado). Sin confirmar, el botón pasa a preguntar.
+    DeleteMod(String, bool),
     /// Una opción de un mod: (índice en `registry::mods()`, opción, valor nuevo).
     ModSetting(usize, String, serde_json::Value),
     Act(Action),
@@ -309,6 +311,8 @@ pub struct Ui {
     pub in_title: bool,
     /// Pantalla de Mods: el aviso de la última importación.
     pub mods_msg: String,
+    /// El mod que se está por borrar (BORRAR ya tocado una vez).
+    pub mod_delete: Option<String>,
     /// Lista de personajes: el elegido, el primero que se ve y si BORRAR espera confirmación.
     pub roster_sel: Option<usize>,
     pub roster_scroll: usize,
@@ -345,7 +349,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, resume: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, offer: None, update_msg: String::new(), updating: false, settings_tab: 0, lang_scroll: 0, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, resume: None, in_title: false, mods_msg: String::new(), mod_delete: None, roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, offer: None, update_msg: String::new(), updating: false, settings_tab: 0, lang_scroll: 0, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// Escribe en el mensaje del chat (si se está escribiendo uno).
@@ -1819,15 +1823,12 @@ impl Ui {
                         sub.push(if k == "version" { format!("v{v}") } else { v.to_string() });
                     }
                 }
-                // el texto se recorta antes de los botones (en vertical se metía debajo de ON / OFF)
-                let has_settings = m.manifest["settings"].as_array().is_some_and(|s| !s.is_empty());
-                let avail = rw - 20.0 - if has_settings { 76.0 } else { 32.0 };
+                // tocar la fila abre el menú del mod (descripción, ajustes, borrar); el texto se recorta antes de ON / OFF
+                self.hot([x, y, rw - 32.0, 18.0], UiAction::Open(Window::ModConfig(k)), Some(tr!("Ver el mod", "Open the mod")));
+                let avail = rw - 20.0 - 32.0;
                 font.text(out, &fit(font, &name, avail), x + 20.0, y, if on { WHITE } else { GREY });
                 font.text(out, &fit(font, &sub.join(" - "), avail), x + 20.0, y + 9.0, GREY);
                 self.draw_button(atlas, font, out, [x + rw - 28.0, y, 28.0, 16.0], if on { "ON" } else { "OFF" }, Some(UiAction::ToggleMod(m.folder.clone())));
-                if has_settings {
-                    self.draw_button(atlas, font, out, [x + rw - 72.0, y, 42.0, 16.0], tr!("AJUSTES", "CONFIG"), Some(UiAction::Open(Window::ModConfig(k))));
-                }
                 y += 20.0;
             }
             y += 4.0;
@@ -1890,7 +1891,17 @@ impl Ui {
             y += 20.0;
         }
         let bw = ((w - 18.0) / 2.0).floor().min(90.0);
-        self.draw_button(atlas, font, out, [((w - bw) / 2.0).floor(), h - BOTTOM_BTN_H - 4.0, bw, BOTTOM_BTN_H], tr!("VOLVER", "BACK"), Some(UiAction::Open(Window::Mods)));
+        let by = h - BOTTOM_BTN_H - 4.0;
+        if m.builtin {
+            self.draw_button(atlas, font, out, [((w - bw) / 2.0).floor(), by, bw, BOTTOM_BTN_H], tr!("VOLVER", "BACK"), Some(UiAction::Open(Window::Mods)));
+        } else {
+            // los importados se pueden borrar (dos toques: BORRAR y SEGURO?)
+            let bx = ((w - bw * 2.0 - 2.0) / 2.0).floor();
+            self.draw_button(atlas, font, out, [bx, by, bw, BOTTOM_BTN_H], tr!("VOLVER", "BACK"), Some(UiAction::Open(Window::Mods)));
+            let sure = self.mod_delete.as_deref() == Some(m.folder.as_str());
+            let label = if sure { tr!("SEGURO?", "SURE?") } else { tr!("BORRAR", "DELETE") };
+            self.draw_button(atlas, font, out, [bx + bw + 2.0, by, bw, BOTTOM_BTN_H], label, Some(UiAction::DeleteMod(m.folder.clone(), sure)));
+        }
     }
 
     /// Pantalla de título (TitleScene.java): arcos de fondo que se desplazan (el de adelante al doble), el banner con
