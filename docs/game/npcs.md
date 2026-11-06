@@ -5,7 +5,7 @@ tranquilo (`State::Passive`): no caza, no entra al combate, no corta el paso del
 Si lo dañan (o el diálogo lo ataca) se despierta como un mob dormido y pelea.
 
 - `create_npcs`: al crear una zona, `data/npcs.json` (profundidad -> [[mob, probabilidad]]) con un rng propio derivado de la
-  seed del piso: los pisos, sus mobs y sus ítems salen igual que sin NPCs.
+  seed de la zona: las zonas, sus mobs y sus ítems salen igual que sin NPCs.
 - Tocar a un NPC tranquilo = `Action::Talk` (se acerca y abre el diálogo; en combate no). `Choose(k)` elige una opción,
   `Bye` cierra. No gastan tiempo. El diálogo abierto (`Hero::talking`: NPC y nodo) se guarda y viaja en el estado de
   la LAN: cada jugador ve el suyo.

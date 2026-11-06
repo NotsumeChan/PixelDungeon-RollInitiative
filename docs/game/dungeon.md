@@ -21,7 +21,7 @@ una fórmula o en un archivo de datos, es la profundidad.
   los que están en pie.
 - `view_changed`: la vista de la zona local cambió (la app sube la niebla).
 - Falta: mezclar las apariencias de pociones y pergaminos al empezar (gasta rng en el prototipo; va primero de todo
-  con los ítems, R5), ítems del piso, trampas.
+  con los ítems, R5), ítems de la zona, trampas.
 
 Para el render (R4): `dice_events` (las tiradas que el héroe local ve: etiqueta, valor, mínimo, máximo y, en las
 salvaciones, si se superó) y `fx` (`Fx::Anim`, `Status`, `Die`, `Checked`, `Leaves`). Sólo se emiten en la zona local
