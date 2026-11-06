@@ -53,4 +53,6 @@ mensaje propio de vuelta: el log ya viaja en el estado. El host escribe con `Hos
   números en mayúsculas (el teclado del teléfono sólo tiene mayúsculas), hasta `PASS_MAX`. El cliente la manda en el
   `hello` (`pass`); si falta o no es, `refused` con `need: "password"` y el cliente pide la clave y reintenta en
   `join_addr`. El anuncio de la LAN lleva `locked` y la lista muestra "(clave)".
-- ponytail: la clave viaja en texto plano y sin límite de intentos; el DNS se resuelve en el hilo del juego.
+- Conectar (DNS + `connect_timeout`) va en otro hilo (`App::join` -> `connecting`, lo recoge `net_pump`): la pantalla
+  sigue dibujando y Unirse muestra puntos animados (`Ui::busy`) mientras busca, conecta o espera al host.
+- ponytail: la clave viaja en texto plano y sin límite de intentos.

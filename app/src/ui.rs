@@ -310,6 +310,8 @@ pub struct Ui {
     pub chat: Option<String>,
     /// Título: la dirección o la clave que se está escribiendo.
     pub prompt: Option<(Ask, String)>,
+    /// Buscando o conectando (Unirse): el aviso lleva puntos animados.
+    pub busy: bool,
     /// Tienda: el ítem elegido (true = del NPC, índice).
     pub shop_sel: Option<(bool, usize)>,
     hot: Vec<Hot>,
@@ -320,7 +322,7 @@ pub struct Ui {
 
 impl Ui {
     pub fn new() -> Self {
-        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
+        Self { window: None, examining: false, casting: None, throwing: None, in_title: false, mods_msg: String::new(), roster_sel: None, roster_scroll: 0, confirm: false, mouse: None, rebinding: None, create: Create::default(), waiting: Vec::new(), lan: false, chat: None, prompt: None, busy: false, shop_sel: None, hot: Vec::new(), car_cur: None, car_off: 0.0, t: 0.0 }
     }
 
     /// Escribe en el mensaje del chat (si se está escribiendo uno).
@@ -1467,7 +1469,9 @@ impl Ui {
     /// Teclado en pantalla abajo: las filas, ESPACIO (si `space`), BORRAR y LISTO; cada tecla es `act(Cr::...)`.
     #[allow(clippy::too_many_arguments)]
     fn draw_keys(&mut self, atlas: &Atlas, font: &Font, out: &mut Vec<Sprite>, w: f32, h: f32, rows: &[&str], space: bool, act: fn(Cr) -> UiAction) {
-        let (kw, kh) = (((w - 8.0) / 10.0).floor(), 18.0);
+        // teclas para el dedo: en vertical sobra alto (hasta 30); en apaisado quedan en 18 (ya son anchas)
+        let n = (rows.len() + 1) as f32;
+        let (kw, kh) = (((w - 4.0) / 10.0).floor(), ((h * 0.45) / n - 2.0).floor().clamp(18.0, 30.0));
         let total = (rows.len() + 1) as f32 * (kh + 2.0) + 2.0;
         let ktop = h - total;
         out.push(atlas.rect([0.0, ktop - 2.0], [w, total + 2.0], [0.0, 0.0, 0.0, 0.94]));
@@ -1513,9 +1517,12 @@ impl Ui {
         out.push(atlas.rect([0.0, 0.0], [w, h], [0.0, 0.0, 0.0, 1.0]));
         self.hot([0.0, 0.0, w, h], UiAction::Nothing, None);
         font.text(out, tr!("Unirse a una partida LAN", "Join a LAN game"), 8.0, 3.0, YELLOW);
+        let dots = &"..."[..1 + (self.t * 3.0) as usize % 3];
         if games.is_empty() {
-            font.text(out, tr!("Buscando partidas en la red...", "Searching for games on the network..."), 8.0, 18.0, GREY);
+            let searching = tr!("Buscando partidas en la red", "Searching for games on the network");
+            font.text(out, &format!("{searching}{dots}"), 8.0, 18.0, GREY);
         }
+        let status = if self.busy { format!("{}{dots}", status.trim_end_matches('.')) } else { status.to_string() };
         for (i, (label, ok)) in games.iter().enumerate() {
             let r = [8.0, 15.0 + i as f32 * 18.0, w - 16.0, 16.0];
             out.push(atlas.rect([r[0], r[1]], [r[2], r[3]], SLOT_BG));

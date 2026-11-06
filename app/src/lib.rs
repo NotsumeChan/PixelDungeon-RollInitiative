@@ -228,7 +228,9 @@ struct App {
     /// Cliente: mandó una acción y espera el estado que la incluya (no repetir el paso con la tecla mantenida).
     awaiting: bool,
     /// Adónde se intentó unir por última vez (para reintentar con la clave que pide el host).
-    join_addr: Option<std::net::SocketAddr>,
+    join_addr: Option<String>,
+    /// Conectando en otro hilo (DNS + connect): el resultado y el personaje con el que se entra.
+    connecting: Option<(std::sync::mpsc::Receiver<std::io::Result<net::ClientGame>>, serde_json::Value)>,
 }
 
 enum Net {
@@ -356,6 +358,7 @@ impl App {
             lan_status: String::new(),
             awaiting: false,
             join_addr: None,
+            connecting: None,
         }
     }
 
@@ -523,6 +526,7 @@ impl App {
                 if self.title {
                     self.net = Net::Off;
                     self.browser = None;
+                    self.connecting = None; // si conecta después, se descarta (y se corta)
                 }
                 self.open_roster();
             }
@@ -582,8 +586,8 @@ impl App {
                     self.lan_status = tr!("Esa partida tiene otro contenido (data/ o mods).", "That game has different content (data/ or mods).").into();
                     return;
                 }
-                let addr = g.addr;
-                self.join(addr, "");
+                let addr = g.addr.to_string();
+                self.join(addr, String::new());
             }
             UiAction::Ask(a) => {
                 let text = if a == ui::Ask::Addr { self.config.last_address() } else { String::new() };
@@ -595,16 +599,13 @@ impl App {
                 ui::Cr::Done => {
                     let Some((a, text)) = self.ui.prompt.take() else { return };
                     match a {
-                        ui::Ask::Addr => match net::resolve(&text) {
-                            Ok(addr) => {
-                                self.config.set_last_address(&text);
-                                self.join(addr, "");
-                            }
-                            Err(e) => self.lan_status = trf!("No se encontró {}: {}.", "Couldn't find {}: {}.", text, e),
-                        },
+                        ui::Ask::Addr => {
+                            self.config.set_last_address(&text);
+                            self.join(text, String::new());
+                        }
                         ui::Ask::Pass => {
-                            if let Some(addr) = self.join_addr {
-                                self.join(addr, &text);
+                            if let Some(addr) = self.join_addr.clone() {
+                                self.join(addr, text);
                             }
                         }
                         ui::Ask::HostPass => {
@@ -899,23 +900,28 @@ impl App {
         }
     }
 
-    /// Unirse a `addr` con el personaje elegido en la lista; `pass` = la clave de la sala ("" si no pide).
-    fn join(&mut self, addr: std::net::SocketAddr, pass: &str) {
+    /// Unirse a `target` (`net::resolve`: "IP:puerto", "dominio:puerto"...) con el personaje elegido en la lista;
+    /// `pass` = la clave de la sala ("" si no pide). El DNS y el connect van en otro hilo: la pantalla sigue
+    /// dibujando "Conectando..." y `net_pump` recoge el resultado.
+    fn join(&mut self, target: String, pass: String) {
+        if self.connecting.is_some() {
+            return;
+        }
         let Some(c) = self.ui.roster_sel.and_then(|i| self.roster.get(i)).cloned() else {
             self.lan_status = tr!("Elige un personaje en la lista.", "Choose a character from the list.").into();
             return;
         };
         // personaje portátil: entra con lo de su partida (si tiene una con el héroe vivo)
         let run = save::load_run(&data_dir(), characters::id(&c)).filter(|d| d.heroes.iter().any(|h| h.is_alive()));
-        self.join_addr = Some(addr);
-        match net::ClientGame::connect(addr, &c, run.map(|d| save::portable(d.local())), pass) {
-            Ok(cg) => {
-                self.net = Net::Client(cg);
-                self.character = Some(c);
-                self.lan_status = tr!("Conectando...", "Connecting...").into();
-            }
-            Err(e) => self.lan_status = trf!("No se pudo conectar: {e}.", "Couldn't connect: {e}."),
-        }
+        let hero = run.map(|d| save::portable(d.local()));
+        self.join_addr = Some(target.clone());
+        let (tx, rx) = std::sync::mpsc::channel();
+        let ch = c.clone();
+        std::thread::spawn(move || {
+            let _ = tx.send(net::resolve(&target).and_then(|a| net::ClientGame::connect(a, &ch, hero, &pass)));
+        });
+        self.connecting = Some((rx, c));
+        self.lan_status = tr!("Conectando...", "Connecting...").into();
     }
 
     /// La red, una vez por frame (en el hilo del juego): el host recibe acciones y manda el estado; el cliente manda
@@ -926,6 +932,22 @@ impl App {
             self.lan_games = b.games();
         }
         self.ui.lan = !matches!(self.net, Net::Off);
+        let got = self.connecting.as_ref().map(|(rx, _)| rx.try_recv());
+        match got {
+            Some(Ok(r)) => {
+                let (_, c) = self.connecting.take().unwrap();
+                match r {
+                    Ok(cg) => {
+                        self.net = Net::Client(cg);
+                        self.character = Some(c);
+                    }
+                    Err(e) => self.lan_status = trf!("No se pudo conectar: {e}.", "Couldn't connect: {e}."),
+                }
+            }
+            Some(Err(std::sync::mpsc::TryRecvError::Disconnected)) => self.connecting = None,
+            _ => {}
+        }
+        self.ui.busy = self.connecting.is_some() || (self.title && matches!(self.net, Net::Client(_)));
         match &mut self.net {
             Net::Off => {}
             Net::Host(h) => h.pump(&mut self.world.d, &self.classes),
