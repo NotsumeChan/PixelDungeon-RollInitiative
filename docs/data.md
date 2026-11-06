@@ -35,3 +35,14 @@ Registros que lee `game/registry.py` (los mods los pisan o suman: `docs/mods.md`
 - **buffs.json** (`BUFFS`): ver `docs/game/buffs.md`. **spells.json** (`SPELLS`): ver `docs/game/spells.md`.
 - Lo que sigue en código (no son datos): los efectos por nombre (`EFFECTS`, `TICKS`, `KINDS`), las tablas de espacios
   de conjuro y `FREE_CASTS`.
+
+## world.json (M1b, 0.9.31)
+El mundo: zona `"x,y,z"` (z = profundidad, también el nivel de peligro) -> entrada:
+- `start`: `true` en la zona donde se empieza (una sola).
+- `name`: texto (`str` o `{"es", "en"}`): se muestra al entrar.
+- `map`: cómo se arma su mapa. Por ahora `{"gen": "pdri:sewers"}` (las Alcantarillas); los mapas prefabricados
+  llegan con M2.
+- `up` / `down`: la zona a la que llevan sus escaleras (`"x,y,z"`). Sin `down`, bajar dice "Fin de la demo"; sin `up`,
+  no se puede subir.
+Un mod suma zonas o pisa las del base (como cualquier registro): p. ej. un `"0,0,5"` y un `down` en `"0,0,4"` que lleve
+ahí. Sólo existe lo que está en el JSON (decisión del dueño: el mundo es sólo datos).

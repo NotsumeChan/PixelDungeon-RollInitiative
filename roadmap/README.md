@@ -12,7 +12,7 @@ Leer esto primero. Un archivo por tema:
 | [`pasos/`](pasos/) | Próximos pasos, uno por archivo |
 
 ## Ahora
-Rama `dev`, **0.9.30** (`versionCode` 40). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
+Rama `dev`, **0.9.31** (`versionCode` 41). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
 primero.
 
 ## Próximos pasos
@@ -22,7 +22,7 @@ primero.
 | 2 | ✏️ [Red por internet](pasos/2-red-internet.md) | `#D2` |
 | 3 | ✏️ [Compatibilidad entre versiones](pasos/3-compatibilidad.md) | `#D3` |
 | 4 | ✏️ [Actualizador](pasos/4-updater.md) | `#D4` |
-| 5 | ✏️ M1a · [Zonas, mapas y editor](pasos/5-mapas-editor.md) | `#M1`… |
+| 5 | ✏️ M1a, M1b · [Zonas, mapas y editor](pasos/5-mapas-editor.md) | `#M1`… |
 
 Estética: en conversación, sin paso.
 
@@ -47,7 +47,7 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 - Visión, pathfinder y línea de tiro propios desde 0.9.28 (falta que el dueño los pruebe: que los mobs persigan, la
   vista en esquinas y pasillos, disparos y conjuros).
 - Configuración por pestañas y BUSCAR AHORA desde 0.9.29 (falta que el dueño la vea, sobre todo en vertical).
-- Siguiente: **M1b** (`world.json`: el mundo como datos; el base reproduce las 4 zonas de las Alcantarillas).
+- M1b (`world.json`, 0.9.31) hecho. Siguiente: **generador propio** de zonas (en vez de las Alcantarillas de PD), elegido por zona en `world.json`.
 - Repo del editor: `../pdri-editor/` (README, ROADMAP, LICENSE; el dueño crea el repo).
 
 ## Pendiente del dueño

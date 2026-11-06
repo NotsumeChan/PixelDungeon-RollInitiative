@@ -24,7 +24,6 @@ const STRENGTH_QUOTA: [i32; 10] = [4, 2, 9, 4, 14, 6, 19, 8, 24, 9];
 const UPGRADE_QUOTA: [i32; 10] = [5, 3, 10, 6, 15, 9, 20, 12, 25, 13];
 
 /// El piso 5 (Goo) queda fuera.
-pub const MAX_DEPTH: i32 = 4;
 /// Level.TIME_TO_RESPAWN.
 pub const TIME_TO_RESPAWN: f64 = 50.0;
 const MAX_MESSAGES: usize = 50;
@@ -149,6 +148,8 @@ pub struct Dungeon {
     pub(crate) mobs_data: Map<String, Value>,
     pub(crate) bestiary: Map<String, Value>,
     pub(crate) npcs: Map<String, Value>,
+    /// El mundo (`data/world.json`, M1b): zona "x,y,z" -> nombre, mapa, salidas ("up", "down").
+    pub(crate) world: Map<String, Value>,
     pub(crate) dialogs: Map<String, Value>,
     pub(crate) skills: Map<String, Value>,
     pub(crate) skins: Map<String, Value>,
@@ -199,6 +200,7 @@ impl Dungeon {
             mobs_data: load("mobs"),
             bestiary: load("bestiary"),
             npcs: load("npcs"),
+            world: load("world"),
             dialogs: load("dialogs"),
             skills: load("skills"),
             skins: load("skins"),
@@ -228,8 +230,28 @@ impl Dungeon {
         }
         self.heroes.push(hero);
         let i = self.heroes.len() - 1;
-        self.go_to(i, Zone::depth(1));
+        let start = self.start_zone();
+        self.go_to(i, start);
         i
+    }
+
+    /// La zona de inicio: la de `"start": true` en `world.json` (si no hay, (0, 0, 1)).
+    fn start_zone(&self) -> Zone {
+        self.world.iter().find(|(_, v)| v["start"] == true).and_then(|(k, _)| Zone::parse(k)).unwrap_or(Zone::depth(1))
+    }
+
+    /// A qué zona lleva la salida `dir` ("up", "down") de la zona del héroe `i`, si existe en el mundo.
+    fn exit_to(&self, i: usize, dir: &str) -> Option<Zone> {
+        let here = self.world.get(&self.heroes[i].zone.key())?;
+        here[dir].as_str().and_then(Zone::parse).filter(|z| self.world.contains_key(&z.key()))
+    }
+
+    /// El nombre de una zona (`world.json`), o "Piso N".
+    pub fn zone_name(&self, z: Zone) -> String {
+        self.world.get(&z.key()).map(|v| &v["name"]).filter(|n| !n.is_null()).map_or_else(
+            || crate::trf!("Piso {}", "Depth {}", z.z),
+            crate::registry::text,
+        )
     }
 
     /// Cambia el héroe que maneja la UI (modo de prueba de 2 héroes, `set_local` del prototipo) y pone su piso en
@@ -446,27 +468,22 @@ impl Dungeon {
 
     // --- pisos ---
     pub(crate) fn descend(&mut self, i: usize) {
-        let z = self.heroes[i].zone;
-        if z.z >= MAX_DEPTH {
-            self.tell(i, crate::tr!("Fin de la demo: el piso 5 no está incluido", "End of the demo: depth 5 is not included"));
-            return;
+        match self.exit_to(i, "down") {
+            Some(z) => self.go_to(i, z),
+            None => self.tell(i, crate::tr!("Fin de la demo: no hay más pisos", "End of the demo: there are no more depths")),
         }
-        self.go_to(i, Zone { z: z.z + 1, ..z });
     }
 
     pub(crate) fn ascend(&mut self, i: usize) {
-        let z = self.heroes[i].zone;
-        if z.z <= 1 {
-            self.tell(i, crate::tr!("No puedes salir de la mazmorra", "You can't leave the dungeon"));
-            return;
+        match self.exit_to(i, "up") {
+            Some(z) => self.go_to(i, z),
+            None => self.tell(i, crate::tr!("No puedes salir de la mazmorra", "You can't leave the dungeon")),
         }
-        self.go_to(i, Zone { z: z.z - 1, ..z });
     }
 
     /// Cambia de zona a un héroe (InterlevelScene). Una zona sin héroes vivos no se procesa (su tiempo no avanza).
     /// El héroe se lleva lo suyo (la regeneración).
     fn go_to(&mut self, i: usize, zone: Zone) {
-        let depth = zone.z;
         let old = self.heroes[i].zone;
         let going_down = zone.z > old.z;
         self.heroes[i].zone = zone;
@@ -512,8 +529,8 @@ impl Dungeon {
             s.add(ActorId::Buff(b.uid), 0.0); // sus estados viajan con él
         }
         self.observe();
-        let msg =
-            if self.heroes.len() == 1 { crate::trf!("Piso {depth}", "Depth {depth}") } else { crate::trf!("{}: piso {depth}", "{}: depth {depth}", self.heroes[i].ch.name) };
+        let name = self.zone_name(zone);
+        let msg = if self.heroes.len() == 1 { name } else { format!("{}: {name}", self.heroes[i].ch.name) };
         self.log(&msg);
     }
 

@@ -1,0 +1,45 @@
+{
+ "0,0,1": {
+  "start": true,
+  "name": {
+   "es": "Alcantarillas 1",
+   "en": "Sewers 1"
+  },
+  "map": {
+   "gen": "pdri:sewers"
+  },
+  "down": "0,0,2"
+ },
+ "0,0,2": {
+  "name": {
+   "es": "Alcantarillas 2",
+   "en": "Sewers 2"
+  },
+  "map": {
+   "gen": "pdri:sewers"
+  },
+  "up": "0,0,1",
+  "down": "0,0,3"
+ },
+ "0,0,3": {
+  "name": {
+   "es": "Alcantarillas 3",
+   "en": "Sewers 3"
+  },
+  "map": {
+   "gen": "pdri:sewers"
+  },
+  "up": "0,0,2",
+  "down": "0,0,4"
+ },
+ "0,0,4": {
+  "name": {
+   "es": "Alcantarillas 4",
+   "en": "Sewers 4"
+  },
+  "map": {
+   "gen": "pdri:sewers"
+  },
+  "up": "0,0,3"
+ }
+}

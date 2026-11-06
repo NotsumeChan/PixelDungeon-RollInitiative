@@ -7,7 +7,7 @@ Decisiones en [`decisiones.md`](../decisiones.md#mundo-por-zonas-2026-11-06). Ca
 - ✏️ **M1a — Coordenadas y tamaño variable** (0.9.26, falta la prueba del dueño: jugar como siempre, bajar y subir, guardar y volver; una partida vieja no aparece): la clave de los pisos pasa de `depth` a `Zone {x, y, z}` y cada nivel
   tiene su ancho y alto (fuera las constantes `WIDTH`/`HEIGHT`/`LENGTH`). La seed de cada zona sale de sus
   coordenadas. Las partidas viejas no se cargan; sube `PROTOCOL`. El juego se ve igual: 4 zonas (0,0,1)..(0,0,4).
-- **M1b — `world.json`:** el mundo como datos (zonas, nombre, mapa generado o prefabricado, conexiones). El base
+- ✏️ **M1b — `world.json`** (0.9.31, falta la prueba del dueño: bajar y subir, el nombre de la zona al entrar, el fin del piso 4): el mundo como datos (zonas, nombre, mapa generado o prefabricado, conexiones). El base
   reproduce las Alcantarillas de hoy. `docs/data.md` y la API de mods estable.
 - **M1c — Salidas con dirección:** por el borde del mapa (norte, sur, este, oeste) y casillas especiales (puertas,
   portales), además de las escaleras.

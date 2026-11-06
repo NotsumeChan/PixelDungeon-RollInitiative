@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use serde_json::{Map, Value};
 
 /// El contenido del juego base va dentro del binario (Android sin AssetManager).
-const BASE: [(&str, &str); 11] = [
+const BASE: [(&str, &str); 12] = [
     ("classes", include_str!("../../data/classes.json")),
     ("mobs", include_str!("../../data/mobs.json")),
     ("bestiary", include_str!("../../data/bestiary.json")),
@@ -21,6 +21,7 @@ const BASE: [(&str, &str); 11] = [
     ("skills", include_str!("../../data/skills.json")),
     ("skins", include_str!("../../data/skins.json")),
     ("quests", include_str!("../../data/quests.json")),
+    ("world", include_str!("../../data/world.json")),
 ];
 
 /// (carpeta, `mod.json`, [(registro, json)]) de un mod incluido.
