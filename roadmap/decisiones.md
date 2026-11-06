@@ -46,6 +46,10 @@ del actualizador. → [M](pasos/5-mapas-editor.md)
 - Obligatorios (se compara el hash) y de cliente (gráficos, sonido).
 - Mods con código (Lua): advertencia fuerte y confirmación. Sólo datos: aviso general.
 - Plataformas: Android, Windows, Linux. Sin iOS ni Mac.
+- **API de mods estable** (2026-11-06): lo que usan los modders (formatos de `data/` y `mod.json` en `docs/data.md` y
+  `docs/mods.md`, y el `ctx` de Lua) cambia lo mínimo y sólo sumando: campos y funciones nuevas, nunca quitar ni
+  cambiar el sentido de lo que hay. Si alguna vez hay que romper algo: `api` en `mod.json`, el juego sigue cargando
+  la versión anterior y el cambio queda anotado en `docs/mods.md`.
 
 ## Multijugador (2026-11-04)
 1. Host autoritativo.

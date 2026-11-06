@@ -28,10 +28,14 @@ Sin orden. Cuando el dueño elige algo, pasa a `pasos/`.
 - Audio: sólo cuando se pida.
 
 ## NPCs y mods
-- Lista de mods: scroll, ver importados sin reiniciar, borrar.
+- Lista de mods (pedido del dueño, 2026-11-06):
+  - Sin botón AJUSTES: tocar el mod abre su menú (ajustes, descripción, borrar).
+  - Vertical: el botón ON / OFF tapa la descripción.
+  - Horizontal: la lista no usa el ancho de la pantalla, sólo se achata.
+  - Scroll, ver los importados sin reiniciar, borrar un mod.
 - Precios por nivel e identificación; tiradas sociales que esperen al dado (`ponytail` en `game/src/npcs.rs`).
 - Más NPC: imp, rey rata, herrero (el fantasma, no por ahora).
-- `.pdmod` con versión y sha256, packs (`instances/<pack>/`), mods del host al unirse (caché por sha256, se bajan
+- `.pdmod` con versión y sha256, packs con nombre y versión (`instances/<pack>/pack.json`), mods del host al unirse (caché por sha256, se bajan
   del host), mods que necesita cada personaje.
 
 ## Controles y visión
