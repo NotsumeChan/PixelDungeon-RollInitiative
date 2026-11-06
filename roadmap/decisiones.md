@@ -81,7 +81,10 @@ por hoja con un máximo (64x64); cuadros y velocidad libres por animación. Plan
 - **Duplicar y editar personajes**: duplicar copia sólo lo de nivel 0 (nombre, apariencia, clase, características,
   con qué empieza), nunca inventario ni nivel; editar, nombre y apariencia.
 - **Mods**: primero packs como instancias locales (estilo Modrinth / gestores de mods de Minecraft): cada pack tiene
-  sus mods y sus personajes y mundos. La descarga desde el host, después. Plan:
+  sus mods y sus personajes y mundos. Compartir packs (2026-11-06): no al unirse a una partida, sino **pidiéndolo** desde
+  la lista de packs a quien lo marcó "visible para descarga directa"; se baja entero (requeridos y de cliente) y cada
+  uno apaga los de cliente en los ajustes del pack. También exportar / importar el pack como archivo. Steam Workshop:
+  muy a futuro (Distribución). Sin plantillas ni personajes pregenerados por ahora. Plan:
   [`pasos/9-packs-mods.md`](pasos/9-packs-mods.md).
 
 ## Nombre y avisos (2026-11-06)

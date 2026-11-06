@@ -70,7 +70,7 @@ Meta a largo plazo ([`decisiones.md`](decisiones.md#meta-un-juego-propio-2026-11
   (vienen en el repo GPL v3 de PD) y acreditar a Cube_Code.
 
 ## Distribución (sin fecha)
-- **Steam:** primero sin SDK. Después, opcional, feature `steam`: amigos, Steam Networking, logros, nube (revisar
+- **Steam:** primero sin SDK. Muy a futuro: Steam Workshop para los packs de mods (N6-N9). Después, opcional, feature `steam`: amigos, Steam Networking, logros, nube (revisar
   licencia antes).
 - **Play Store:** AAB con `bundletool`, política de privacidad, Data safety, clave en Play App Signing, sin `updater`.
 - Exportar e importar partidas a un archivo.
