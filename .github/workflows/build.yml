@@ -4,10 +4,11 @@ on:
   push:
   pull_request:
 
-# en dev, un push nuevo cancela la beta que se estaba armando (así dos no toman la misma letra)
+# una build por rama a la vez: un push nuevo espera en cola a que termine la anterior (así su beta se publica y la
+# letra de la siguiente se calcula después). GitHub deja en cola sólo la más nueva.
 concurrency:
   group: build-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref == 'refs/heads/dev' }}
+  cancel-in-progress: false
 
 jobs:
   # Nombre de la beta (canal de testers): en un push a dev, "beta-<letra>" siguiente a la última beta publicada de
