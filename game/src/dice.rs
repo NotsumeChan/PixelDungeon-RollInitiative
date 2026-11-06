@@ -1,4 +1,4 @@
-//! `game/dice.py`: dados de D&D 5e (notación "NdM+K", d20 con ventaja / desventaja, modificadores).
+//! `game/dice.py`: dados de la 5.ª edición (5e) (notación "NdM+K", d20 con ventaja / desventaja, modificadores).
 //! Todas las tiradas reciben el rng de la partida (determinismo para el multijugador).
 use crate::rng::Rng;
 

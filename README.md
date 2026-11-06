@@ -4,10 +4,10 @@
 ![Plataformas](https://img.shields.io/badge/plataformas-Linux%20·%20Windows%20·%20Android-green)
 ![Rust](https://img.shields.io/badge/hecho%20en-Rust-orange)
 
-Roguelike basado en [Pixel Dungeon](https://github.com/watabou/pixel-dungeon) con reglas de **D&D 5e** y
-**multijugador cooperativo**.
+Roguelike basado en [Pixel Dungeon](https://github.com/watabou/pixel-dungeon), **altamente compatible con la 5.ª
+edición de juegos de rol** y con **multijugador cooperativo**.
 
-> Proyecto de fans, libre y sin fines de lucro. No está afiliado a Watabou ni a Wizards of the Coast.
+> Proyecto libre y sin fines de lucro. Ver **Avisos**, más abajo.
 
 ## ✨ Qué tiene
 - Personajes creados con dados y las 12 clases de 5e: CA, salvaciones, iniciativa, conjuros y rasgos.
@@ -47,6 +47,14 @@ que viene de Pixel Dungeon. La rama [`pd-core`](../../tree/pd-core) conserva la 
   Si falta un sprite, el juego dibuja el nombre.
 - Al contribuir aceptas que tu aporte se distribuya bajo GPL v3.
 
+## ⚖️ Avisos
+- Proyecto independiente, libre y sin fines de lucro. No está afiliado, patrocinado ni respaldado por Watabou ni por
+  ninguna editorial de juegos de rol.
+- Es **altamente compatible con la 5.ª edición de juegos de rol**: usa reglas y contenido del SRD 5.1 y 5.2, bajo la
+  licencia Creative Commons Attribution 4.0 (atribución en Créditos). No usa marcas registradas de terceros para
+  describirse.
+- *Pixel Dungeon* es de Watabou: se nombra sólo para indicar de dónde viene el juego, que es GPL v3 como el original.
+
 ## 📜 Créditos y licencias
 - **Pixel Dungeon** © 2012-2015 Oleg Dolya ([Watabou](https://github.com/watabou/pixel-dungeon)), GNU GPL v3: el
   diseño, la generación de niveles y los monstruos, y los gráficos de `Assets/`.
@@ -55,13 +63,11 @@ que viene de Pixel Dungeon. La rama [`pd-core`](../../tree/pd-core) conserva la 
 - **Fuente:** [Silkscreen](https://github.com/googlefonts/silkscreen) © The Silkscreen Project Authors (Jason Kottke),
   SIL Open Font License 1.1 (`Assets/Fonts/silkscreen/OFL.txt`).
 - **Nombre:** gracias a [chomusuke-png](https://github.com/chomusuke-png) por la idea de *Roll Initiative*.
-- **Reglas de D&D 5e:** este trabajo incluye material del System Reference Document 5.1 ("SRD 5.1") y del System
+- **Reglas (5.ª edición):** este trabajo incluye material del System Reference Document 5.1 ("SRD 5.1") y del System
   Reference Document 5.2 ("SRD 5.2") de Wizards of the Coast LLC, disponibles en
   <https://dnd.wizards.com/resources/systems-reference-document> y <https://www.dndbeyond.com/srd>. El SRD 5.1 y el
   SRD 5.2 están bajo la licencia Creative Commons Attribution 4.0 International,
   <https://creativecommons.org/licenses/by/4.0/legalcode>.
-- *Dungeons & Dragons* y *D&D* son marcas de Wizards of the Coast LLC. *Pixel Dungeon* es de Watabou. Se nombran sólo
-  para indicar el origen.
 - **Dependencias:** [winit](https://github.com/rust-windowing/winit), [wgpu](https://github.com/gfx-rs/wgpu),
   [serde](https://serde.rs) y las demás de los `Cargo.toml`, cada una con su licencia.
 

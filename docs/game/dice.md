@@ -1,6 +1,6 @@
 # game/src/dice.rs
 
-`game/dice.py`: dados de D&D 5e. Todas las tiradas reciben el rng de la partida.
+`game/dice.py`: dados de la 5.ª edición (5e). Todas las tiradas reciben el rng de la partida.
 
 - `parse("2d6+3")` -> `(2, 6, 3)`; `roll(rng, notación, crit)` -> (total, texto, dados, caras); con `crit` tira el
   doble de dados. Cada dado es `IntRange(1, caras)`, igual que el prototipo.

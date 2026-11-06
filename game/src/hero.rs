@@ -1,4 +1,4 @@
-//! actors/hero/Hero.java + HeroClass.java + buffs/Regeneration.java (`game/hero.py`), con el combate de D&D 5e.
+//! actors/hero/Hero.java + HeroClass.java + buffs/Regeneration.java (`game/hero.py`), con el combate de la 5.ª edición (5e).
 //! Las clases son datos (`data/classes.json`). R3: moverse, atacar cuerpo a cuerpo, esperar, buscar, escaleras,
 //! estabilizar a un aliado caído, salvaciones contra la muerte, regeneración, XP y niveles.
 //! R5: mochila (Belongings.java), oro, accesos rápidos, recoger y abrir, comer, beber, leer, equipar, soltar y el

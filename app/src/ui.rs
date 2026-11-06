@@ -1100,7 +1100,7 @@ impl Ui {
         }
     }
 
-    /// Ficha 5e del personaje (WndHero del original, con los números de D&D).
+    /// Ficha 5e del personaje (WndHero del original, con los números de la 5.ª edición).
     fn draw_hero(&mut self, atlas: &Atlas, font: &Font, d: &Dungeon, out: &mut Vec<Sprite>, w: f32, h: f32) {
         let me = d.local();
         let abil = |range: std::ops::Range<usize>| {
@@ -1926,8 +1926,11 @@ impl Ui {
             (2, "Mods", x0 + step, UiAction::Open(Window::Mods)),
             (1, tr!("Acerca de", "About"), x0 + step * 2.0, UiAction::Open(Window::Page(vec![
                 (format!("PixelDungeon-RollInitiative v{}", crate::updater::version_label()), YELLOW),
-                (tr!("Roguelike basado en Pixel Dungeon de Watabou (GPL v3), con las reglas de D&D 5e y multijugador cooperativo.", "Roguelike based on Watabou's Pixel Dungeon (GPL v3), with D&D 5e rules and co-op multiplayer.").into(), WHITE),
-                (tr!("Arte y sonido del original. Todo el proyecto se distribuye como GPL v3.", "Art and sound from the original. The whole project is distributed under GPL v3.").into(), rgba(190, 190, 190, 255)),
+                (tr!("Roguelike basado en Pixel Dungeon de Watabou, altamente compatible con la 5ta edicion de juegos de rol, con multijugador cooperativo.", "Roguelike based on Watabou's Pixel Dungeon, highly compatible with 5th edition roleplaying, with co-op multiplayer.").into(), WHITE),
+                (tr!("Arte del original. Todo el proyecto es GPL v3.", "Art from the original. The whole project is GPL v3.").into(), rgba(190, 190, 190, 255)),
+                (tr!("Proyecto sin fines de lucro, no afiliado ni respaldado por Watabou ni por ninguna editorial de juegos de rol.", "Non-profit project, not affiliated with or endorsed by Watabou or any roleplaying game publisher.").into(), rgba(190, 190, 190, 255)),
+                // atribución que pide la licencia del SRD (CC-BY-4.0): la única mención que tiene que quedar
+                (tr!("Incluye material del SRD 5.1 y 5.2 de Wizards of the Coast LLC, bajo licencia CC-BY-4.0.", "Includes material from the SRD 5.1 and 5.2 by Wizards of the Coast LLC, licensed under CC-BY-4.0.").into(), rgba(190, 190, 190, 255)),
             ]))),
             (u32::MAX, tr!("Opciones", "Options"), x0 + step * 3.0, UiAction::Open(Window::Settings)),
         ] {

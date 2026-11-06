@@ -14,7 +14,7 @@ cierre de la separación de Pixel Dungeon (`pendientes.md`). Sólo plan.
   material del SRD 5.1 / 5.2 (reglas, monstruos, conjuros, textos), su licencia CC-BY-4.0 obliga a dar el crédito tal
   como pide (nombra a Wizards of the Coast LLC). Revisar el texto de la licencia antes de publicar (no somos abogados).
 
-## L1 — Textos (se puede hacer antes del cambio de nombre)
+## ✏️ L1 — Textos (0.9.40, falta que el dueño lo revise: README y Acerca de, en horizontal y vertical)
 - README, Acerca de (en el juego), textos de la UI y de `data/`: sacar "D&D" / "Dungeons & Dragons"; usar "5.ª
   edición" / "5e" donde haga falta. ~25 archivos hoy (README, `ui.rs`, `lib.rs`, `dice.rs`, `spells.rs`, `hero.rs`,
   docs, roadmap).

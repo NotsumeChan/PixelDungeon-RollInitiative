@@ -1,4 +1,4 @@
-//! Conjuros de D&D 5e (`game/spells.py`; el original no tiene un sistema así). Son datos (`data/spells.json`): un mod
+//! Conjuros de la 5.ª edición (5e) (`game/spells.py`; el original no tiene un sistema así). Son datos (`data/spells.json`): un mod
 //! combina los tipos que existen (`kind`), nunca apunta a código. Y los rasgos de clase de 5e: Segundo Aliento, Ataque
 //! Furtivo (en `roll_damage`) y Enemigo predilecto (Marca del cazador gratis).
 //!
