@@ -17,8 +17,9 @@ Decisiones en [`decisiones.md`](../decisiones.md#personajes-y-mundos-2026-11-06)
   al reiniciar, como hoy). Un pack "Base" sin mods de usuario. Lo de hoy (mods de la carpeta global, personajes)
   pasa a un pack.
 - Elegir pack es elegir con qué personajes y mundos se juega: un personaje o mundo nunca se abre con otros mods.
-- Ajustes de cada pack: los interruptores ON / OFF de sus mods de cliente (los requeridos no se apagan: el pack
-  dejaría de ser el mismo) y las opciones de cada mod (`settings` de `mod.json`).
+- Ajustes de cada pack: ON / OFF de cada mod y las opciones de cada uno (`settings` de `mod.json`). Los de cliente
+  tienen además un interruptor para todos juntos (apagar / prender todos los de cliente); los requeridos se apagan
+  de a uno, sin interruptor masivo.
 - Exportar / importar un pack como archivo (`.pdpack`: `pack.json` + sus mods, sin personajes ni mundos): para
   pasarlo a mano (Discord, un pendrive) y para respaldos.
 
@@ -43,4 +44,6 @@ Decisiones en [`decisiones.md`](../decisiones.md#personajes-y-mundos-2026-11-06)
   pack, cada uno apaga los de cliente que no quiera. Caché por sha256 (lo que ya está no se baja de nuevo).
 - Mods con Lua: la advertencia de siempre antes de instalar el pack. Validar lo que llega como un zip importado
   (`registry::is_mod_file`, sin rutas con `..`, tope de tamaño).
-- Después, unirse a la partida con ese pack activo: el hash (sólo los requeridos) coincide.
+- Después, unirse a la partida con ese pack activo. Al conectarse se validan los requeridos: los prendidos tienen que
+  ser los mismos que los del host (ids, versiones, sha256; el hash sólo cuenta los requeridos prendidos). Si no
+  coinciden, el aviso dice cuáles faltan, sobran o cambian de versión. Los de cliente no se comparan.
