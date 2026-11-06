@@ -29,6 +29,7 @@ primero.
 | 7 | [Personaje 5e: creación y progresión](pasos/7-progresion-5e.md) | `#P1`… |
 | 8 | [Personajes y mundos (estilo Terraria)](pasos/8-personajes-mundos.md) | `#C1`… |
 | 9 | [Paquetes de mods](pasos/9-packs-mods.md) | `#N6`… |
+| 10 | [Nombre propio y avisos legales](pasos/10-nombre-avisos.md) | `#L1`… |
 
 Estética: en conversación, sin paso.
 

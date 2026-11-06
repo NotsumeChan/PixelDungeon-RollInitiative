@@ -77,11 +77,19 @@ por hoja con un máximo (64x64); cuadros y velocidad libres por animación. Plan
 - **Muerte siempre hardcore**: el personaje muere para siempre y queda baneado de ese mundo; para seguir ahí, otro
   personaje. Los DM suelen hacer excepciones: eso va por las reglas del mundo y la idea del DM (abierta).
 - **Reglas del mundo**: al generar un mundo o usar uno prefabricado (one-shot, historia larga) se eligen modificadores
-  generales; pueden cambiar a lo largo de la partida, pero sólo saliendo, cambiando la configuración y volviendo a
-  entrar.
-- Duplicar y editar personajes (nombre, apariencia).
-- **Mods**: primero packs como perfiles locales (estilo Modrinth); la descarga desde el host, después. Plan:
+  generales; se aplican al cargar el mundo y no cambian durante el juego (salir, cambiarlas, volver a cargar).
+- **Duplicar y editar personajes**: duplicar copia sólo lo de nivel 0 (nombre, apariencia, clase, características,
+  con qué empieza), nunca inventario ni nivel; editar, nombre y apariencia.
+- **Mods**: primero packs como instancias locales (estilo Modrinth / gestores de mods de Minecraft): cada pack tiene
+  sus mods y sus personajes y mundos. La descarga desde el host, después. Plan:
   [`pasos/9-packs-mods.md`](pasos/9-packs-mods.md).
+
+## Nombre y avisos (2026-11-06)
+- Al separarse por completo de PD: el juego se llama **Pixelated Experience: Roll Initiative** y el editor
+  **Pixelated Editor: Roll Imagination**.
+- Nunca decir que se basa en D&D; sí "altamente compatible con la 5.ª edición de juegos de rol". Avisos claros en los
+  README y en Acerca de. Sacar las referencias a Wizards of the Coast, salvo la atribución que exige la licencia del
+  SRD mientras se use su material. Plan: [`pasos/10-nombre-avisos.md`](pasos/10-nombre-avisos.md).
 
 ## Multijugador (2026-11-04)
 1. Host autoritativo.

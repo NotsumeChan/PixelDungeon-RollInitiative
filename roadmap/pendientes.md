@@ -61,7 +61,7 @@ Meta a largo plazo ([`decisiones.md`](decisiones.md#meta-un-juego-propio-2026-11
 | Arte | Tiles, personajes, ítems y UI hechos por personas, de a uno. Personajes por capas: [S](pasos/6-sprites.md); lista: [`sprites-5e.md`](sprites-5e.md) |
 | Fuente | ✅ **Silkscreen** (OFL) en vez de `font1x.png` de PD (0.9.27) |
 | Sonido | ✅ El audio de PD salió del repo (0.9.30). Lo propio, cuando haya audio; el de PD como mod opcional |
-| Cierre | Borrar `Assets/` del original, revisar que no quede nada derivado, nombre nuevo |
+| Cierre | Borrar `Assets/` del original, revisar que no quede nada derivado; nombre nuevo y avisos: [L](pasos/10-nombre-avisos.md) |
 
 ## Audio (sin fecha; decisión del dueño, 2026-11-06)
 - El juego no tiene audio. La música y los sonidos de PD salieron del repo (0.9.30; siguen en `pd-core`).
