@@ -3,7 +3,7 @@ members = ["game", "app"]
 resolver = "3"
 
 [workspace.package]
-version = "0.9.44"
+version = "0.9.45"
 edition = "2024"
 license = "GPL-3.0-only"
 

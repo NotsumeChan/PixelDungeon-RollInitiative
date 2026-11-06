@@ -1795,8 +1795,8 @@ impl Ui {
             paras.push((tr!("Instalar mods es tu responsabilidad. Acepta para continuar (no se vuelve a preguntar).", "Installing mods is your responsibility. Accept to continue (you won't be asked again).").into(), GOLDEN));
             y = ((h - 28.0 - 60.0) / 2.0).floor().max(y);
         } else {
-            let rw = (w - 16.0).min(240.0);
-            let x = ((w - rw) / 2.0).floor();
+            let rw = w - 16.0; // todo el ancho (antes, hasta 240: en horizontal la lista quedaba angosta)
+            let x = 8.0;
             let disabled = cfg.disabled_mods();
             let mut pending = false;
             for (k, m) in game::registry::mods().iter().enumerate() {
@@ -1819,10 +1819,13 @@ impl Ui {
                         sub.push(if k == "version" { format!("v{v}") } else { v.to_string() });
                     }
                 }
-                font.text(out, &name, x + 20.0, y, if on { WHITE } else { GREY });
-                font.text(out, &sub.join(" - "), x + 20.0, y + 9.0, GREY);
+                // el texto se recorta antes de los botones (en vertical se metía debajo de ON / OFF)
+                let has_settings = m.manifest["settings"].as_array().is_some_and(|s| !s.is_empty());
+                let avail = rw - 20.0 - if has_settings { 76.0 } else { 32.0 };
+                font.text(out, &fit(font, &name, avail), x + 20.0, y, if on { WHITE } else { GREY });
+                font.text(out, &fit(font, &sub.join(" - "), avail), x + 20.0, y + 9.0, GREY);
                 self.draw_button(atlas, font, out, [x + rw - 28.0, y, 28.0, 16.0], if on { "ON" } else { "OFF" }, Some(UiAction::ToggleMod(m.folder.clone())));
-                if m.manifest["settings"].as_array().is_some_and(|s| !s.is_empty()) {
+                if has_settings {
                     self.draw_button(atlas, font, out, [x + rw - 72.0, y, 42.0, 16.0], tr!("AJUSTES", "CONFIG"), Some(UiAction::Open(Window::ModConfig(k))));
                 }
                 y += 20.0;
@@ -2041,6 +2044,18 @@ impl Ui {
 
 /// Un ítem de 16x16 (ItemSpriteSheet): su recorte de items.png (8 columnas) o, sin sprite, su nombre achicado para
 /// entrar en 16x16, una palabra por línea (TextIcon).
+/// `s` recortado con ".." al final para que entre en `max` px (o entero si ya entra).
+fn fit(font: &Font, s: &str, max: f32) -> String {
+    if font.width(s) <= max {
+        return s.to_string();
+    }
+    let mut t = s.to_string();
+    while !t.is_empty() && font.width(&format!("{t}..")) > max {
+        t.pop();
+    }
+    format!("{t}..")
+}
+
 pub fn item_icon(out: &mut Vec<Sprite>, atlas: &Atlas, font: &Font, image: &Image, pos: [f32; 2], alpha: f32) {
     match image {
         Image::Sheet(i) => {

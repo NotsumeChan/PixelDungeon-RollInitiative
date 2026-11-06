@@ -30,8 +30,8 @@ Sin orden. Cuando el dueño elige algo, pasa a `pasos/`.
 ## NPCs y mods
 - Lista de mods (pedido del dueño, 2026-11-06):
   - Sin botón AJUSTES: tocar el mod abre su menú (ajustes, descripción, borrar).
-  - Vertical: el botón ON / OFF tapa la descripción.
-  - Horizontal: la lista no usa el ancho de la pantalla, sólo se achata.
+  - ✏️ Vertical: el botón ON / OFF tapa la descripción (0.9.45: se recorta con "..").
+  - ✏️ Horizontal: la lista no usa el ancho de la pantalla, sólo se achata (0.9.45: usa todo el ancho).
   - Scroll, ver los importados sin reiniciar, borrar un mod.
 - Precios por nivel e identificación; tiradas sociales que esperen al dado (`ponytail` en `game/src/npcs.rs`).
 - Más NPC: imp, rey rata, herrero (el fantasma, no por ahora).

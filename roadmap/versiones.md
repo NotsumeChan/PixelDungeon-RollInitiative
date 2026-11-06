@@ -22,6 +22,7 @@ suben. Ante la duda, subirlo: es mejor un aviso de "actualiza" que una partida d
 | 0.5.0 | R5 | Creación de personaje con dados (4d6, 7 tiradas, asignar o escribir), lista de personajes y guardado; ya estaban el combate 5e y la ficha |
 | 0.8.0 | R5 | Hotseat (`[dev] hotseat`: 2 héroes en la misma PC, Tab, cambio automático al que le toca, nombres sobre los héroes): paridad con `python-prototipe`. La misma excepción que la 0.7 (partículas y proyectil en vuelo) |
 | 0.7.0 | R5, R5d | Arrastrar en la creación (cierra la 0.6), armas a distancia, idioma del contenido, log de tiradas de desarrollador (`[dev] dice_log`). Excepción a la regla: faltan las partículas y el proyectil en vuelo (pulido visual, pendiente) |
+| 0.9.45 | mods | Lista de mods: todo el ancho en horizontal; en vertical el texto se recorta antes de ON / OFF y AJUSTES |
 | 0.9.44 | controles | Teclas configurables para la acción rápida (E) y Seguir (X) |
 | 0.9.43 | L2 | `class_5e` en vez de `dnd_class` en `classes.json` (el viejo se sigue leyendo); `roadmap/reglas5e.md` |
 | 0.9.42 | M1d | Tooltip en la profundidad de la barra de estado con el nombre de la zona y sus coordenadas |

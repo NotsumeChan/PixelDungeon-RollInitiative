@@ -128,3 +128,6 @@ enemigo (atacar), el ícono del ítem (recoger) o "Abrir" (cofre / tumba). Segui
 lugar del carrusel de iniciativa, sólo fuera de combate): `resume` guarda la última caminata
 pedida (`note_walk`, al tocar el mapa o con `UiAction::Act`); `resumable` la ofrece mientras no se haya llegado.
 Arrojadizas: con `throwing` puesto, el aviso nombra al enemigo más cerca y el mismo acceso rápido la lanza ahí.
+
+Mods (0.9.45): la lista usa todo el ancho y el nombre y la línea de versión / autor se recortan con ".." (`fit`) antes
+de los botones ON / OFF y AJUSTES (en vertical se tapaban).

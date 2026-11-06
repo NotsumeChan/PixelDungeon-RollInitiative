@@ -13,7 +13,7 @@ Leer esto primero. Un archivo por tema:
 | [`pasos/`](pasos/) | Próximos pasos, uno por archivo |
 
 ## Ahora
-Rama `dev`, **0.9.44** (`versionCode` 54). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
+Rama `dev`, **0.9.45** (`versionCode` 55). Casi todo está ✏️ (sin probar): lo que falle en la prueba del dueño va
 primero.
 
 ## Próximos pasos
@@ -46,7 +46,7 @@ Lo nuevo nace propio; lo de PD se reemplaza de a poco.
 
 ## Estado al cerrar la sesión (2026-11-06)
 **Para retomar:** leer esta sección y el plan de M1c en [`pasos/5-mapas-editor.md`](pasos/5-mapas-editor.md). No hay
-nada a medio hacer: todo está en commits en `dev` (0.9.44). El teléfono tiene una beta con el actualizador (canal
+nada a medio hacer: todo está en commits en `dev` (0.9.45). El teléfono tiene una beta con el actualizador (canal
 beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del proyecto) en `NOTAS.md`.
 
 - Hecho y sin probar (✏️): D1-D4 (releases, red por internet con el teclado del sistema, compatibilidad, actualizador
@@ -82,6 +82,8 @@ beta): se actualiza solo desde las pre-releases de `dev`. Notas locales (no del 
   al último, "Fin del combate" en el momento y "Experiencia del combate: +N" (durante la pelea no sube la XP). Un
   mob que llega a mitad de pelea se suma al final de la ronda. Guardar y salir a mitad de una pelea, volver y
   terminarla: el resumen suma también lo ganado antes de guardar (0.9.41).
+- Lista de mods (0.9.45), sin probar: en horizontal ocupa todo el ancho; en vertical, nombres largos con ".." sin
+  meterse debajo de ON / OFF ni AJUSTES.
 - L1 (0.9.40), sin probar: leer el README (sección Avisos) y Acerca de en horizontal y en vertical (que entre todo).
 - M1d a medias (0.9.42): pasar el mouse por la profundidad (arriba a la derecha) muestra el nombre de la zona y sus
   coordenadas. **Siguiente:** la brújula o minimapa de M1d (a diseñar). Después: borrar el generador de PD cuando el dueño valide el propio,
